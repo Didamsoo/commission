@@ -1,11 +1,14 @@
 name: Deploy Next.js to GitHub Pages
+
 on:
   push:
     branches: [ main ]
+
 permissions:
   contents: read
   pages: write
   id-token: write
+
 concurrency:
   group: pages
   cancel-in-progress: true
@@ -20,11 +23,12 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - run: npm run build
+      - run: npm run build       # produit le dossier out/
       - run: touch out/.nojekyll
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: ./out
+          path: ./out            # << C'EST CETTE LIGNE QUI COMPTE
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
