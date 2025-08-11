@@ -1,0 +1,359 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: oklch(0.205 0 0);
+  --color-sidebar-foreground: oklch(0.985 0 0);
+  --color-sidebar-primary: oklch(0.488 0.243 264.376);
+  --color-sidebar-primary-foreground: oklch(0.985 0 0);
+  --color-sidebar-accent: oklch(0.269 0 0);
+  --color-sidebar-accent-foreground: oklch(0.985 0 0);
+  --color-sidebar-border: oklch(0.269 0 0);
+  --color-sidebar-ring: oklch(0.439 0 0);
+}
+
+@theme inline {
+  /* optional: --font-sans, --font-serif, --font-mono if they are applied in the layout.tsx */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: oklch(0.205 0 0);
+  --color-sidebar-foreground: oklch(0.985 0 0);
+  --color-sidebar-primary: oklch(0.488 0.243 264.376);
+  --color-sidebar-primary-foreground: oklch(0.985 0 0);
+  --color-sidebar-accent: oklch(0.269 0 0);
+  --color-sidebar-accent-foreground: oklch(0.985 0 0);
+  --color-sidebar-border: oklch(0.269 0 0);
+  --color-sidebar-ring: oklch(0.439 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .animate-fade-in {
+    animation: fadeIn 0.8s ease-out forwards;
+  }
+
+  .animate-fade-in-up {
+    animation: fadeInUp 0.6s ease-out forwards;
+  }
+}
+
+.print-only {
+  display: none !important;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Print styles - Based on provided HTML/CSS */
+@media print {
+  @page {
+    size: A4;
+    margin: 8mm; /* Updated margin */
+  }
+
+  body {
+    font-family: "Arial", sans-serif;
+    font-size: 10px; /* Updated font size */
+    line-height: 1.1; /* Updated line height */
+    color: #333;
+    background: white;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Hide elements not needed for print */
+  body > header,
+  .print-hide-layout,
+  .margin-calculator-card .no-print,
+  .margin-calculator-card .card-footer {
+    display: none !important;
+  }
+
+  /* Make print-only content visible */
+  .print-only {
+    display: block !important;
+  }
+
+  /* Main container for print content */
+  .container-print {
+    max-width: 100%;
+    padding: 0px; /* Adjusted padding for tighter fit */
+  }
+
+  /* Header for the print document */
+  .header-print {
+    background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+    color: white;
+    padding: 6px 10px; /* Adjusted padding */
+    border-radius: 4px;
+    margin-bottom: 6px; /* Adjusted margin */
+    text-align: center;
+    font-weight: bold;
+    font-size: 13px; /* Adjusted font size */
+  }
+
+  /* Flex rows for layout */
+  .row-print {
+    display: flex;
+    gap: 6px; /* Adjusted gap */
+    margin-bottom: 4px; /* Adjusted margin */
+  }
+
+  /* Column widths */
+  .col-2-print {
+    flex: 1;
+  }
+
+  .col-3-print {
+    flex: 1;
+  }
+
+  .col-4-print {
+    flex: 1;
+  }
+
+  /* Section styling */
+  .section-print {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    padding: 4px; /* Adjusted padding */
+    margin-bottom: 3px; /* Added as per user request */
+  }
+
+  .section-title-print {
+    background: #64748b;
+    color: white;
+    padding: 2px 5px; /* Adjusted padding */
+    margin: -4px -4px 3px -4px; /* Adjusted margin */
+    font-weight: bold;
+    font-size: 10px;
+    border-radius: 3px 3px 0 0;
+  }
+
+  /* Field styling (label and value) */
+  .field-print {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1px; /* Adjusted margin */
+    font-size: 9px; /* Adjusted font size for content */
+  }
+
+  .field-label-print {
+    font-weight: 500;
+    color: #475569;
+  }
+
+  .field-value-print {
+    font-weight: bold;
+    color: #1e293b;
+  }
+
+  .highlight-print {
+    background: #fef3c7;
+    padding: 1px 3px; /* Adjusted padding */
+    border-radius: 2px;
+  }
+
+  /* Total section styling */
+  .total-section-print {
+    background: #dcfce7;
+    border: 2px solid #16a34a;
+    border-radius: 4px;
+    padding: 6px; /* Adjusted padding */
+    margin-top: 4px; /* Adjusted margin */
+  }
+
+  .total-title-print {
+    background: #16a34a;
+    color: white;
+    padding: 3px 5px; /* Adjusted padding */
+    margin: -6px -6px 3px -6px; /* Adjusted margin */
+    font-weight: bold;
+    text-align: center;
+    border-radius: 2px 2px 0 0;
+  }
+
+  /* Commission detail section styling */
+  .commission-detail-print {
+    background: #e0f2fe;
+    border: 1px solid #0284c7;
+    border-radius: 4px;
+    padding: 4px; /* Adjusted padding */
+    margin-bottom: 3px; /* Added for consistency */
+  }
+
+  .commission-title-print {
+    background: #0284c7;
+    color: white;
+    padding: 2px 5px; /* Adjusted padding */
+    margin: -4px -4px 3px -4px; /* Adjusted margin */
+    font-weight: bold;
+    font-size: 10px;
+    border-radius: 3px 3px 0 0;
+  }
+
+  /* Final total styling */
+  .final-total-print {
+    font-size: 13px; /* Adjusted font size */
+    font-weight: bold;
+    color: #dc2626;
+    text-align: center;
+    padding: 3px; /* Adjusted padding */
+    background: #fee2e2;
+    border-radius: 4px;
+    margin-top: 3px; /* Adjusted margin */
+  }
+
+  .small-text-print {
+    font-size: 8px; /* Even smaller for sub-details if needed */
+  }
+
+  /* Ensure main content takes full width for print */
+  body > main {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .margin-calculator-card {
+    border: none !important;
+    box-shadow: none !important;
+    background-color: white !important;
+    color: black !important;
+    padding: 0 !important;
+  }
+
+  /* Hide animation on print */
+  .animate-fade-in,
+  .animate-fade-in-up,
+  .delay-200,
+  .delay-400,
+  .delay-600 {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
+  .margin-calculator-card .card-header {
+    display: none !important;
+  }
+}
