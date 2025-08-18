@@ -1,31 +1,41 @@
 import type { Metadata } from 'next'
-import { GeistSans } from 'geist/font/sans'
-import { GeistMono } from 'geist/font/mono'
-import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Feuille de marge',
-  description: 'Created with Adam',
-  generator: 'Adam',
-}
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
-  return (
-    <html lang="en">
-      <head>
-        <style>{`
-html {
-  font-family: ${GeistSans.style.fontFamily};
-  --font-sans: ${GeistSans.variable};
-  --font-mono: ${GeistMono.variable};
-}
-        `}</style>
-      </head>
-      <body>{children}</body>
-    </html>
-  )
+  title: 'Gestionnaire de Marges Automobile - RENTA VO/VN/VU',
+  description: 'Calculez et optimisez vos marges et commissions de vente automobile. Outil professionnel pour vendeurs automobiles.',
+  keywords: 'marge automobile, commission vendeur, calcul marge, VO, VN, VU, automobile',
+  authors: [{ name: 'Gestionnaire Marges' }],
+  creator: 'Gestionnaire Marges',
+  publisher: 'Gestionnaire Marges',
+  applicationName: 'Gestionnaire de Marges Automobile',
+  generator: 'Next.js',
+  
+  // Open Graph (Facebook, LinkedIn, etc.)
+  openGraph: {
+    title: 'Gestionnaire de Marges Automobile',
+    description: 'Calculez et optimisez vos marges et commissions de vente automobile',
+    url: 'https://feuilledemarge.netlify.app',
+    siteName: 'Gestionnaire de Marges Automobile',
+    type: 'website',
+    locale: 'fr_FR',
+  },
+  
+  // Twitter Card
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Gestionnaire de Marges Automobile',
+    description: 'Calculez et optimisez vos marges et commissions de vente automobile',
+    creator: '@votre_twitter', // Optionnel
+  },
+  
+  // Autres métadonnées
+  robots: {
+    index: true,
+    follow: true,
+  },
+  
+  // Favicon et icônes
+  icons: {
+    icon: '/favicon.ico',
+  },
 }

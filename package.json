@@ -1,6 +1,8 @@
 {
   "name": "commission-marge",
   "version": "0.1.0",
+  "homepage": "https://feuilledemarge.netlify.app",
+  "author": "AdamELM",
   "private": true,
   "scripts": {
     "dev": "next dev",
