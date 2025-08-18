@@ -1,8 +1,7 @@
 {
   "name": "commission-marge",
-  "version": "0.1.0",
-  "homepage": "https://feuilledemarge.netlify.app",
-  "author": "AdamELM",
+  "version": "1.0.0",
+  "description": "Gestionnaire de marges et commissions automobile",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -73,5 +72,7 @@
     "tailwindcss": "^4.1.9",
     "tw-animate-css": "1.3.3",
     "typescript": "^5"
-  }
+  },
+  "author": "Votre Nom",
+  "homepage": "https://feuilledemarge.netlify.app"
 }
