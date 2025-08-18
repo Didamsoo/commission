@@ -28,12 +28,12 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 to-black text-white p-3 sm:p-6 lg:p-12">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 text-gray-900 p-3 sm:p-6 lg:p-12">
       <header className="text-center mb-6 sm:mb-8 lg:mb-12">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-400 to-white animate-fade-in">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 animate-fade-in">
           Gestionnaire de Marges Automobile
         </h1>
-        <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-400 mt-2 animate-fade-in delay-200 px-4">
+        <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600 mt-2 animate-fade-in delay-200 px-4">
           Calculez, suivez et optimisez vos commissions de vente.
         </p>
       </header>

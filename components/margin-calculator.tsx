@@ -333,10 +333,10 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
   }
 
   return (
-    <Card className="bg-gray-900 border-gray-800 text-white shadow-lg animate-fade-in margin-calculator-card">
-      <CardHeader className="border-b border-gray-800 pb-4">
-        <CardTitle className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-200 flex items-center gap-2">
-          <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-green-400" />
+    <Card className="bg-white border-gray-200 text-gray-900 shadow-xl animate-fade-in margin-calculator-card">
+      <CardHeader className="border-b border-gray-200 pb-4 bg-gradient-to-r from-blue-50 to-indigo-50">
+        <CardTitle className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 flex items-center gap-2">
+          <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
           <span className="truncate">Feuille de Marge RENTA VO/VN/VU</span>
         </CardTitle>
       </CardHeader>
@@ -345,7 +345,7 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
         <div className="no-print">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
             <div className="grid gap-2">
-              <Label htmlFor="date" className="text-gray-300 flex items-center gap-1 text-sm">
+              <Label htmlFor="date" className="text-gray-700 flex items-center gap-1 text-sm font-medium">
                 <Info className="h-4 w-4" /> Date
               </Label>
               <Input
@@ -353,11 +353,11 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                 type="text"
                 value={new Date().toLocaleDateString("fr-FR")}
                 disabled
-                className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 text-sm"
+                className="bg-gray-50 border-gray-300 text-gray-900 text-sm"
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="vehicleNumber" className="text-gray-300 text-sm">
+              <Label htmlFor="vehicleNumber" className="text-gray-700 text-sm font-medium">
                 N° de VO/VN/VU
               </Label>
               <Input
@@ -366,11 +366,11 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                 placeholder="Ex: VO12345"
                 value={vehicleNumber}
                 onChange={(e) => setVehicleNumber(e.target.value)}
-                className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 text-sm"
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="sellerName" className="text-gray-300 text-sm">
+              <Label htmlFor="sellerName" className="text-gray-700 text-sm font-medium">
                 Vendeur
               </Label>
               <Input
@@ -379,11 +379,11 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                 placeholder="Votre Nom"
                 value={sellerName}
                 onChange={(e) => setSellerName(e.target.value)}
-                className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 text-sm"
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="clientName" className="text-gray-300 text-sm">
+              <Label htmlFor="clientName" className="text-gray-700 text-sm font-medium">
                 Client
               </Label>
               <Input
@@ -392,11 +392,11 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                 placeholder="Nom du Client"
                 value={clientName}
                 onChange={(e) => setClientName(e.target.value)}
-                className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 text-sm"
               />
             </div>
             <div className="grid gap-2 sm:col-span-2">
-              <Label htmlFor="vehicleSoldName" className="text-gray-300 flex items-center gap-1 text-sm">
+              <Label htmlFor="vehicleSoldName" className="text-gray-700 flex items-center gap-1 text-sm font-medium">
                 <Car className="h-4 w-4" /> Véhicule Vendu
               </Label>
               <Input
@@ -405,7 +405,7 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                 placeholder="Ex: Renault Clio V"
                 value={vehicleSoldName}
                 onChange={(e) => setVehicleSoldName(e.target.value)}
-                className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 text-sm"
               />
             </div>
           </div>
@@ -414,13 +414,13 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
         {/* --- Input sections (hidden in print) --- */}
         <div className="no-print space-y-4 sm:space-y-6">
           {/* Vehicle Type Selection */}
-          <div className="grid gap-2 border-t border-gray-800 pt-4 sm:pt-6">
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-200">Type de Véhicule</h3>
+          <div className="grid gap-2 border-t border-gray-200 pt-4 sm:pt-6">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-800">Type de Véhicule</h3>
             <Select value={vehicleType} onValueChange={(value: "VO" | "VP" | "VU") => setVehicleType(value)}>
-              <SelectTrigger className="bg-gray-800 border-gray-700 text-white focus:ring-green-500 text-sm">
+              <SelectTrigger className="bg-white border-gray-300 text-gray-900 focus:ring-blue-500 text-sm">
                 <SelectValue placeholder="Sélectionner le type de véhicule" />
               </SelectTrigger>
-              <SelectContent className="bg-gray-800 text-white border-gray-700">
+              <SelectContent className="bg-white text-gray-900 border-gray-300">
                 <SelectItem value="VO">Véhicule d'Occasion (VO)</SelectItem>
                 <SelectItem value="VP">Véhicule Particulier (VP) VN/VD</SelectItem>
                 <SelectItem value="VU">Véhicule Utilitaire (VU) VN/VD</SelectItem>
@@ -429,20 +429,20 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
           </div>
 
           {/* Purchase/Sale Details (always visible for base prices) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 border-t border-gray-800 pt-4 sm:pt-6">
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-200 sm:col-span-2">Détails Achat/Vente</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 border-t border-gray-200 pt-4 sm:pt-6">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-800 sm:col-span-2">Détails Achat/Vente</h3>
             <div className="flex items-center space-x-2 sm:col-span-2">
               <Checkbox
                 id="isOtherStockCession"
                 checked={isOtherStockCession}
                 onCheckedChange={(checked) => setIsOtherStockCession(!!checked)}
               />
-              <Label htmlFor="isOtherStockCession" className="text-gray-300 text-sm">
+              <Label htmlFor="isOtherStockCession" className="text-gray-700 text-sm">
                 Cession autre stock (Marge fixe 1800€ TTC)
               </Label>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="purchasePriceTTC" className="text-gray-300 text-sm">
+              <Label htmlFor="purchasePriceTTC" className="text-gray-700 text-sm font-medium">
                 Prix d'achat TTC (€)
               </Label>
               <Input
@@ -451,11 +451,11 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                 placeholder="0.00"
                 value={purchasePriceTTC}
                 onChange={(e) => setPurchasePriceTTC(e.target.value)}
-                className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 text-sm"
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="sellingPriceTTC" className="text-gray-300 text-sm">
+              <Label htmlFor="sellingPriceTTC" className="text-gray-700 text-sm font-medium">
                 Prix de vente TTC (€)
               </Label>
               <Input
@@ -464,12 +464,12 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                 placeholder="0.00"
                 value={sellingPriceTTC}
                 onChange={(e) => setSellingPriceTTC(e.target.value)}
-                className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 text-sm"
               />
             </div>
             {!isOtherStockCession && (
               <div className="grid gap-2 sm:col-span-2">
-                <Label htmlFor="tradeInValueHT" className="text-gray-300 text-sm">
+                <Label htmlFor="tradeInValueHT" className="text-gray-700 text-sm font-medium">
                   Reprise (ccvo ht €)
                 </Label>
                 <Input
@@ -478,7 +478,7 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                   placeholder="0.00"
                   value={tradeInValueHT}
                   onChange={(e) => setTradeInValueHT(e.target.value)}
-                  className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 text-sm"
                 />
               </div>
             )}
@@ -486,19 +486,19 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
 
           {/* VP Specific Inputs */}
           {vehicleType === "VP" && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 border-t border-gray-800 pt-4 sm:pt-6">
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-200 sm:col-span-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 border-t border-gray-200 pt-4 sm:pt-6">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-800 sm:col-span-2">
                 Détails Véhicule Particulier (VP)
               </h3>
               <div className="grid gap-2">
-                <Label htmlFor="vpSalesType" className="text-gray-300 text-sm">
+                <Label htmlFor="vpSalesType" className="text-gray-700 text-sm font-medium">
                   Type de Vente
                 </Label>
                 <Select value={vpSalesType} onValueChange={(value: typeof vpSalesType) => setVpSalesType(value)}>
-                  <SelectTrigger className="bg-gray-800 border-gray-700 text-white focus:ring-green-500 text-sm">
+                  <SelectTrigger className="bg-white border-gray-300 text-gray-900 focus:ring-blue-500 text-sm">
                     <SelectValue placeholder="Sélectionner le type de vente" />
                   </SelectTrigger>
-                  <SelectContent className="bg-gray-800 text-white border-gray-700">
+                  <SelectContent className="bg-white text-gray-900 border-gray-300">
                     <SelectItem value="PART/VD/Prof Lib/Société">
                       PART/VD/Prof Lib/Société (hors Loueur et GC)
                     </SelectItem>
@@ -507,14 +507,14 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                 </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="vpModel" className="text-gray-300 text-sm">
+                <Label htmlFor="vpModel" className="text-gray-700 text-sm font-medium">
                   Modèle VP
                 </Label>
                 <Select value={vpModel} onValueChange={(value: typeof vpModel) => setVpModel(value)}>
-                  <SelectTrigger className="bg-gray-800 border-gray-700 text-white focus:ring-green-500 text-sm">
+                  <SelectTrigger className="bg-white border-gray-300 text-gray-900 focus:ring-blue-500 text-sm">
                     <SelectValue placeholder="Sélectionner le modèle" />
                   </SelectTrigger>
-                  <SelectContent className="bg-gray-800 text-white border-gray-700">
+                  <SelectContent className="bg-white text-gray-900 border-gray-300">
                     <SelectItem value="Carline">Carline</SelectItem>
                     <SelectItem value="Tourneo Courrier">Tourneo Courrier</SelectItem>
                     <SelectItem value="Focus">Focus</SelectItem>
@@ -533,12 +533,12 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
 
           {/* VU Specific Inputs */}
           {vehicleType === "VU" && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 border-t border-gray-800 pt-4 sm:pt-6">
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-200 sm:col-span-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 border-t border-gray-200 pt-4 sm:pt-6">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-800 sm:col-span-2">
                 Détails Véhicule Utilitaire (VU)
               </h3>
               <div className="grid gap-2">
-                <Label htmlFor="margeFixeVehiculeOptions" className="text-gray-300 text-sm">
+                <Label htmlFor="margeFixeVehiculeOptions" className="text-gray-700 text-sm font-medium">
                   Marge fixe sur véhicule et options (€)
                 </Label>
                 <Input
@@ -547,11 +547,11 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                   placeholder="0.00"
                   value={margeFixeVehiculeOptions}
                   onChange={(e) => setMargeFixeVehiculeOptions(e.target.value)}
-                  className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 text-sm"
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="margeFordPro" className="text-gray-300 text-sm">
+                <Label htmlFor="margeFordPro" className="text-gray-700 text-sm font-medium">
                   Marge FORD Pro (€)
                 </Label>
                 <Input
@@ -560,11 +560,11 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                   placeholder="0.00"
                   value={margeFordPro}
                   onChange={(e) => setMargeFordPro(e.target.value)}
-                  className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 text-sm"
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="margeRepresentationMarque" className="text-gray-300 text-sm">
+                <Label htmlFor="margeRepresentationMarque" className="text-gray-700 text-sm font-medium">
                   Marge représentation de la marque (€)
                 </Label>
                 <Input
@@ -573,11 +573,11 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                   placeholder="0.00"
                   value={margeRepresentationMarque}
                   onChange={(e) => setMargeRepresentationMarque(e.target.value)}
-                  className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 text-sm"
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="margeAccessoiresAmenagesVU" className="text-gray-300 text-sm">
+                <Label htmlFor="margeAccessoiresAmenagesVU" className="text-gray-700 text-sm font-medium">
                   Marge sur les accessoires aménagés VU (€)
                 </Label>
                 <Input
@@ -586,11 +586,11 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                   placeholder="0.00"
                   value={margeAccessoiresAmenagesVU}
                   onChange={(e) => setMargeAccessoiresAmenagesVU(e.target.value)}
-                  className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 text-sm"
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="assistanceConstructeur" className="text-gray-300 text-sm">
+                <Label htmlFor="assistanceConstructeur" className="text-gray-700 text-sm font-medium">
                   Assistance constructeur (€)
                 </Label>
                 <Input
@@ -599,11 +599,11 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                   placeholder="0.00"
                   value={assistanceConstructeur}
                   onChange={(e) => setAssistanceConstructeur(e.target.value)}
-                  className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 text-sm"
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="remiseConsentie" className="text-gray-300 text-sm">
+                <Label htmlFor="remiseConsentie" className="text-gray-700 text-sm font-medium">
                   Remise consentie (€)
                 </Label>
                 <Input
@@ -612,7 +612,7 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                   placeholder="0.00"
                   value={remiseConsentie}
                   onChange={(e) => setRemiseConsentie(e.target.value)}
-                  className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 text-sm"
                 />
               </div>
             </div>
@@ -620,12 +620,12 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
 
           {/* Commission Automation Inputs (VO specific) */}
           {vehicleType === "VO" && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 border-t border-gray-800 pt-4 sm:pt-6">
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-200 sm:col-span-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 border-t border-gray-200 pt-4 sm:pt-6">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-800 sm:col-span-2">
                 Automatisation Commission VO
               </h3>
               <div className="grid gap-2">
-                <Label htmlFor="purchaseDate" className="text-gray-300 flex items-center gap-1 text-sm">
+                <Label htmlFor="purchaseDate" className="text-gray-700 flex items-center gap-1 text-sm font-medium">
                   <CalendarDays className="h-4 w-4" /> Date d'achat VO
                 </Label>
                 <Input
@@ -633,11 +633,11 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                   type="date"
                   value={purchaseDate}
                   onChange={(e) => setPurchaseDate(e.target.value)}
-                  className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                  className="bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500 text-sm"
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="orderDate" className="text-gray-300 flex items-center gap-1 text-sm">
+                <Label htmlFor="orderDate" className="text-gray-700 flex items-center gap-1 text-sm font-medium">
                   <CalendarDays className="h-4 w-4" /> Date Bon de Commande
                 </Label>
                 <Input
@@ -645,11 +645,11 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                   type="date"
                   value={orderDate}
                   onChange={(e) => setOrderDate(e.target.value)}
-                  className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                  className="bg-white border-gray-300 text-gray-900 focus:border-blue-500 focus:ring-blue-500 text-sm"
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="listedPriceTTC" className="text-gray-300 text-sm">
+                <Label htmlFor="listedPriceTTC" className="text-gray-700 text-sm font-medium">
                   Prix affiché TTC (€)
                 </Label>
                 <Input
@@ -658,7 +658,7 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                   placeholder="0.00"
                   value={listedPriceTTC}
                   onChange={(e) => setListedPriceTTC(e.target.value)}
-                  className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 text-sm"
                 />
               </div>
               <div className="flex items-center space-x-2 sm:col-span-2">
@@ -667,7 +667,7 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                   checked={isElectricVehicle}
                   onCheckedChange={(checked) => setIsElectricVehicle(!!checked)}
                 />
-                <Label htmlFor="isElectricVehicle" className="text-gray-300 text-sm">
+                <Label htmlFor="isElectricVehicle" className="text-gray-700 text-sm">
                   Véhicule Électrique (VO)
                 </Label>
               </div>
@@ -675,22 +675,22 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
           )}
 
           {/* Financing Commission Inputs (common for all types) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 border-t border-gray-800 pt-4 sm:pt-6">
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-200 sm:col-span-2">Détails Financement</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 border-t border-gray-200 pt-4 sm:pt-6">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-800 sm:col-span-2">Détails Financement</h3>
             <div className="flex items-center space-x-2 sm:col-span-2">
               <Checkbox
                 id="hasFinancing"
                 checked={hasFinancing}
                 onCheckedChange={(checked) => setHasFinancing(!!checked)}
               />
-              <Label htmlFor="hasFinancing" className="text-gray-300 text-sm">
+              <Label htmlFor="hasFinancing" className="text-gray-700 text-sm">
                 Vente avec Financement
               </Label>
             </div>
             {hasFinancing && (
               <>
                 <div className="grid gap-2 sm:col-span-2">
-                  <Label htmlFor="financedAmountHT" className="text-gray-300 text-sm">
+                  <Label htmlFor="financedAmountHT" className="text-gray-700 text-sm font-medium">
                     Montant financé HT (€) (CA HT)
                   </Label>
                   <Input
@@ -699,21 +699,21 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                     placeholder="0.00"
                     value={financedAmountHT}
                     onChange={(e) => setFinancedAmountHT(e.target.value)}
-                    className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                    className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 text-sm"
                   />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="financingType" className="text-gray-300 text-sm">
+                  <Label htmlFor="financingType" className="text-gray-700 text-sm font-medium">
                     Barème Financement
                   </Label>
                   <Select
                     value={financingType}
                     onValueChange={(value: typeof financingType) => setFinancingType(value)}
                   >
-                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white focus:ring-green-500 text-sm">
+                    <SelectTrigger className="bg-white border-gray-300 text-gray-900 focus:ring-blue-500 text-sm">
                       <SelectValue placeholder="Sélectionner le barème" />
                     </SelectTrigger>
-                    <SelectContent className="bg-gray-800 text-white border-gray-700">
+                    <SelectContent className="bg-white text-gray-900 border-gray-300">
                       <SelectItem value="principal">Barème Principal (VN/VD/VO)</SelectItem>
                       <SelectItem value="specific">
                         Barème Spécifique (CC Ford / LOA Ford 48 mois / LLD FordLease / Crédit-Bail Ford / CGI)
@@ -722,17 +722,17 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="numberOfServicesSold" className="text-gray-300 text-sm">
+                  <Label htmlFor="numberOfServicesSold" className="text-gray-700 text-sm font-medium">
                     Nombre de Prestations (Assurances)
                   </Label>
                   <Select
                     value={numberOfServicesSold}
                     onValueChange={(value: "0" | "1" | "2") => setNumberOfServicesSold(value)}
                   >
-                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white focus:ring-green-500 text-sm">
+                    <SelectTrigger className="bg-white border-gray-300 text-gray-900 focus:ring-blue-500 text-sm">
                       <SelectValue placeholder="Sélectionner" />
                     </SelectTrigger>
-                    <SelectContent className="bg-gray-800 text-white border-gray-700">
+                    <SelectContent className="bg-white text-gray-900 border-gray-300">
                       <SelectItem value="0">0 Prestation</SelectItem>
                       <SelectItem value="1">1 Prestation</SelectItem>
                       <SelectItem value="2">2 Prestations</SelectItem>
@@ -745,13 +745,13 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                     checked={isCreditBailVN}
                     onCheckedChange={(checked) => setIsCreditBailVN(!!checked)}
                   />
-                  <Label htmlFor="isCreditBailVN" className="text-gray-300 text-sm">
+                  <Label htmlFor="isCreditBailVN" className="text-gray-700 text-sm">
                     Crédit-Bail sur un VN
                   </Label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox id="isLOAVO" checked={isLOAVO} onCheckedChange={(checked) => setIsLOAVO(!!checked)} />
-                  <Label htmlFor="isLOAVO" className="text-gray-300 text-sm">
+                  <Label htmlFor="isLOAVO" className="text-gray-700 text-sm">
                     LOA sur un VO
                   </Label>
                 </div>
@@ -761,7 +761,7 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                     checked={isIDFord25Months}
                     onCheckedChange={(checked) => setIsIDFord25Months(!!checked)}
                   />
-                  <Label htmlFor="isIDFord25Months" className="text-gray-300 text-sm">
+                  <Label htmlFor="isIDFord25Months" className="text-gray-700 text-sm">
                     ID Ford 25 mois
                   </Label>
                 </div>
@@ -771,7 +771,7 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                     checked={isLLDProFordLease}
                     onCheckedChange={(checked) => setIsLLDProFordLease(!!checked)}
                   />
-                  <Label htmlFor="isLLDProFordLease" className="text-gray-300 text-sm">
+                  <Label htmlFor="isLLDProFordLease" className="text-gray-700 text-sm">
                     LLD à professionnel FORDLease
                   </Label>
                 </div>
@@ -780,22 +780,22 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
           </div>
 
           {/* Packs & Peripherals Commission Inputs (common for all types) */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 border-t border-gray-800 pt-4 sm:pt-6">
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-200 sm:col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 border-t border-gray-200 pt-4 sm:pt-6">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-800 sm:col-span-2">
               Packs Livraison & Autres Périphériques
             </h3>
             <div className="grid gap-2">
-              <Label htmlFor="deliveryPackSold" className="text-gray-300 text-sm">
+              <Label htmlFor="deliveryPackSold" className="text-gray-700 text-sm font-medium">
                 Pack Livraison Vendu
               </Label>
               <Select
                 value={deliveryPackSold}
                 onValueChange={(value: "none" | "pack1" | "pack2" | "pack3") => setDeliveryPackSold(value)}
               >
-                <SelectTrigger className="bg-gray-800 border-gray-700 text-white focus:ring-green-500 text-sm">
+                <SelectTrigger className="bg-white border-gray-300 text-gray-900 focus:ring-blue-500 text-sm">
                   <SelectValue placeholder="Sélectionner" />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-800 text-white border-gray-700">
+                <SelectContent className="bg-white text-gray-900 border-gray-300">
                   <SelectItem value="none">Aucun Pack</SelectItem>
                   <SelectItem value="pack1">Pack 1 (199€)</SelectItem>
                   <SelectItem value="pack2">Pack 2 (699€)</SelectItem>
@@ -809,22 +809,22 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                 checked={isHighPenetrationRate}
                 onCheckedChange={(checked) => setIsHighPenetrationRate(!!checked)}
               />
-              <Label htmlFor="isHighPenetrationRate" className="text-gray-300 text-sm">
+              <Label htmlFor="isHighPenetrationRate" className="text-gray-700 text-sm">
                 Pénétration Pack {">"} 65% (Bonus)
               </Label>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="cldFordDuration" className="text-gray-300 text-sm">
+              <Label htmlFor="cldFordDuration" className="text-gray-700 text-sm font-medium">
                 CLD Ford
               </Label>
               <Select
                 value={cldFordDuration}
                 onValueChange={(value: typeof cldFordDuration) => setCldFordDuration(value)}
               >
-                <SelectTrigger className="bg-gray-800 border-gray-700 text-white focus:ring-green-500 text-sm">
+                <SelectTrigger className="bg-white border-gray-300 text-gray-900 focus:ring-blue-500 text-sm">
                   <SelectValue placeholder="Sélectionner la durée" />
                 </SelectTrigger>
-                <SelectContent className="bg-gray-800 text-white border-gray-700">
+                <SelectContent className="bg-white text-gray-900 border-gray-300">
                   <SelectItem value="none">Aucun CLD</SelectItem>
                   <SelectItem value="3-4">3 ou 4 ans</SelectItem>
                   <SelectItem value="5+">5 ans et +</SelectItem>
@@ -837,34 +837,34 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                 checked={hasMaintenanceContract}
                 onCheckedChange={(checked) => setHasMaintenanceContract(!!checked)}
               />
-              <Label htmlFor="hasMaintenanceContract" className="text-gray-300 text-sm">
+              <Label htmlFor="hasMaintenanceContract" className="text-gray-700 text-sm">
                 Contrat d'entretien
               </Label>
             </div>
           </div>
 
           {/* Coyote Commission Inputs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 border-t border-gray-800 pt-4 sm:pt-6">
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-200 sm:col-span-2">Rémunération Coyote</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 border-t border-gray-200 pt-4 sm:pt-6">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-800 sm:col-span-2">Rémunération Coyote</h3>
             <div className="flex items-center space-x-2">
               <Checkbox id="hasCoyote" checked={hasCoyote} onCheckedChange={(checked) => setHasCoyote(!!checked)} />
-              <Label htmlFor="hasCoyote" className="text-gray-300 text-sm">
+              <Label htmlFor="hasCoyote" className="text-gray-700 text-sm">
                 Coyote Secure Tracker vendu
               </Label>
             </div>
             {hasCoyote && (
               <div className="grid gap-2">
-                <Label htmlFor="coyoteDuration" className="text-gray-300 text-sm">
+                <Label htmlFor="coyoteDuration" className="text-gray-700 text-sm font-medium">
                   Durée Coyote
                 </Label>
                 <Select
                   value={coyoteDuration}
                   onValueChange={(value: typeof coyoteDuration) => setCoyoteDuration(value)}
                 >
-                  <SelectTrigger className="bg-gray-800 border-gray-700 text-white focus:ring-green-500 text-sm">
+                  <SelectTrigger className="bg-white border-gray-300 text-gray-900 focus:ring-blue-500 text-sm">
                     <SelectValue placeholder="Sélectionner la durée" />
                   </SelectTrigger>
-                  <SelectContent className="bg-gray-800 text-white border-gray-700">
+                  <SelectContent className="bg-white text-gray-900 border-gray-300">
                     <SelectItem value="none">Non sélectionné</SelectItem>
                     <SelectItem value="24">24 mois</SelectItem>
                     <SelectItem value="36">36 mois</SelectItem>
@@ -876,8 +876,8 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
           </div>
 
           {/* Accessories Commission Inputs */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 border-t border-gray-800 pt-4 sm:pt-6">
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-200 sm:col-span-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 border-t border-gray-200 pt-4 sm:pt-6">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-800 sm:col-span-2">
               Accessoires d'Origine Constructeur
             </h3>
             <div className="flex items-center space-x-2">
@@ -886,13 +886,13 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                 checked={hasAccessories}
                 onCheckedChange={(checked) => setHasAccessories(!!checked)}
               />
-              <Label htmlFor="hasAccessories" className="text-gray-300 text-sm">
+              <Label htmlFor="hasAccessories" className="text-gray-700 text-sm">
                 Véhicule vendu avec Accessoire
               </Label>
             </div>
             {hasAccessories && (
               <div className="grid gap-2 sm:col-span-2">
-                <Label htmlFor="accessoryAmountTTC" className="text-gray-300 text-sm">
+                <Label htmlFor="accessoryAmountTTC" className="text-gray-700 text-sm font-medium">
                   Montant des accessoires vendus TTC (€)
                 </Label>
                 <Input
@@ -901,7 +901,7 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                   placeholder="0.00"
                   value={accessoryAmountTTC}
                   onChange={(e) => setAccessoryAmountTTC(e.target.value)}
-                  className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 text-sm"
                 />
               </div>
             )}
@@ -909,10 +909,10 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
 
           {/* Cost/Deduction/Addition Items (manual inputs that are still needed) */}
           {!isOtherStockCession && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 border-t border-gray-800 pt-4 sm:pt-6">
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-200 sm:col-span-2">Frais & Bonus (Manuels)</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 border-t border-gray-200 pt-4 sm:pt-6">
+              <h3 className="text-lg sm:text-xl font-semibold text-gray-800 sm:col-span-2">Frais & Bonus (Manuels)</h3>
               <div className="grid gap-2">
-                <Label htmlFor="warranty12Months" className="text-gray-300 text-sm">
+                <Label htmlFor="warranty12Months" className="text-gray-700 text-sm font-medium">
                   Garantie 12 Mois (€)
                 </Label>
                 <Input
@@ -921,11 +921,11 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                   placeholder="0.00"
                   value={warranty12Months}
                   onChange={(e) => setWarranty12Months(e.target.value)}
-                  className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 text-sm"
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="workshopTransfer" className="text-gray-300 text-sm">
+                <Label htmlFor="workshopTransfer" className="text-gray-700 text-sm font-medium">
                   Cession Atelier (€)
                 </Label>
                 <Input
@@ -934,11 +934,11 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                   placeholder="0.00"
                   value={workshopTransfer}
                   onChange={(e) => setWorkshopTransfer(e.target.value)}
-                  className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 text-sm"
                 />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="preparationHT" className="text-gray-300 text-sm">
+                <Label htmlFor="preparationHT" className="text-gray-700 text-sm font-medium">
                   Préparation HT (€)
                 </Label>
                 <Input
@@ -947,7 +947,7 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
                   placeholder="0.00"
                   value={preparationHT}
                   onChange={(e) => setPreparationHT(e.target.value)}
-                  className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 focus:border-green-500 text-sm"
+                  className="bg-white border-gray-300 text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-blue-500 text-sm"
                 />
               </div>
             </div>
@@ -956,7 +956,7 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
 
         <Button
           onClick={handleCalculate}
-          className="w-full bg-gradient-to-r from-gray-700 to-gray-800 text-white hover:from-gray-600 hover:to-gray-700 transition-all duration-300 ease-in-out py-2 sm:py-3 text-sm sm:text-base lg:text-lg font-semibold no-print"
+          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 ease-in-out py-2 sm:py-3 text-sm sm:text-base lg:text-lg font-semibold no-print shadow-lg"
         >
           Calculer les Marges & Commissions
         </Button>
@@ -964,107 +964,111 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
         {calculatedResults && (
           <>
             {/* On-screen results (existing display) */}
-            <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-800 rounded-lg border border-gray-700 animate-fade-in-up print-hide-layout">
-              <h3 className="text-lg sm:text-xl font-semibold mb-3 text-gray-200 flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" /> Résultats du Calcul
+            <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-blue-50 rounded-lg border border-blue-200 animate-fade-in-up print-hide-layout">
+              <h3 className="text-lg sm:text-xl font-semibold mb-3 text-gray-800 flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" /> Résultats du Calcul
               </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 text-gray-300">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 text-gray-700">
                 <div>
-                  <p className="text-xs sm:text-sm">{isOtherStockCession ? "Prix Cession TTC:" : "Prix Achat HT:"}</p>
-                  <p className="text-sm sm:text-base lg:text-lg font-bold text-gray-200">
+                  <p className="text-xs sm:text-sm text-gray-600">
+                    {isOtherStockCession ? "Prix Cession TTC:" : "Prix Achat HT:"}
+                  </p>
+                  <p className="text-sm sm:text-base lg:text-lg font-bold text-gray-800">
                     {isOtherStockCession
                       ? formatCurrency(1800) // Fixed TTC value for display
                       : formatCurrency(calculatedResults.purchasePriceHT)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs sm:text-sm">{isOtherStockCession ? "Prix Cession HT:" : "Prix Vente HT:"}</p>
-                  <p className="text-sm sm:text-base lg:text-lg font-bold text-gray-200">
+                  <p className="text-xs sm:text-sm text-gray-600">
+                    {isOtherStockCession ? "Prix Cession HT:" : "Prix Vente HT:"}
+                  </p>
+                  <p className="text-sm sm:text-base lg:text-lg font-bold text-gray-800">
                     {isOtherStockCession
                       ? formatCurrency(1800 / (1 + VAT_RATE)) // Fixed HT value for display
                       : formatCurrency(calculatedResults.sellingPriceHT)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs sm:text-sm">Marge HT (Initiale):</p>
-                  <p className="text-sm sm:text-base lg:text-lg font-bold text-green-400">
+                  <p className="text-xs sm:text-sm text-gray-600">Marge HT (Initiale):</p>
+                  <p className="text-sm sm:text-base lg:text-lg font-bold text-green-600">
                     {formatCurrency(calculatedResults.initialMarginHT)}
                   </p>
                 </div>
                 {/* Display costs on screen if > 0 */}
                 {Number(warranty12Months) > 0 && (
                   <div>
-                    <p className="text-xs sm:text-sm">Garantie 12 Mois:</p>
-                    <p className="text-sm sm:text-base lg:text-lg font-bold text-gray-200">
+                    <p className="text-xs sm:text-sm text-gray-600">Garantie 12 Mois:</p>
+                    <p className="text-sm sm:text-base lg:text-lg font-bold text-gray-800">
                       {formatCurrency(Number(warranty12Months))}
                     </p>
                   </div>
                 )}
                 {Number(workshopTransfer) > 0 && (
                   <div>
-                    <p className="text-xs sm:text-sm">Cession Atelier:</p>
-                    <p className="text-sm sm:text-base lg:text-lg font-bold text-gray-200">
+                    <p className="text-xs sm:text-sm text-gray-600">Cession Atelier:</p>
+                    <p className="text-sm sm:text-base lg:text-lg font-bold text-gray-800">
                       {formatCurrency(Number(workshopTransfer))}
                     </p>
                   </div>
                 )}
                 {Number(preparationHT) > 0 && (
                   <div>
-                    <p className="text-xs sm:text-sm">Préparation HT:</p>
-                    <p className="text-sm sm:text-base lg:text-lg font-bold text-gray-200">
+                    <p className="text-xs sm:text-sm text-gray-600">Préparation HT:</p>
+                    <p className="text-sm sm:text-base lg:text-lg font-bold text-gray-800">
                       {formatCurrency(Number(preparationHT))}
                     </p>
                   </div>
                 )}
                 <div>
-                  <p className="text-xs sm:text-sm">Marge Restante HT:</p>
-                  <p className="text-sm sm:text-base lg:text-lg font-bold text-green-400">
+                  <p className="text-xs sm:text-sm text-gray-600">Marge Restante HT:</p>
+                  <p className="text-sm sm:text-base lg:text-lg font-bold text-green-600">
                     {formatCurrency(calculatedResults.remainingMarginHT)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs sm:text-sm">Marge Finale (Concessionnaire):</p>
-                  <p className="text-sm sm:text-base lg:text-lg font-bold text-green-400">
+                  <p className="text-xs sm:text-sm text-gray-600">Marge Finale (Concessionnaire):</p>
+                  <p className="text-sm sm:text-base lg:text-lg font-bold text-green-600">
                     {formatCurrency(calculatedResults.finalMargin)}
                   </p>
                 </div>
               </div>
 
-              <h4 className="text-lg sm:text-xl font-semibold mt-4 sm:mt-6 mb-3 text-gray-200 flex items-center gap-2">
-                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-purple-400" /> Détail Commission Vendeur
+              <h4 className="text-lg sm:text-xl font-semibold mt-4 sm:mt-6 mb-3 text-gray-800 flex items-center gap-2">
+                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600" /> Détail Commission Vendeur
               </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-gray-300">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 text-gray-700">
                 {vehicleType === "VO" && (
                   <>
                     <div>
-                      <p className="text-xs sm:text-sm">Commission VO (Base):</p>
-                      <p className="text-sm sm:text-base lg:text-lg font-bold text-purple-300">
+                      <p className="text-xs sm:text-sm text-gray-600">Commission VO (Base):</p>
+                      <p className="text-sm sm:text-base lg:text-lg font-bold text-blue-600">
                         {formatCurrency(calculatedResults.commissionDetails.voBaseCommission)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs sm:text-sm">Bonus -60 Jours (VO):</p>
-                      <p className="text-sm sm:text-base lg:text-lg font-bold text-purple-300">
+                      <p className="text-xs sm:text-sm text-gray-600">Bonus -60 Jours (VO):</p>
+                      <p className="text-sm sm:text-base lg:text-lg font-bold text-blue-600">
                         {formatCurrency(calculatedResults.commissionDetails.voBonus60Days)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs sm:text-sm">Bonus Prix Affiché (VO):</p>
-                      <p className="text-sm sm:text-base lg:text-lg font-bold text-purple-300">
+                      <p className="text-xs sm:text-sm text-gray-600">Bonus Prix Affiché (VO):</p>
+                      <p className="text-sm sm:text-base lg:text-lg font-bold text-blue-600">
                         {formatCurrency(calculatedResults.commissionDetails.voBonusListedPrice)}
                       </p>
                     </div>
                     {hasFinancing && (
                       <div>
-                        <p className="text-xs sm:text-sm">Bonus Financement VO:</p>
-                        <p className="text-sm sm:text-base lg:text-lg font-bold text-purple-300">
+                        <p className="text-xs sm:text-sm text-gray-600">Bonus Financement VO:</p>
+                        <p className="text-sm sm:text-base lg:text-lg font-bold text-blue-600">
                           {formatCurrency(calculatedResults.commissionDetails.voBonusFinancing)}
                         </p>
                       </div>
                     )}
                     <div>
-                      <p className="text-xs sm:text-sm">Bonus Véhicule Électrique (VO):</p>
-                      <p className="text-sm sm:text-base lg:text-lg font-bold text-purple-300">
+                      <p className="text-xs sm:text-sm text-gray-600">Bonus Véhicule Électrique (VO):</p>
+                      <p className="text-sm sm:text-base lg:text-lg font-bold text-blue-600">
                         {formatCurrency(calculatedResults.commissionDetails.voBonusElectricVehicle)}
                       </p>
                     </div>
@@ -1073,8 +1077,8 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
 
                 {vehicleType === "VP" && (
                   <div>
-                    <p className="text-xs sm:text-sm">Commission VP:</p>
-                    <p className="text-sm sm:text-base lg:text-lg font-bold text-purple-300">
+                    <p className="text-xs sm:text-sm text-gray-600">Commission VP:</p>
+                    <p className="text-sm sm:text-base lg:text-lg font-bold text-blue-600">
                       {formatCurrency(calculatedResults.commissionDetails.vpCommission)}
                     </p>
                   </div>
@@ -1082,8 +1086,8 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
 
                 {vehicleType === "VU" && (
                   <div>
-                    <p className="text-xs sm:text-sm">Commission VU:</p>
-                    <p className="text-sm sm:text-base lg:text-lg font-bold text-purple-300">
+                    <p className="text-xs sm:text-sm text-gray-600">Commission VU:</p>
+                    <p className="text-sm sm:text-base lg:text-lg font-bold text-blue-600">
                       {formatCurrency(calculatedResults.commissionDetails.vuCommission)}
                     </p>
                   </div>
@@ -1091,8 +1095,8 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
 
                 {hasFinancing && calculatedResults.commissionDetails.financingBonus > 0 && (
                   <div>
-                    <p className="text-xs sm:text-sm">Bonus Financement (Variable):</p>
-                    <p className="text-sm sm:text-base lg:text-lg font-bold text-purple-300">
+                    <p className="text-xs sm:text-sm text-gray-600">Bonus Financement (Variable):</p>
+                    <p className="text-sm sm:text-base lg:text-lg font-bold text-blue-600">
                       {formatCurrency(calculatedResults.commissionDetails.financingBonus)}
                     </p>
                   </div>
@@ -1100,8 +1104,8 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
 
                 {calculatedResults.commissionDetails.deliveryPackBonus > 0 && (
                   <div>
-                    <p className="text-xs sm:text-sm">Bonus Pack Livraison:</p>
-                    <p className="text-sm sm:text-base lg:text-lg font-bold text-purple-300">
+                    <p className="text-xs sm:text-sm text-gray-600">Bonus Pack Livraison:</p>
+                    <p className="text-sm sm:text-base lg:text-lg font-bold text-blue-600">
                       {formatCurrency(calculatedResults.commissionDetails.deliveryPackBonus)}
                     </p>
                   </div>
@@ -1109,8 +1113,8 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
 
                 {calculatedResults.commissionDetails.cldBonus > 0 && (
                   <div>
-                    <p className="text-xs sm:text-sm">Bonus CLD Ford:</p>
-                    <p className="text-sm sm:text-base lg:text-lg font-bold text-purple-300">
+                    <p className="text-xs sm:text-sm text-gray-600">Bonus CLD Ford:</p>
+                    <p className="text-sm sm:text-base lg:text-lg font-bold text-blue-600">
                       {formatCurrency(calculatedResults.commissionDetails.cldBonus)}
                     </p>
                   </div>
@@ -1118,8 +1122,8 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
 
                 {calculatedResults.commissionDetails.maintenanceContractBonus > 0 && (
                   <div>
-                    <p className="text-xs sm:text-sm">Bonus Contrat Entretien:</p>
-                    <p className="text-sm sm:text-base lg:text-lg font-bold text-purple-300">
+                    <p className="text-xs sm:text-sm text-gray-600">Bonus Contrat Entretien:</p>
+                    <p className="text-sm sm:text-base lg:text-lg font-bold text-blue-600">
                       {formatCurrency(calculatedResults.commissionDetails.maintenanceContractBonus)}
                     </p>
                   </div>
@@ -1127,8 +1131,8 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
 
                 {calculatedResults.commissionDetails.coyoteBonus > 0 && (
                   <div>
-                    <p className="text-xs sm:text-sm">Bonus Coyote:</p>
-                    <p className="text-sm sm:text-base lg:text-lg font-bold text-purple-300">
+                    <p className="text-xs sm:text-sm text-gray-600">Bonus Coyote:</p>
+                    <p className="text-sm sm:text-base lg:text-lg font-bold text-blue-600">
                       {formatCurrency(calculatedResults.commissionDetails.coyoteBonus)}
                     </p>
                   </div>
@@ -1136,22 +1140,24 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
 
                 {calculatedResults.commissionDetails.accessoryBonus > 0 && (
                   <div>
-                    <p className="text-xs sm:text-sm">Bonus Accessoires:</p>
-                    <p className="text-sm sm:text-base lg:text-lg font-bold text-purple-300">
+                    <p className="text-xs sm:text-sm text-gray-600">Bonus Accessoires:</p>
+                    <p className="text-sm sm:text-base lg:text-lg font-bold text-blue-600">
                       {formatCurrency(calculatedResults.commissionDetails.accessoryBonus)}
                     </p>
                   </div>
                 )}
 
-                <div className="sm:col-span-2 border-t border-gray-700 pt-3 sm:pt-4 mt-3 sm:mt-4">
-                  <p className="text-sm sm:text-base lg:text-lg font-semibold">Commission Totale Vendeur:</p>
-                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-400">
+                <div className="sm:col-span-2 border-t border-blue-200 pt-3 sm:pt-4 mt-3 sm:mt-4">
+                  <p className="text-sm sm:text-base lg:text-lg font-semibold text-gray-800">
+                    Commission Totale Vendeur:
+                  </p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-blue-600">
                     {formatCurrency(calculatedResults.sellerCommission)}
                   </p>
                 </div>
               </div>
 
-              <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-700 rounded-lg border border-gray-600 text-gray-200 whitespace-pre-wrap">
+              <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-50 rounded-lg border border-gray-200 text-gray-800 whitespace-pre-wrap">
                 <h4 className="text-sm sm:text-base lg:text-lg font-semibold mb-2">Résumé du Calcul de Commission :</h4>
                 <p className="text-xs sm:text-sm">{getCommissionSummary(calculatedResults)}</p>
               </div>
@@ -1186,11 +1192,11 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
           </>
         )}
       </CardContent>
-      <CardFooter className="border-t border-gray-800 pt-4 flex flex-col sm:flex-row justify-end gap-2">
+      <CardFooter className="border-t border-gray-200 pt-4 flex flex-col sm:flex-row justify-end gap-2 bg-gray-50">
         <Button
           onClick={handlePrint}
           variant="outline"
-          className="w-full sm:w-auto bg-transparent border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors flex items-center gap-1 text-sm"
+          className="w-full sm:w-auto bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors flex items-center gap-1 text-sm"
           disabled={!calculatedResults}
         >
           <Printer className="h-4 w-4" />
@@ -1200,7 +1206,7 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
         <Button
           onClick={resetForm}
           variant="outline"
-          className="w-full sm:w-auto bg-transparent border-gray-700 text-gray-300 hover:bg-gray-800 hover:text-white transition-colors text-sm"
+          className="w-full sm:w-auto bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-gray-900 transition-colors text-sm"
         >
           Réinitialiser
         </Button>
