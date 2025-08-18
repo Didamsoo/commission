@@ -64,18 +64,14 @@
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --color-sidebar: oklch(0.205 0 0);
-  --color-sidebar-foreground: oklch(0.985 0 0);
-  --color-sidebar-primary: oklch(0.488 0.243 264.376);
-  --color-sidebar-primary-foreground: oklch(0.985 0 0);
-  --color-sidebar-accent: oklch(0.269 0 0);
-  --color-sidebar-accent-foreground: oklch(0.985 0 0);
-  --color-sidebar-border: oklch(0.269 0 0);
-  --color-sidebar-ring: oklch(0.439 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
 }
 
 @theme inline {
@@ -108,14 +104,14 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --color-sidebar: oklch(0.205 0 0);
-  --color-sidebar-foreground: oklch(0.985 0 0);
-  --color-sidebar-primary: oklch(0.488 0.243 264.376);
-  --color-sidebar-primary-foreground: oklch(0.985 0 0);
-  --color-sidebar-accent: oklch(0.269 0 0);
-  --color-sidebar-accent-foreground: oklch(0.985 0 0);
-  --color-sidebar-border: oklch(0.269 0 0);
-  --color-sidebar-ring: oklch(0.439 0 0);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 }
 
 @layer base {
@@ -161,24 +157,31 @@
   }
 }
 
-/* Print styles - Based on provided HTML/CSS */
+/* Responsive utilities */
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Print styles */
 @media print {
   @page {
     size: A4;
-    margin: 8mm; /* Updated margin */
+    margin: 8mm;
   }
 
   body {
     font-family: "Arial", sans-serif;
-    font-size: 10px; /* Updated font size */
-    line-height: 1.1; /* Updated line height */
+    font-size: 10px;
+    line-height: 1.1;
     color: #333;
     background: white;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
 
-  /* Hide elements not needed for print */
   body > header,
   .print-hide-layout,
   .margin-calculator-card .no-print,
@@ -186,147 +189,127 @@
     display: none !important;
   }
 
-  /* Make print-only content visible */
   .print-only {
     display: block !important;
   }
 
-  /* Main container for print content */
   .container-print {
     max-width: 100%;
-    padding: 0px; /* Adjusted padding for tighter fit */
+    padding: 0px;
   }
 
-  /* Header for the print document */
   .header-print {
     background: linear-gradient(135deg, #1e3a8a, #3b82f6);
     color: white;
-    padding: 6px 10px; /* Adjusted padding */
+    padding: 6px 10px;
     border-radius: 4px;
-    margin-bottom: 6px; /* Adjusted margin */
+    margin-bottom: 6px;
     text-align: center;
     font-weight: bold;
-    font-size: 13px; /* Adjusted font size */
+    font-size: 13px;
   }
 
-  /* Flex rows for layout */
   .row-print {
     display: flex;
-    gap: 6px; /* Adjusted gap */
-    margin-bottom: 4px; /* Adjusted margin */
+    gap: 6px;
+    margin-bottom: 4px;
   }
-
-  /* Column widths */
-  .col-2-print {
-    flex: 1;
-  }
-
-  .col-3-print {
-    flex: 1;
-  }
-
+  .col-2-print,
+  .col-3-print,
   .col-4-print {
     flex: 1;
   }
 
-  /* Section styling */
   .section-print {
     background: #f8fafc;
     border: 1px solid #e2e8f0;
     border-radius: 4px;
-    padding: 4px; /* Adjusted padding */
-    margin-bottom: 3px; /* Added as per user request */
+    padding: 4px;
+    margin-bottom: 3px;
   }
 
   .section-title-print {
     background: #64748b;
     color: white;
-    padding: 2px 5px; /* Adjusted padding */
-    margin: -4px -4px 3px -4px; /* Adjusted margin */
+    padding: 2px 5px;
+    margin: -4px -4px 3px -4px;
     font-weight: bold;
     font-size: 10px;
     border-radius: 3px 3px 0 0;
   }
 
-  /* Field styling (label and value) */
   .field-print {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 1px; /* Adjusted margin */
-    font-size: 9px; /* Adjusted font size for content */
+    margin-bottom: 1px;
+    font-size: 9px;
   }
 
   .field-label-print {
     font-weight: 500;
     color: #475569;
   }
-
   .field-value-print {
     font-weight: bold;
     color: #1e293b;
   }
-
   .highlight-print {
     background: #fef3c7;
-    padding: 1px 3px; /* Adjusted padding */
+    padding: 1px 3px;
     border-radius: 2px;
   }
 
-  /* Total section styling */
   .total-section-print {
     background: #dcfce7;
     border: 2px solid #16a34a;
     border-radius: 4px;
-    padding: 6px; /* Adjusted padding */
-    margin-top: 4px; /* Adjusted margin */
+    padding: 6px;
+    margin-top: 4px;
   }
 
   .total-title-print {
     background: #16a34a;
     color: white;
-    padding: 3px 5px; /* Adjusted padding */
-    margin: -6px -6px 3px -6px; /* Adjusted margin */
+    padding: 3px 5px;
+    margin: -6px -6px 3px -6px;
     font-weight: bold;
     text-align: center;
     border-radius: 2px 2px 0 0;
   }
 
-  /* Commission detail section styling */
   .commission-detail-print {
     background: #e0f2fe;
     border: 1px solid #0284c7;
     border-radius: 4px;
-    padding: 4px; /* Adjusted padding */
-    margin-bottom: 3px; /* Added for consistency */
+    padding: 4px;
+    margin-bottom: 3px;
   }
 
   .commission-title-print {
     background: #0284c7;
     color: white;
-    padding: 2px 5px; /* Adjusted padding */
-    margin: -4px -4px 3px -4px; /* Adjusted margin */
+    padding: 2px 5px;
+    margin: -4px -4px 3px -4px;
     font-weight: bold;
     font-size: 10px;
     border-radius: 3px 3px 0 0;
   }
 
-  /* Final total styling */
   .final-total-print {
-    font-size: 13px; /* Adjusted font size */
+    font-size: 13px;
     font-weight: bold;
     color: #dc2626;
     text-align: center;
-    padding: 3px; /* Adjusted padding */
+    padding: 3px;
     background: #fee2e2;
     border-radius: 4px;
-    margin-top: 3px; /* Adjusted margin */
+    margin-top: 3px;
   }
 
   .small-text-print {
-    font-size: 8px; /* Even smaller for sub-details if needed */
+    font-size: 8px;
   }
 
-  /* Ensure main content takes full width for print */
   body > main {
     display: block !important;
     width: 100% !important;
@@ -343,7 +326,6 @@
     padding: 0 !important;
   }
 
-  /* Hide animation on print */
   .animate-fade-in,
   .animate-fade-in-up,
   .delay-200,
@@ -357,4 +339,3 @@
     display: none !important;
   }
 }
-

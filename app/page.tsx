@@ -28,27 +28,31 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-950 to-black text-white p-6 md:p-12">
-      <header className="text-center mb-12">
-        <h1 className="text-4xl md:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-400 to-white animate-fade-in">
+    <div className="min-h-screen bg-gradient-to-br from-gray-950 to-black text-white p-3 sm:p-6 lg:p-12">
+      <header className="text-center mb-6 sm:mb-8 lg:mb-12">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-400 to-white animate-fade-in">
           Gestionnaire de Marges Automobile
         </h1>
-        <p className="text-lg md:text-xl text-gray-400 mt-2 animate-fade-in delay-200">
+        <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-400 mt-2 animate-fade-in delay-200 px-4">
           Calculez, suivez et optimisez vos commissions de vente.
         </p>
       </header>
 
-      <main className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-5 gap-8">
-        <div className="lg:col-span-3">
-          <MarginCalculator onSave={handleSaveMarginSheet} payplan={payplan} />
-        </div>
-        <div className="lg:col-span-2 flex flex-col gap-8 print-hide-layout">
-          <RemunerationSummary marginSheets={marginSheets} />
-          <MarginHistory marginSheets={marginSheets} onDelete={handleDeleteMarginSheet} />
+      <main className="max-w-7xl mx-auto">
+        {/* Layout responsive : Stack sur mobile, côte à côte sur desktop */}
+        <div className="flex flex-col xl:flex-row gap-4 sm:gap-6 lg:gap-8">
+          {/* Calculateur - Prend toute la largeur sur mobile, 3/5 sur desktop */}
+          <div className="w-full xl:w-3/5">
+            <MarginCalculator onSave={handleSaveMarginSheet} payplan={payplan} />
+          </div>
+
+          {/* Sidebar - Stack sur mobile, 2/5 sur desktop */}
+          <div className="w-full xl:w-2/5 flex flex-col gap-4 sm:gap-6 lg:gap-8 print-hide-layout">
+            <RemunerationSummary marginSheets={marginSheets} />
+            <MarginHistory marginSheets={marginSheets} onDelete={handleDeleteMarginSheet} />
+          </div>
         </div>
       </main>
     </div>
   )
 }
-
-// FIN 
