@@ -229,13 +229,48 @@ export function PrintableMarginSheet({
         <div className="row-print">
           <div className="col-2-print">
             {vehicleType === "VO" && (
-              <div className="field-print small-text-print">
-                <span className="field-label-print">Commission VO (Base) :</span>
-                <span className="field-value-print">
-                  {formatCurrency(calculatedResults.commissionDetails.voBaseCommission)}
-                </span>
-              </div>
+              <>
+                <div className="field-print small-text-print">
+                  <span className="field-label-print">Commission VO (Base) :</span>
+                  <span className="field-value-print">
+                    {formatCurrency(calculatedResults.commissionDetails.voBaseCommission)}
+                  </span>
+                </div>
+                {calculatedResults.commissionDetails.voBonus60Days > 0 && (
+                  <div className="field-print small-text-print">
+                    <span className="field-label-print">Bonus {"<"} 60 jours :</span>
+                    <span className="field-value-print">
+                      {formatCurrency(calculatedResults.commissionDetails.voBonus60Days)}
+                    </span>
+                  </div>
+                )}
+                {calculatedResults.commissionDetails.voBonusListedPrice > 0 && (
+                  <div className="field-print small-text-print">
+                    <span className="field-label-print">Bonus Prix Affiché :</span>
+                    <span className="field-value-print">
+                      {formatCurrency(calculatedResults.commissionDetails.voBonusListedPrice)}
+                    </span>
+                  </div>
+                )}
+                {calculatedResults.commissionDetails.voBonusFinancing > 0 && (
+                  <div className="field-print small-text-print">
+                    <span className="field-label-print">Bonus Financement VO :</span>
+                    <span className="field-value-print">
+                      {formatCurrency(calculatedResults.commissionDetails.voBonusFinancing)}
+                    </span>
+                  </div>
+                )}
+                {calculatedResults.commissionDetails.voBonusElectricVehicle > 0 && (
+                  <div className="field-print small-text-print">
+                    <span className="field-label-print">Bonus Véhicule Électrique :</span>
+                    <span className="field-value-print">
+                      {formatCurrency(calculatedResults.commissionDetails.voBonusElectricVehicle)}
+                    </span>
+                  </div>
+                )}
+              </>
             )}
+
             {vehicleType === "VP" && (
               <div className="field-print small-text-print">
                 <span className="field-label-print">Commission VP :</span>
@@ -244,17 +279,87 @@ export function PrintableMarginSheet({
                 </span>
               </div>
             )}
+
             {vehicleType === "VU" && (
               <div className="field-print small-text-print">
-                <span className="field-label-print">Commission VU :</span>
+                <span className="field-label-print">Commission VU (13%) :</span>
                 <span className="field-value-print">
                   {formatCurrency(calculatedResults.commissionDetails.vuCommission)}
                 </span>
               </div>
             )}
           </div>
+
           <div className="col-2-print">
-            {/* As per screenshot, only base commission is shown here. Other bonuses are not detailed in this section for print. */}
+            {/* Bonus financement variable */}
+            {calculatedResults.commissionDetails.financingBonus > 0 && (
+              <div className="field-print small-text-print">
+                <span className="field-label-print">Bonus Financement (Variable) :</span>
+                <span className="field-value-print">
+                  {formatCurrency(calculatedResults.commissionDetails.financingBonus)}
+                </span>
+              </div>
+            )}
+
+            {/* Bonus pack livraison */}
+            {calculatedResults.commissionDetails.deliveryPackBonus > 0 && (
+              <div className="field-print small-text-print">
+                <span className="field-label-print">Bonus Pack Livraison :</span>
+                <span className="field-value-print">
+                  {formatCurrency(calculatedResults.commissionDetails.deliveryPackBonus)}
+                </span>
+              </div>
+            )}
+
+            {/* Bonus CLD Ford */}
+            {calculatedResults.commissionDetails.cldBonus > 0 && (
+              <div className="field-print small-text-print">
+                <span className="field-label-print">Bonus CLD Ford :</span>
+                <span className="field-value-print">
+                  {formatCurrency(calculatedResults.commissionDetails.cldBonus)}
+                </span>
+              </div>
+            )}
+
+            {/* Bonus contrat entretien */}
+            {calculatedResults.commissionDetails.maintenanceContractBonus > 0 && (
+              <div className="field-print small-text-print">
+                <span className="field-label-print">Bonus Contrat Entretien :</span>
+                <span className="field-value-print">
+                  {formatCurrency(calculatedResults.commissionDetails.maintenanceContractBonus)}
+                </span>
+              </div>
+            )}
+
+            {/* Bonus Coyote */}
+            {calculatedResults.commissionDetails.coyoteBonus > 0 && (
+              <div className="field-print small-text-print">
+                <span className="field-label-print">Bonus Coyote :</span>
+                <span className="field-value-print">
+                  {formatCurrency(calculatedResults.commissionDetails.coyoteBonus)}
+                </span>
+              </div>
+            )}
+
+            {/* Bonus accessoires */}
+            {calculatedResults.commissionDetails.accessoryBonus > 0 && (
+              <div className="field-print small-text-print">
+                <span className="field-label-print">Bonus Accessoires :</span>
+                <span className="field-value-print">
+                  {formatCurrency(calculatedResults.commissionDetails.accessoryBonus)}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Ligne de séparation et total */}
+        <div style={{ borderTop: "1px solid #94a3b8", marginTop: "4px", paddingTop: "4px" }}>
+          <div className="field-print small-text-print" style={{ fontWeight: "bold", fontSize: "10px" }}>
+            <span className="field-label-print">TOTAL COMMISSION VENDEUR :</span>
+            <span className="field-value-print" style={{ color: "#dc2626" }}>
+              {formatCurrency(calculatedResults.sellerCommission)}
+            </span>
           </div>
         </div>
       </div>
