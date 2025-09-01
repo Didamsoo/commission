@@ -15,7 +15,7 @@ export function RemunerationSummary({ marginSheets }: RemunerationSummaryProps) 
 
   return (
     <Card className="bg-white border-gray-200 text-gray-900 shadow-xl animate-fade-in delay-600">
-      <CardHeader className="border-b border-gray-200 pb-4 bg-gradient-to-r from-blue-50 to-indigo-50">
+      <CardHeader className="border-b border-gray-200 pb-4 bg-gradient-to-r">
         <CardTitle className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 flex items-center gap-2">
           <TrendingUp className="h-5 w-5 sm:h-6 sm:w-6 text-blue-600" />
           <span className="truncate">Ma Rémunération</span>

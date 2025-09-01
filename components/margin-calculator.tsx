@@ -308,7 +308,7 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
 
   return (
     <Card className="bg-white border-gray-200 text-gray-900 shadow-xl animate-fade-in margin-calculator-card">
-      <CardHeader className="border-b border-gray-200 pb-4 bg-gradient-to-r from-blue-50 to-indigo-50 no-print">
+      <CardHeader className="border-b border-gray-200">
         <CardTitle className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 flex items-center gap-2">
           <DollarSign className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
           <span className="truncate">Feuille de Marge RENTA VO/VN/VU</span>
@@ -678,7 +678,7 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
         {/* ACTION CALCUL */}
         <Button
           onClick={handleCalculate}
-          className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 py-2 sm:py-3 text-sm sm:text-base lg:text-lg font-semibold no-print shadow-lg"
+          className="w-full bg-gradient-to-r"
         >
           Calculer les Marges & Commissions
         </Button>

@@ -32,7 +32,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 text-gray-900 p-3 sm:p-6 lg:p-12">
       {/* Header complètement masqué lors de l'impression */}
       <header className="text-center mb-6 sm:mb-8 lg:mb-12 no-print print-hide-completely">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 animate-fade-in">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl ">
           Gestionnaire de Marges Automobile
         </h1>
         <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600 mt-2 animate-fade-in delay-200 px-4">

@@ -1,5 +1,3 @@
-/* globals.css*/
-
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -31,7 +29,6 @@
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.625rem;
-  --spacing: 0.25rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -114,19 +111,6 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
-  
-  /* Espacements Tailwind fixes */
-  --space-0: 0;
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.25rem;
-  --space-6: 1.5rem;
-  --space-7: 1.75rem;
-  --space-8: 2rem;
-  --space-12: 3rem;
-  --space-16: 4rem;
 }
 
 @layer base {
@@ -136,34 +120,6 @@
   body {
     @apply bg-background text-foreground;
   }
-  
-  /* Correction des espacements Tailwind problématiques */
-  .py-1 { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
-  .py-2 { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
-  .py-3 { padding-top: 0.75rem !important; padding-bottom: 0.75rem !important; }
-  .py-4 { padding-top: 1rem !important; padding-bottom: 1rem !important; }
-  .py-5 { padding-top: 1.25rem !important; padding-bottom: 1.25rem !important; }
-  .py-6 { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; }
-  .py-8 { padding-top: 2rem !important; padding-bottom: 2rem !important; }
-  .py-12 { padding-top: 3rem !important; padding-bottom: 3rem !important; }
-  
-  .px-1 { padding-left: 0.25rem !important; padding-right: 0.25rem !important; }
-  .px-2 { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
-  .px-3 { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
-  .px-4 { padding-left: 1rem !important; padding-right: 1rem !important; }
-  .px-5 { padding-left: 1.25rem !important; padding-right: 1.25rem !important; }
-  .px-6 { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
-  .px-8 { padding-left: 2rem !important; padding-right: 2rem !important; }
-  .px-12 { padding-left: 3rem !important; padding-right: 3rem !important; }
-  
-  .p-1 { padding: 0.25rem !important; }
-  .p-2 { padding: 0.5rem !important; }
-  .p-3 { padding: 0.75rem !important; }
-  .p-4 { padding: 1rem !important; }
-  .p-5 { padding: 1.25rem !important; }
-  .p-6 { padding: 1.5rem !important; }
-  .p-8 { padding: 2rem !important; }
-  .p-12 { padding: 3rem !important; }
 }
 
 @layer components {
@@ -173,105 +129,6 @@
 
   .animate-fade-in-up {
     animation: fadeInUp 0.6s ease-out forwards;
-  }
-
-  /* === HEADERS DE CARDS SANS FOND BLEU === */
-  .card-header-improved {
-    background: transparent !important;
-    border: none !important;
-    border-bottom: 2px solid #e5e7eb !important;
-    margin: -1px -1px 0 -1px !important;
-    padding: 1rem 1.5rem !important;
-    border-radius: 0.5rem 0.5rem 0 0 !important;
-    position: relative !important;
-  }
-
-  .card-header-improved::before {
-    display: none !important;
-  }
-
-  .card-header-improved .card-title {
-    color: #374151 !important;
-    font-weight: 700 !important;
-    text-shadow: none !important;
-    position: relative !important;
-    z-index: 1 !important;
-  }
-
-  .card-header-improved .lucide {
-    color: #3b82f6 !important;
-    filter: none !important;
-  }
-
-  /* Correction pour que la card s'adapte bien */
-  .card-with-improved-header {
-    overflow: hidden !important;
-    border-radius: 0.5rem !important;
-  }
-
-  .card-with-improved-header .card-content {
-    padding: 1.5rem !important;
-    margin-top: 0 !important;
-  }
-
-  /* Alternative avec un style plus subtil */
-  .card-header-subtle {
-    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important;
-    border-bottom: 2px solid #3b82f6 !important;
-    margin: -1px -1px 0 -1px !important;
-    padding: 1rem 1.5rem !important;
-    border-radius: 0.5rem 0.5rem 0 0 !important;
-  }
-
-  .card-header-subtle .card-title {
-    color: #1e40af !important;
-    font-weight: 700 !important;
-  }
-
-  .card-header-subtle .lucide {
-    color: #3b82f6 !important;
-  }
-
-  /* Style premium avec effet glassmorphism */
-  .card-header-premium {
-    background: linear-gradient(135deg, rgba(30, 64, 175, 0.9) 0%, rgba(59, 130, 246, 0.8) 100%) !important;
-    backdrop-filter: blur(10px) !important;
-    -webkit-backdrop-filter: blur(10px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    margin: -1px -1px 0 -1px !important;
-    padding: 1rem 1.5rem !important;
-    border-radius: 0.5rem 0.5rem 0 0 !important;
-    position: relative !important;
-    overflow: hidden !important;
-  }
-
-  .card-header-premium::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    animation: shimmer 3s infinite;
-  }
-
-  .card-header-premium .card-title {
-    color: white !important;
-    font-weight: 700 !important;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
-    position: relative !important;
-    z-index: 2 !important;
-  }
-
-  .card-header-premium .lucide {
-    color: #bfdbfe !important;
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) !important;
-  }
-
-  @keyframes shimmer {
-    0% { left: -100%; }
-    100% { left: 100%; }
   }
 }
 
@@ -304,18 +161,6 @@
   .container {
     padding-left: 1rem;
     padding-right: 1rem;
-  }
-
-  .card-header-improved,
-  .card-header-subtle,
-  .card-header-premium {
-    padding: 0.75rem 1rem !important;
-  }
-
-  .card-header-improved .card-title,
-  .card-header-subtle .card-title,
-  .card-header-premium .card-title {
-    font-size: 1rem !important;
   }
 }
 

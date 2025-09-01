@@ -97,7 +97,7 @@ export function PrintableMarginSheet({
         @media print {
           @page { size: A4; margin: 8mm; }
           .print-only { display: block !important; font-family: Arial, sans-serif; font-size: 10px; }
-          .header { background: #2253da; color: #fff; padding: 6px 10px; border-radius: 4px; margin-bottom: 6px; text-align: center; font-weight: bold; }
+        
           .section { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 6px; }
           .section-title { background: #0ea5e9; color: #fff; padding: 3px 6px; border-radius: 4px 4px 0 0; font-weight: bold; }
           .row { display: grid; gap: 6px; padding: 6px; }
@@ -119,7 +119,7 @@ export function PrintableMarginSheet({
         }
       `}</style>
 
-      <div className="header">💰 FEUILLE DE MARGE RENTA VO/VN/VU</div>
+    
 
       {/* Informations générales */}
       <div className="section">
