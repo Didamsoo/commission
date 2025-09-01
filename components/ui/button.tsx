@@ -22,7 +22,7 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
       },
       size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
+        default: "h-9 px-4 has-[>svg]:px-3",
         sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
         lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
         icon: "size-9",
@@ -40,6 +40,7 @@ function Button({
   variant,
   size,
   asChild = false,
+  style,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
@@ -47,10 +48,25 @@ function Button({
   }) {
   const Comp = asChild ? Slot : "button"
 
+  // Définir les styles de padding en fonction de la taille
+  const paddingStyle = React.useMemo(() => {
+    let paddingY = '0.5rem' // py-2 par défaut
+    
+    if (size === 'sm') paddingY = '0.375rem' // py-1.5
+    if (size === 'lg') paddingY = '0.625rem' // py-2.5
+    
+    return {
+      paddingTop: paddingY,
+      paddingBottom: paddingY,
+      ...style
+    }
+  }, [size, style])
+
   return (
     <Comp
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
+      style={paddingStyle}
       {...props}
     />
   )

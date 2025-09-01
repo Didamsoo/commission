@@ -1,3 +1,5 @@
+// app/static-print-sheet/page.tsx
+
 import { VAT_RATE } from "@/lib/margin-utils"
 
 export default function StaticPrintSheet() {

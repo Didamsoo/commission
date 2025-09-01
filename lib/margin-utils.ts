@@ -1,3 +1,5 @@
+// src/lib/margin-utils.ts
+
 export interface CalculatedResults {
   purchasePriceHT: number
   sellingPriceHT: number
@@ -15,6 +17,7 @@ export interface CalculatedResults {
     vuCommission: number // Calculated for VU
     financingBonus: number // Sum of all financing bonuses
     deliveryPackBonus: number // Sum of all delivery pack bonuses
+    packPenetrationBonus: number // High penetration bonus
     cldBonus: number // Sum of all CLD bonuses
     maintenanceContractBonus: number // Sum of all maintenance contract bonuses
     coyoteBonus: number // Sum of all Coyote bonuses
@@ -40,7 +43,7 @@ export interface MarginSheet extends CalculatedResults {
   listedPriceTTC: number
   hasFinancing: boolean
   financedAmountHT: number
-  numberOfServicesSold: number // 0, 1, or 2
+  numberOfServicesSold: number // 0, 1, 2, or 3
   deliveryPackSold: "none" | "pack1" | "pack2" | "pack3"
   isHighPenetrationRate: boolean
   isElectricVehicle: boolean
@@ -51,10 +54,12 @@ export interface MarginSheet extends CalculatedResults {
 
   // New fields for Payplan integration
   vehicleType: "VO" | "VP" | "VU"
-  vpSalesType: "PART/VD/Prof Lib/Société" | "GC/Loueurs LLD ou LCD" | ""
+  vpSalesType: "PART/VD/Prof Lib/Société" | "Vente Captive Ford Lease" | "GC/Loueurs LLD ou LCD" | ""
   vpModel:
     | "Carline"
-    | "Tourneo Courrier"
+    | "Tourneo Courier"
+    | "Puma"
+    | "Puma Gen-E"
     | "Focus"
     | "Kuga"
     | "Explorer"
@@ -104,10 +109,12 @@ interface CalculateInputs {
 
   // New fields for Payplan integration
   vehicleType: "VO" | "VP" | "VU"
-  vpSalesType: "PART/VD/Prof Lib/Société" | "GC/Loueurs LLD ou LCD" | ""
+  vpSalesType: "PART/VD/Prof Lib/Société" | "Vente Captive Ford Lease" | "GC/Loueurs LLD ou LCD" | ""
   vpModel:
     | "Carline"
-    | "Tourneo Courrier"
+    | "Tourneo Courier"
+    | "Puma"
+    | "Puma Gen-E"
     | "Focus"
     | "Kuga"
     | "Explorer"
@@ -143,11 +150,27 @@ export interface Payplan {
   electricVehicleMultiplierVO: number
   bonusFinancingVO: number // Added: 30€ bonus for VO financing
 
-  // VP Commissions
+  // VP Commissions - Updated structure with 3 sales types
   vpCommissions: {
     "PART/VD/Prof Lib/Société": {
       Carline: number
-      "Tourneo Courrier": number
+      "Tourneo Courier": number
+      Puma: number
+      "Puma Gen-E": number
+      Focus: number
+      Kuga: number
+      Explorer: number
+      Capri: number
+      "Mach-E": number
+      "Tourneo Connect": number
+      Mustang: number
+      Ranger: number
+    }
+    "Vente Captive Ford Lease": {
+      Carline: number
+      "Tourneo Courier": number
+      Puma: number
+      "Puma Gen-E": number
       Focus: number
       Kuga: number
       Explorer: number
@@ -159,7 +182,9 @@ export interface Payplan {
     }
     "GC/Loueurs LLD ou LCD": {
       Carline: number
-      "Tourneo Courrier": number
+      "Tourneo Courier": number
+      Puma: number
+      "Puma Gen-E": number
       Focus: number
       Kuga: number
       Explorer: number
@@ -177,17 +202,17 @@ export interface Payplan {
   // Financing Commissions
   financingMinAmount: number // 6001
   financingRates: {
-    principal: { service1: number; service2: number } // 0.0045, 0.0085
-    specific: { service1: number; service2: number } // 0.0010, 0.0030
+    principal: { service1: number; service2: number; service3: number } // 0.0045, 0.0085, 0.0100
+    specific: { service1: number; service2: number; service3: number } // 0.0010, 0.0030, 0.0045
   }
   financingBonus: {
-    creditBailVN: number
-    loaVO: number
-    idFord25Months: number
-    lldProFordLease: number
+    creditBailVN: number // 0.002 (0.2%)
+    loaVO: number // 0.003 (0.3%) - Updated for LOA CGI Finance sur VO
+    idFord25Months: number // 0.002 (0.2%)
+    lldProFordLease: number // Fixed 30€
   }
 
-  // Packs & Peripherals Commissions
+  // Packs & Peripherals Commissions - Updated values
   packCommissions: { none: number; pack1: number; pack2: number; pack3: number }
   packCommissionsHighPenetration: { none: number; pack1: number; pack2: number; pack3: number }
   cldCommissions: { "3-4": number; "5+": number }
@@ -198,11 +223,27 @@ export interface Payplan {
   // Coyote Commissions
   coyoteCommissions: { "24": number; "36": number; "48": number }
 
-  // Accessory Commissions (tiered)
+  // Accessory Commissions (updated tiers)
   accessoryTiers: {
-    tier1: { min: number; max: number; bonus: number } // 10-200 TTC, 15€
-    tier2: { min: number; max: number; bonus: number } // 201-500 TTC, 30€
-    tier3: { min: number; bonus: number } // 501+ TTC, 50€
+    tier1: { min: number; max: number; bonus: number } // 50-250 TTC, 10€
+    tier2: { min: number; max: number; bonus: number } // 251-800 TTC, 50€
+    tier3: { min: number; bonus: number } // 801+ TTC, 75€
+  }
+
+  // Financial Penetration Bonuses (new from payplan)
+  financialPenetrationBonuses: {
+    realization100: {
+      "< 35%": number
+      "35% à 40%": number
+      "40% à 50%": number
+      "> 50%": number
+    }
+    realization120: {
+      "< 35%": number
+      "35% à 40%": number
+      "40% à 50%": number
+      "> 50%": number
+    }
   }
 }
 
@@ -218,78 +259,112 @@ export function getDefaultPayplan(): Payplan {
     bonus60DaysVO: 30,
     bonusListedPriceVO: 30,
     electricVehicleMultiplierVO: 1.5,
-    bonusFinancingVO: 30, // Added default value for VO financing bonus
+    bonusFinancingVO: 30,
 
-    // VP
+    // VP - Updated with new models and values from payplan
     vpCommissions: {
       "PART/VD/Prof Lib/Société": {
         Carline: 50,
-        "Tourneo Courrier": 80,
+        "Tourneo Courier": 50,
+        Puma: 80,
+        "Puma Gen-E": 150,
         Focus: 100,
         Kuga: 180,
-        Explorer: 150,
-        Capri: 150,
+        Explorer: 200,
+        Capri: 200,
         "Mach-E": 200,
         "Tourneo Connect": 150,
         Mustang: 250,
         Ranger: 180,
       },
-      "GC/Loueurs LLD ou LCD": {
+      "Vente Captive Ford Lease": {
         Carline: 30,
-        "Tourneo Courrier": 40,
+        "Tourneo Courier": 30,
+        Puma: 40,
+        "Puma Gen-E": 80,
         Focus: 50,
         Kuga: 100,
         Explorer: 80,
         Capri: 80,
         "Mach-E": 100,
-        "Tourneo Connect": 80,
+        "Tourneo Connect": 120,
         Mustang: 150,
         Ranger: 100,
+      },
+      "GC/Loueurs LLD ou LCD": {
+        Carline: 30,
+        "Tourneo Courier": 40,
+        Puma: 40,
+        "Puma Gen-E": 50,
+        Focus: 40,
+        Kuga: 50,
+        Explorer: 60,
+        Capri: 60,
+        "Mach-E": 80,
+        "Tourneo Connect": 80,
+        Mustang: 80,
+        Ranger: 100, // Not specified in image, using previous value
       },
     },
 
     // VU
     vuCommissionRate: 0.13, // 13%
 
-    // Financing
+    // Financing - Updated with 3 services levels and correct rates from payplan
     financingMinAmount: 6001,
     financingRates: {
-      principal: { service1: 0.0045, service2: 0.0085 },
-      specific: { service1: 0.001, service2: 0.003 },
+      principal: { service1: 0.0045, service2: 0.0085, service3: 0.0100 }, // Barème Principal VN/VD/VO
+      specific: { service1: 0.001, service2: 0.003, service3: 0.0045 },    // Barème Promo (CC Ford/LOA/LLD/CGI)
     },
     financingBonus: {
       creditBailVN: 0.002, // 0.2%
-      loaVO: 0.002, // 0.2%
+      loaVO: 0.003, // 0.3% for LOA CGI Finance sur VO
       idFord25Months: 0.002, // 0.2%
       lldProFordLease: 30, // Fixed 30€
     },
 
-    // Packs & Peripherals
+    // Packs & Peripherals - Updated values from payplan
     packCommissions: {
       none: 0,
-      pack1: 10,
-      pack2: 10,
-      pack3: 30,
+      pack1: 0, // Non commissionné
+      pack2: 20,
+      pack3: 35,
     },
     packCommissionsHighPenetration: {
       none: 0,
-      pack1: 10,
-      pack2: 30,
-      pack3: 60,
+      pack1: 0, // Non commissionné même en haute pénétration
+      pack2: 20, // Assuming same as regular
+      pack3: 35, // Assuming same as regular
     },
     cldCommissions: { "3-4": 10, "5+": 20 },
     cldCommissionsHighPenetration: { "3-4": 20, "5+": 50 },
     maintenanceContractCommission: 20,
     maintenanceContractCommissionHighPenetration: 50,
 
-    // Coyote
+    // Coyote - keeping previous values as not specified in new payplan
     coyoteCommissions: { "24": 30, "36": 40, "48": 50 },
 
-    // Accessory
+    // Accessory - Updated tiers from new payplan
     accessoryTiers: {
-      tier1: { min: 10, max: 200, bonus: 15 },
-      tier2: { min: 201, max: 500, bonus: 30 },
-      tier3: { min: 501, bonus: 50 },
+      tier1: { min: 50, max: 250, bonus: 10 },
+      tier2: { min: 251, max: 800, bonus: 50 },
+      tier3: { min: 801, bonus: 75 },
+    },
+
+    // Financial Penetration Bonuses - New from payplan
+    financialPenetrationBonuses: {
+      realization100: {
+        "< 35%": 0,
+        "35% à 40%": 0,
+        "40% à 50%": 400,
+        "> 50%": 800,
+      },
+      realization120: {
+        "< 35%": 0,
+        "35% à 40%": 200,
+        "40% à 50%": 600,
+        "> 50%": 1200,
+      },
     },
   }
 }
@@ -389,12 +464,13 @@ export function calculateMarginSheet(inputs: CalculateInputs, payplan: Payplan):
     voBaseCommission: 0,
     voBonus60Days: 0,
     voBonusListedPrice: 0,
-    voBonusFinancing: 0, // Initialize new field
+    voBonusFinancing: 0,
     voBonusElectricVehicle: 0,
     vpCommission: 0,
     vuCommission: 0,
-    financingBonus: 0, // This will be for non-VO specific financing
+    financingBonus: 0,
     deliveryPackBonus: 0,
+    packPenetrationBonus: 0,
     cldBonus: 0,
     maintenanceContractBonus: 0,
     coyoteBonus: 0,
@@ -421,7 +497,7 @@ export function calculateMarginSheet(inputs: CalculateInputs, payplan: Payplan):
       commissionDetails.voBonusListedPrice = payplan.bonusListedPriceVO
     }
 
-    // Bonus Financement VO (new: 30€ fixed bonus if VO and has financing)
+    // Bonus Financement VO (30€ fixed bonus if VO and has financing)
     if (hasFinancing) {
       commissionDetails.voBonusFinancing = payplan.bonusFinancingVO
     }
@@ -431,7 +507,7 @@ export function calculateMarginSheet(inputs: CalculateInputs, payplan: Payplan):
       commissionDetails.voBaseCommission +
       commissionDetails.voBonus60Days +
       commissionDetails.voBonusListedPrice +
-      commissionDetails.voBonusFinancing // Include new bonus here
+      commissionDetails.voBonusFinancing
 
     // Bonus Véhicule Électrique (VO only)
     if (isElectricVehicle) {
@@ -457,29 +533,29 @@ export function calculateMarginSheet(inputs: CalculateInputs, payplan: Payplan):
     sellerCommission += commissionDetails.vuCommission
   }
 
-  // 2. Financing Commission (common for all types if applicable, this is for variable financing and other specific bonuses)
-  // This block calculates the *variable* financing bonus and other specific financing bonuses (Credit-Bail, LOA, etc.)
-  // It should NOT include the fixed 30€ VO financing bonus, as that's handled above in the VO section.
+  // 2. Financing Commission (updated with 3 services)
   if (hasFinancing && financedAmountHT > payplan.financingMinAmount) {
     let currentFinancingRate = 0
     if (financingType === "principal") {
       if (numberOfServicesSold === 1) currentFinancingRate = payplan.financingRates.principal.service1
       else if (numberOfServicesSold === 2) currentFinancingRate = payplan.financingRates.principal.service2
+      else if (numberOfServicesSold === 3) currentFinancingRate = payplan.financingRates.principal.service3
     } else if (financingType === "specific") {
       if (numberOfServicesSold === 1) currentFinancingRate = payplan.financingRates.specific.service1
       else if (numberOfServicesSold === 2) currentFinancingRate = payplan.financingRates.specific.service2
+      else if (numberOfServicesSold === 3) currentFinancingRate = payplan.financingRates.specific.service3
     }
     commissionDetails.financingBonus += financedAmountHT * currentFinancingRate
 
-    // Additional financing bonuses (these are general, not the fixed 30€ VO bonus)
+    // Additional financing bonuses
     if (isCreditBailVN) commissionDetails.financingBonus += financedAmountHT * payplan.financingBonus.creditBailVN
     if (isLOAVO) commissionDetails.financingBonus += financedAmountHT * payplan.financingBonus.loaVO
     if (isIDFord25Months) commissionDetails.financingBonus += financedAmountHT * payplan.financingBonus.idFord25Months
     if (isLLDProFordLease) commissionDetails.financingBonus += payplan.financingBonus.lldProFordLease // Fixed amount
   }
-  sellerCommission += commissionDetails.financingBonus // Add the general financing bonus to total
+  sellerCommission += commissionDetails.financingBonus
 
-  // 3. Packs & Peripherals Commission (common for all types)
+  // 3. Packs & Peripherals Commission (updated values)
   const currentPackCommissions = isHighPenetrationRate
     ? payplan.packCommissionsHighPenetration
     : payplan.packCommissions
@@ -499,13 +575,13 @@ export function calculateMarginSheet(inputs: CalculateInputs, payplan: Payplan):
     sellerCommission += commissionDetails.maintenanceContractBonus
   }
 
-  // 4. Coyote Commission (common for all types)
+  // 4. Coyote Commission
   if (hasCoyote && coyoteDuration !== "none") {
     commissionDetails.coyoteBonus = payplan.coyoteCommissions[coyoteDuration]
     sellerCommission += commissionDetails.coyoteBonus
   }
 
-  // 5. Accessory Commission (common for all types - tiered fixed bonus)
+  // 5. Accessory Commission (updated tiers)
   if (hasAccessories && accessoryAmountTTC > 0) {
     if (
       accessoryAmountTTC >= payplan.accessoryTiers.tier1.min &&
@@ -523,7 +599,7 @@ export function calculateMarginSheet(inputs: CalculateInputs, payplan: Payplan):
   }
   sellerCommission += commissionDetails.accessoryBonus
 
-  // Marge Finale (Concessionnaire) - Corrected formula
+  // Marge Finale (Concessionnaire)
   const finalMargin = calculatedRemainingMarginHT - sellerCommission
 
   return {
@@ -537,12 +613,13 @@ export function calculateMarginSheet(inputs: CalculateInputs, payplan: Payplan):
       voBaseCommission: Number.parseFloat(commissionDetails.voBaseCommission.toFixed(2)),
       voBonus60Days: Number.parseFloat(commissionDetails.voBonus60Days.toFixed(2)),
       voBonusListedPrice: Number.parseFloat(commissionDetails.voBonusListedPrice.toFixed(2)),
-      voBonusFinancing: Number.parseFloat(commissionDetails.voBonusFinancing.toFixed(2)), // NEW
+      voBonusFinancing: Number.parseFloat(commissionDetails.voBonusFinancing.toFixed(2)),
       voBonusElectricVehicle: Number.parseFloat(commissionDetails.voBonusElectricVehicle.toFixed(2)),
       vpCommission: Number.parseFloat(commissionDetails.vpCommission.toFixed(2)),
       vuCommission: Number.parseFloat(commissionDetails.vuCommission.toFixed(2)),
       financingBonus: Number.parseFloat(commissionDetails.financingBonus.toFixed(2)),
       deliveryPackBonus: Number.parseFloat(commissionDetails.deliveryPackBonus.toFixed(2)),
+      packPenetrationBonus: Number.parseFloat(commissionDetails.packPenetrationBonus.toFixed(2)),
       cldBonus: Number.parseFloat(commissionDetails.cldBonus.toFixed(2)),
       maintenanceContractBonus: Number.parseFloat(commissionDetails.maintenanceContractBonus.toFixed(2)),
       coyoteBonus: Number.parseFloat(commissionDetails.coyoteBonus.toFixed(2)),

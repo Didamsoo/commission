@@ -1,3 +1,4 @@
+// page.tsx
 "use client"
 
 import { useState, useEffect } from "react"
@@ -12,7 +13,7 @@ export default function HomePage() {
 
   useEffect(() => {
     setMarginSheets(getMarginSheets())
-    setPayplan(getPayplan()) // Ensure payplan is loaded on mount
+    setPayplan(getPayplan()) // Ensure payplan est chargé au montage
   }, [])
 
   const handleSaveMarginSheet = (newSheet: MarginSheet) => {
@@ -29,7 +30,8 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 text-gray-900 p-3 sm:p-6 lg:p-12">
-      <header className="text-center mb-6 sm:mb-8 lg:mb-12">
+      {/* Header complètement masqué lors de l'impression */}
+      <header className="text-center mb-6 sm:mb-8 lg:mb-12 no-print print-hide-completely">
         <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 animate-fade-in">
           Gestionnaire de Marges Automobile
         </h1>
@@ -47,7 +49,7 @@ export default function HomePage() {
           </div>
 
           {/* Sidebar - Stack sur mobile, 2/5 sur desktop */}
-          <div className="w-full xl:w-2/5 flex flex-col gap-4 sm:gap-6 lg:gap-8 print-hide-layout">
+          <div className="w-full xl:w-2/5 flex flex-col gap-4 sm:gap-6 lg:gap-8 no-print print-hide-completely">
             <RemunerationSummary marginSheets={marginSheets} />
             <MarginHistory marginSheets={marginSheets} onDelete={handleDeleteMarginSheet} />
           </div>

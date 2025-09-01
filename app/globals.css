@@ -1,3 +1,5 @@
+/* globals.css*/
+
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -29,6 +31,7 @@
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.625rem;
+  --spacing: 0.25rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -111,6 +114,19 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  
+  /* Espacements Tailwind fixes */
+  --space-0: 0;
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-7: 1.75rem;
+  --space-8: 2rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
 }
 
 @layer base {
@@ -120,6 +136,34 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Correction des espacements Tailwind problématiques */
+  .py-1 { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
+  .py-2 { padding-top: 0.5rem !important; padding-bottom: 0.5rem !important; }
+  .py-3 { padding-top: 0.75rem !important; padding-bottom: 0.75rem !important; }
+  .py-4 { padding-top: 1rem !important; padding-bottom: 1rem !important; }
+  .py-5 { padding-top: 1.25rem !important; padding-bottom: 1.25rem !important; }
+  .py-6 { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; }
+  .py-8 { padding-top: 2rem !important; padding-bottom: 2rem !important; }
+  .py-12 { padding-top: 3rem !important; padding-bottom: 3rem !important; }
+  
+  .px-1 { padding-left: 0.25rem !important; padding-right: 0.25rem !important; }
+  .px-2 { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
+  .px-3 { padding-left: 0.75rem !important; padding-right: 0.75rem !important; }
+  .px-4 { padding-left: 1rem !important; padding-right: 1rem !important; }
+  .px-5 { padding-left: 1.25rem !important; padding-right: 1.25rem !important; }
+  .px-6 { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
+  .px-8 { padding-left: 2rem !important; padding-right: 2rem !important; }
+  .px-12 { padding-left: 3rem !important; padding-right: 3rem !important; }
+  
+  .p-1 { padding: 0.25rem !important; }
+  .p-2 { padding: 0.5rem !important; }
+  .p-3 { padding: 0.75rem !important; }
+  .p-4 { padding: 1rem !important; }
+  .p-5 { padding: 1.25rem !important; }
+  .p-6 { padding: 1.5rem !important; }
+  .p-8 { padding: 2rem !important; }
+  .p-12 { padding: 3rem !important; }
 }
 
 @layer components {
@@ -129,6 +173,105 @@
 
   .animate-fade-in-up {
     animation: fadeInUp 0.6s ease-out forwards;
+  }
+
+  /* === HEADERS DE CARDS SANS FOND BLEU === */
+  .card-header-improved {
+    background: transparent !important;
+    border: none !important;
+    border-bottom: 2px solid #e5e7eb !important;
+    margin: -1px -1px 0 -1px !important;
+    padding: 1rem 1.5rem !important;
+    border-radius: 0.5rem 0.5rem 0 0 !important;
+    position: relative !important;
+  }
+
+  .card-header-improved::before {
+    display: none !important;
+  }
+
+  .card-header-improved .card-title {
+    color: #374151 !important;
+    font-weight: 700 !important;
+    text-shadow: none !important;
+    position: relative !important;
+    z-index: 1 !important;
+  }
+
+  .card-header-improved .lucide {
+    color: #3b82f6 !important;
+    filter: none !important;
+  }
+
+  /* Correction pour que la card s'adapte bien */
+  .card-with-improved-header {
+    overflow: hidden !important;
+    border-radius: 0.5rem !important;
+  }
+
+  .card-with-improved-header .card-content {
+    padding: 1.5rem !important;
+    margin-top: 0 !important;
+  }
+
+  /* Alternative avec un style plus subtil */
+  .card-header-subtle {
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important;
+    border-bottom: 2px solid #3b82f6 !important;
+    margin: -1px -1px 0 -1px !important;
+    padding: 1rem 1.5rem !important;
+    border-radius: 0.5rem 0.5rem 0 0 !important;
+  }
+
+  .card-header-subtle .card-title {
+    color: #1e40af !important;
+    font-weight: 700 !important;
+  }
+
+  .card-header-subtle .lucide {
+    color: #3b82f6 !important;
+  }
+
+  /* Style premium avec effet glassmorphism */
+  .card-header-premium {
+    background: linear-gradient(135deg, rgba(30, 64, 175, 0.9) 0%, rgba(59, 130, 246, 0.8) 100%) !important;
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    margin: -1px -1px 0 -1px !important;
+    padding: 1rem 1.5rem !important;
+    border-radius: 0.5rem 0.5rem 0 0 !important;
+    position: relative !important;
+    overflow: hidden !important;
+  }
+
+  .card-header-premium::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    animation: shimmer 3s infinite;
+  }
+
+  .card-header-premium .card-title {
+    color: white !important;
+    font-weight: 700 !important;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3) !important;
+    position: relative !important;
+    z-index: 2 !important;
+  }
+
+  .card-header-premium .lucide {
+    color: #bfdbfe !important;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3)) !important;
+  }
+
+  @keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
   }
 }
 
@@ -162,154 +305,82 @@
     padding-left: 1rem;
     padding-right: 1rem;
   }
+
+  .card-header-improved,
+  .card-header-subtle,
+  .card-header-premium {
+    padding: 0.75rem 1rem !important;
+  }
+
+  .card-header-improved .card-title,
+  .card-header-subtle .card-title,
+  .card-header-premium .card-title {
+    font-size: 1rem !important;
+  }
 }
 
-/* Print styles */
+/* ===== STYLES D'IMPRESSION OPTIMISÉS ===== */
 @media print {
   @page {
     size: A4;
     margin: 8mm;
   }
 
-  body {
-    font-family: "Arial", sans-serif;
-    font-size: 10px;
-    line-height: 1.1;
-    color: #333;
-    background: white;
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
+  /* Masquage complet des éléments indésirables */
+  .no-print,
+  .print-hide-layout,
+  .print-hide-completely,
+  header,
+  .margin-calculator-card .no-print,
+  .margin-calculator-card .card-header,
+  .margin-calculator-card .card-footer,
+  .margin-calculator-card button,
+  .margin-calculator-card .animate-fade-in,
+  .margin-calculator-card .animate-fade-in-up {
+    display: none !important;
+    visibility: hidden !important;
   }
 
+  /* Corps de page pour impression */
+  body {
+    font-family: "Arial", sans-serif !important;
+    font-size: 10px !important;
+    line-height: 1.1 !important;
+    color: #333 !important;
+    background: white !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Affichage du contenu d'impression uniquement */
+  .print-only {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  /* Container pour impression */
+  .container-print {
+    max-width: 100% !important;
+    padding: 0px !important;
+    margin: 0 !important;
+  }
+
+  /* Masquage des éléments de navigation et interface */
   body > header,
+  nav,
+  .sidebar,
   .print-hide-layout,
   .margin-calculator-card .no-print,
-  .margin-calculator-card .card-footer {
+  .margin-calculator-card .card-footer,
+  .margin-calculator-card button {
     display: none !important;
   }
 
-  .print-only {
-    display: block !important;
-  }
-
-  .container-print {
-    max-width: 100%;
-    padding: 0px;
-  }
-
-  .header-print {
-    background: linear-gradient(135deg, #1e3a8a, #3b82f6);
-    color: white;
-    padding: 6px 10px;
-    border-radius: 4px;
-    margin-bottom: 6px;
-    text-align: center;
-    font-weight: bold;
-    font-size: 13px;
-  }
-
-  .row-print {
-    display: flex;
-    gap: 6px;
-    margin-bottom: 4px;
-  }
-  .col-2-print,
-  .col-3-print,
-  .col-4-print {
-    flex: 1;
-  }
-
-  .section-print {
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 4px;
-    padding: 4px;
-    margin-bottom: 3px;
-  }
-
-  .section-title-print {
-    background: #64748b;
-    color: white;
-    padding: 2px 5px;
-    margin: -4px -4px 3px -4px;
-    font-weight: bold;
-    font-size: 10px;
-    border-radius: 3px 3px 0 0;
-  }
-
-  .field-print {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 1px;
-    font-size: 9px;
-  }
-
-  .field-label-print {
-    font-weight: 500;
-    color: #475569;
-  }
-  .field-value-print {
-    font-weight: bold;
-    color: #1e293b;
-  }
-  .highlight-print {
-    background: #fef3c7;
-    padding: 1px 3px;
-    border-radius: 2px;
-  }
-
-  .total-section-print {
-    background: #dcfce7;
-    border: 2px solid #16a34a;
-    border-radius: 4px;
-    padding: 6px;
-    margin-top: 4px;
-  }
-
-  .total-title-print {
-    background: #16a34a;
-    color: white;
-    padding: 3px 5px;
-    margin: -6px -6px 3px -6px;
-    font-weight: bold;
-    text-align: center;
-    border-radius: 2px 2px 0 0;
-  }
-
-  .commission-detail-print {
-    background: #e0f2fe;
-    border: 1px solid #0284c7;
-    border-radius: 4px;
-    padding: 4px;
-    margin-bottom: 3px;
-  }
-
-  .commission-title-print {
-    background: #0284c7;
-    color: white;
-    padding: 2px 5px;
-    margin: -4px -4px 3px -4px;
-    font-weight: bold;
-    font-size: 10px;
-    border-radius: 3px 3px 0 0;
-  }
-
-  .final-total-print {
-    font-size: 13px;
-    font-weight: bold;
-    color: #dc2626;
-    text-align: center;
-    padding: 3px;
-    background: #fee2e2;
-    border-radius: 4px;
-    margin-top: 3px;
-  }
-
-  .small-text-print {
-    font-size: 8px;
-  }
-
-  body > main {
+  /* Affichage principal optimisé */
+  body > main,
+  main {
     display: block !important;
     width: 100% !important;
     max-width: none !important;
@@ -317,14 +388,17 @@
     margin: 0 !important;
   }
 
+  /* Card styles pour impression */
   .margin-calculator-card {
     border: none !important;
     box-shadow: none !important;
     background-color: white !important;
     color: black !important;
     padding: 0 !important;
+    margin: 0 !important;
   }
 
+  /* Suppression des animations */
   .animate-fade-in,
   .animate-fade-in-up,
   .delay-200,
@@ -332,9 +406,172 @@
   .delay-600 {
     animation: none !important;
     opacity: 1 !important;
+    transform: none !important;
   }
 
+  /* Headers masqués */
   .margin-calculator-card .card-header {
     display: none !important;
+  }
+
+  /* Styles spécifiques pour les éléments d'impression */
+  .header-print {
+    background: linear-gradient(135deg, #1e3a8a, #3b82f6) !important;
+    color: white !important;
+    padding: 6px 10px !important;
+    border-radius: 4px !important;
+    margin-bottom: 6px !important;
+    text-align: center !important;
+    font-weight: bold !important;
+    font-size: 13px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .row-print {
+    display: flex !important;
+    gap: 6px !important;
+    margin-bottom: 4px !important;
+  }
+
+  .col-2-print,
+  .col-3-print,
+  .col-4-print {
+    flex: 1 !important;
+  }
+
+  .section-print {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 4px !important;
+    padding: 4px !important;
+    margin-bottom: 3px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .section-title-print {
+    background: #64748b !important;
+    color: white !important;
+    padding: 2px 5px !important;
+    margin: -4px -4px 3px -4px !important;
+    font-weight: bold !important;
+    font-size: 10px !important;
+    border-radius: 3px 3px 0 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .field-print {
+    display: flex !important;
+    justify-content: space-between !important;
+    margin-bottom: 1px !important;
+    font-size: 9px !important;
+  }
+
+  .field-label-print {
+    font-weight: 500 !important;
+    color: #475569 !important;
+  }
+
+  .field-value-print {
+    font-weight: bold !important;
+    color: #1e293b !important;
+  }
+
+  .highlight-print {
+    background: #fef3c7 !important;
+    padding: 1px 3px !important;
+    border-radius: 2px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .total-section-print {
+    background: #dcfce7 !important;
+    border: 2px solid #16a34a !important;
+    border-radius: 4px !important;
+    padding: 6px !important;
+    margin-top: 4px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .total-title-print {
+    background: #16a34a !important;
+    color: white !important;
+    padding: 3px 5px !important;
+    margin: -6px -6px 3px -6px !important;
+    font-weight: bold !important;
+    text-align: center !important;
+    border-radius: 2px 2px 0 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .commission-detail-print {
+    background: #e0f2fe !important;
+    border: 1px solid #0284c7 !important;
+    border-radius: 4px !important;
+    padding: 4px !important;
+    margin-bottom: 3px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .commission-title-print {
+    background: #0284c7 !important;
+    color: white !important;
+    padding: 2px 5px !important;
+    margin: -4px -4px 3px -4px !important;
+    font-weight: bold !important;
+    font-size: 10px !important;
+    border-radius: 3px 3px 0 0 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .final-total-print {
+    font-size: 13px !important;
+    font-weight: bold !important;
+    color: #dc2626 !important;
+    text-align: center !important;
+    padding: 3px !important;
+    background: #fee2e2 !important;
+    border-radius: 4px !important;
+    margin-top: 3px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .small-text-print {
+    font-size: 8px !important;
+  }
+
+  /* Suppression de tous les gradients et animations en mode print */
+  * {
+    background-image: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* Force l'affichage des couleurs d'arrière-plan */
+  div, span, section, header, footer, p, h1, h2, h3, h4, h5, h6 {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Éviter les sauts de page dans les sections importantes */
+  .print-avoid-break,
+  .section,
+  .signature-section {
+    page-break-inside: avoid !important;
+  }
+
+  /* Forcer la visibilité des éléments critiques */
+  .print-force-visible {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
   }
 }
