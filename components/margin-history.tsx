@@ -14,6 +14,41 @@ interface MarginHistoryProps {
 }
 
 export function MarginHistory({ marginSheets, onDelete }: MarginHistoryProps) {
+  const formatCurrency = (value: number) => {
+    return value.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })
+  }
+
+  const getVehicleTypeLabel = (sheet: MarginSheet) => {
+    if (sheet.vehicleType === "VP" && sheet.vnClientKeyInHandPriceHT && sheet.vnClientDeparturePriceHT) {
+      return "VN" // Véhicule Neuf
+    }
+    return sheet.vehicleType
+  }
+
+  const getPriceInfo = (sheet: MarginSheet) => {
+    const isVNMode = sheet.vehicleType === "VP" && sheet.vnClientKeyInHandPriceHT && sheet.vnClientDeparturePriceHT
+    
+    if (isVNMode) {
+      return {
+        type: "VN",
+        price: sheet.vnClientDeparturePriceHT || 0,
+        label: "Prix départ client HT"
+      }
+    } else if (sheet.isOtherStockCession) {
+      return {
+        type: "Cession",
+        price: 1800,
+        label: "Prix cession TTC"
+      }
+    } else {
+      return {
+        type: "Standard",
+        price: sheet.sellingPriceTTC,
+        label: "Prix vente TTC"
+      }
+    }
+  }
+
   return (
     <Card className="bg-white border-gray-200 text-gray-900 shadow-xl animate-fade-in delay-400 flex-1">
       <CardHeader className="border-b border-gray-200 pb-4 bg-gradient-to-r">
@@ -33,6 +68,7 @@ export function MarginHistory({ marginSheets, onDelete }: MarginHistoryProps) {
               <TableHeader>
                 <TableRow className="bg-gray-50 hover:bg-gray-50">
                   <TableHead className="text-gray-700 text-xs sm:text-sm font-medium">Date</TableHead>
+                  <TableHead className="text-gray-700 text-xs sm:text-sm font-medium">Type</TableHead>
                   <TableHead className="text-gray-700 text-xs sm:text-sm font-medium hidden sm:table-cell">
                     Véhicule
                   </TableHead>
@@ -48,37 +84,54 @@ export function MarginHistory({ marginSheets, onDelete }: MarginHistoryProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {marginSheets.map((sheet) => (
-                  <TableRow key={sheet.id} className="border-gray-200 hover:bg-blue-50 transition-colors">
-                    <TableCell className="font-medium text-gray-800 text-xs sm:text-sm">{sheet.date}</TableCell>
-                    <TableCell className="text-gray-700 text-xs sm:text-sm hidden sm:table-cell truncate max-w-[100px]">
-                      {sheet.vehicleSoldName}
-                    </TableCell>
-                    <TableCell className="text-gray-700 text-xs sm:text-sm truncate max-w-[80px] sm:max-w-[120px]">
-                      {sheet.clientName}
-                    </TableCell>
-                    <TableCell className="text-right text-green-600 text-xs sm:text-sm hidden lg:table-cell">
-                      {sheet.remainingMarginHT.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}
-                    </TableCell>
-                    <TableCell className="text-right text-blue-600 text-xs sm:text-sm">
-                      {sheet.sellerCommission.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}
-                    </TableCell>
-                    <TableCell className="text-right text-green-600 text-xs sm:text-sm hidden md:table-cell">
-                      {sheet.finalMargin.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onDelete(sheet.id)}
-                        className="text-gray-500 hover:text-red-600 transition-colors h-6 w-6 sm:h-8 sm:w-8"
-                      >
-                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                        <span className="sr-only">Supprimer</span>
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {marginSheets.map((sheet) => {
+                  const vehicleTypeLabel = getVehicleTypeLabel(sheet)
+                  const priceInfo = getPriceInfo(sheet)
+                  
+                  return (
+                    <TableRow key={sheet.id} className="border-gray-200 hover:bg-blue-50 transition-colors">
+                      <TableCell className="font-medium text-gray-800 text-xs sm:text-sm">{sheet.date}</TableCell>
+                      <TableCell className="text-gray-700 text-xs sm:text-sm">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          vehicleTypeLabel === "VN" 
+                            ? "bg-green-100 text-green-800" 
+                            : vehicleTypeLabel === "VO" 
+                            ? "bg-blue-100 text-blue-800"
+                            : "bg-purple-100 text-purple-800"
+                        }`}>
+                          {vehicleTypeLabel}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-gray-700 text-xs sm:text-sm hidden sm:table-cell truncate max-w-[100px]">
+                        {sheet.vehicleSoldName}
+                      </TableCell>
+                      <TableCell className="text-gray-700 text-xs sm:text-sm truncate max-w-[80px] sm:max-w-[120px]">
+                        {sheet.clientName}
+                      </TableCell>
+                      <TableCell className="text-right text-green-600 text-xs sm:text-sm hidden lg:table-cell">
+                        {formatCurrency(sheet.remainingMarginHT)}
+                      </TableCell>
+                      <TableCell className="text-right text-blue-600 text-xs sm:text-sm">
+                        {formatCurrency(sheet.sellerCommission)}
+                      </TableCell>
+                      <TableCell className="text-right text-green-600 text-xs sm:text-sm hidden md:table-cell">
+                        {formatCurrency(sheet.finalMargin)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => onDelete(sheet.id)}
+                          className="text-gray-500 hover:text-red-600 transition-colors h-6 w-6 sm:h-8 sm:w-8"
+                          title={`Supprimer la fiche ${vehicleTypeLabel} - ${sheet.clientName}`}
+                        >
+                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                          <span className="sr-only">Supprimer</span>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </div>

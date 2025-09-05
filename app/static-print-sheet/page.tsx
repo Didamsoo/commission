@@ -3,31 +3,33 @@
 import { VAT_RATE } from "@/lib/margin-utils"
 
 export default function StaticPrintSheet() {
-  // Pre-filled static values
+  // Pre-filled static values - Exemple avec un véhicule neuf (VN)
   const date = "10/08/2025"
-  const vehicleNumber = "66sq"
-  const sellerName = "66"
-  const clientName = "66sq"
-  const vehicleSoldName = "Véhicule d'Occasion (VO)"
-  const vehicleType = "VO"
+  const vehicleNumber = "VN2025001"
+  const sellerName = "Adam ELM"
+  const clientName = "M. Dupont"
+  const vehicleSoldName = "Ford Puma Gen-E"
+  const vehicleType = "VN" // Véhicule Neuf
   const isElectricVehicle = true
-  const hasFinancing = false // Assuming no financing as not specified
-  const purchasePriceTTC = 2002
-  const sellingPriceTTC = 10000
+  const hasFinancing = true
+  
+  // Nouveaux champs pour VN
+  const vnClientKeyInHandPriceHT = 28325 // Prix client clé en main HT
+  const vnClientDeparturePriceHT = 27620 // Prix départ client HT
+  const vnMarginPercentage = 0.05 // 5%
+  const vnCalculatedMargin = vnClientDeparturePriceHT * vnMarginPercentage // 1381€
+  
   const totalCommission = 210
 
-  // Derived calculations
-  const purchasePriceHT = purchasePriceTTC / (1 + VAT_RATE)
-  const sellingPriceHT = sellingPriceTTC / (1 + VAT_RATE)
-  const initialMarginHT = sellingPriceHT - purchasePriceHT
-  const remainingMarginHT = initialMarginHT // No other deductions specified for static
+  // Derived calculations pour VN
+  const calculatedInitialMarginHT = vnCalculatedMargin
+  const remainingMarginHT = calculatedInitialMarginHT // No other deductions specified for static
   const finalMargin = remainingMarginHT - totalCommission
 
   // Commission details for display (distributed to sum to totalCommission)
-  const voBaseCommission = 80
-  const voBonus60Days = 30
-  const voBonusListedPrice = 30
-  const voBonusElectricVehicle = 70 // To make it sum up: 80 + 30 + 30 + 70 = 210
+  const vnBaseCommission = 150 // Commission VN de base
+  const financingBonus = 30
+  const packBonus = 30 // Pack livraison
 
   const formatCurrency = (value: number | null | undefined) => {
     if (value === null || typeof value === "undefined") return "N/A"
@@ -66,7 +68,7 @@ export default function StaticPrintSheet() {
           <div className="field-print">
             <span className="field-label-print">Type :</span>
             <span className="field-value-print highlight-print">
-              {vehicleType === "VO" && "Véhicule d'Occasion (VO)"}
+              Véhicule Neuf (VN)
             </span>
           </div>
           <div className="field-print">
@@ -84,22 +86,22 @@ export default function StaticPrintSheet() {
         </div>
 
         <div className="col-4-print section-print">
-          <div className="section-title-print">💰 PRIX & DATES</div>
+          <div className="section-title-print">💰 PRIX VN & DATES</div>
           <div className="field-print">
-            <span className="field-label-print">Prix achat TTC :</span>
-            <span className="field-value-print">{formatCurrency(purchasePriceTTC)}</span>
+            <span className="field-label-print">Prix client clé en main HT :</span>
+            <span className="field-value-print">{formatCurrency(vnClientKeyInHandPriceHT)}</span>
           </div>
           <div className="field-print">
-            <span className="field-label-print">Prix vente TTC :</span>
-            <span className="field-value-print">{formatCurrency(sellingPriceTTC)}</span>
-          </div>
-          <div className="field-print">
-            <span className="field-label-print">Date achat VO :</span>
-            <span className="field-value-print">N/A</span>
+            <span className="field-label-print">Prix départ client HT :</span>
+            <span className="field-value-print">{formatCurrency(vnClientDeparturePriceHT)}</span>
           </div>
           <div className="field-print">
             <span className="field-label-print">Date commande :</span>
-            <span className="field-value-print">N/A</span>
+            <span className="field-value-print">15/07/2025</span>
+          </div>
+          <div className="field-print">
+            <span className="field-label-print">Date livraison prévue :</span>
+            <span className="field-value-print">20/08/2025</span>
           </div>
         </div>
       </div>
@@ -107,18 +109,18 @@ export default function StaticPrintSheet() {
       {/* 3. LIGNE 2 - 2 colonnes égales */}
       <div className="row-print">
         <div className="col-2-print section-print">
-          <div className="section-title-print">📊 CALCUL MARGE</div>
+          <div className="section-title-print">📊 CALCUL MARGE VN (5%)</div>
           <div className="field-print">
-            <span className="field-label-print">Prix Achat HT :</span>
-            <span className="field-value-print">{formatCurrency(purchasePriceHT)}</span>
+            <span className="field-label-print">Base de calcul :</span>
+            <span className="field-value-print">{formatCurrency(vnClientDeparturePriceHT)}</span>
           </div>
           <div className="field-print">
-            <span className="field-label-print">Prix Vente HT :</span>
-            <span className="field-value-print">{formatCurrency(sellingPriceHT)}</span>
+            <span className="field-label-print">Pourcentage marge :</span>
+            <span className="field-value-print">5,0%</span>
           </div>
           <div className="field-print">
-            <span className="field-label-print">Marge HT Initiale :</span>
-            <span className="field-value-print">{formatCurrency(initialMarginHT)}</span>
+            <span className="field-label-print">Marge HT Calculée :</span>
+            <span className="field-value-print highlight-print">{formatCurrency(vnCalculatedMargin)}</span>
           </div>
           <div className="field-print">
             <span className="field-label-print">Marge Restante HT :</span>
@@ -134,11 +136,11 @@ export default function StaticPrintSheet() {
           <div className="section-title-print">🎁 SERVICES & OPTIONS</div>
           <div className="field-print">
             <span className="field-label-print">Pack Livraison :</span>
-            <span className="field-value-print">Aucun Pack</span>
+            <span className="field-value-print">Pack 2 (20€)</span>
           </div>
           <div className="field-print">
             <span className="field-label-print">CLD Ford :</span>
-            <span className="field-value-print">Aucun CLD</span>
+            <span className="field-value-print">5 ans et + (20€)</span>
           </div>
           <div className="field-print">
             <span className="field-label-print">Contrat Entretien :</span>
@@ -161,22 +163,22 @@ export default function StaticPrintSheet() {
         <div className="row-print">
           <div className="col-2-print">
             <div className="field-print small-text-print">
-              <span className="field-label-print">Commission VO (Base) :</span>
-              <span className="field-value-print">{formatCurrency(voBaseCommission)}</span>
+              <span className="field-label-print">Commission VN (Base) :</span>
+              <span className="field-value-print">{formatCurrency(vnBaseCommission)}</span>
             </div>
             <div className="field-print small-text-print">
-              <span className="field-label-print">Bonus {"<"} 60 jours :</span>
-              <span className="field-value-print">{formatCurrency(voBonus60Days)}</span>
+              <span className="field-label-print">Bonus Financement :</span>
+              <span className="field-value-print">{formatCurrency(financingBonus)}</span>
             </div>
           </div>
           <div className="col-2-print">
             <div className="field-print small-text-print">
-              <span className="field-label-print">Bonus Prix Affiché :</span>
-              <span className="field-value-print">{formatCurrency(voBonusListedPrice)}</span>
+              <span className="field-label-print">Bonus Pack Livraison :</span>
+              <span className="field-value-print">{formatCurrency(packBonus)}</span>
             </div>
             <div className="field-print small-text-print">
-              <span className="field-label-print">Bonus Véhicule Électrique :</span>
-              <span className="field-value-print">{formatCurrency(voBonusElectricVehicle)}</span>
+              <span className="field-label-print">Bonus CLD Ford :</span>
+              <span className="field-value-print">0,00 €</span>
             </div>
           </div>
         </div>
@@ -188,8 +190,8 @@ export default function StaticPrintSheet() {
         <div className="row-print">
           <div className="col-3-print">
             <div className="field-print">
-              <span className="field-label-print">Marge Restante HT :</span>
-              <span className="field-value-print">{formatCurrency(remainingMarginHT)}</span>
+              <span className="field-label-print">Marge VN (5%) :</span>
+              <span className="field-value-print">{formatCurrency(vnCalculatedMargin)}</span>
             </div>
           </div>
           <div className="col-3-print">
@@ -211,7 +213,7 @@ export default function StaticPrintSheet() {
       {/* 6. SIGNATURES */}
       <div className="row-print" style={{ marginTop: "8px" }}>
         <div className="col-2-print section-print">
-          <div className="section-title-print">✍️ SIGNATURE VENDEUR</div>
+          <div className="section-title-print">✏️ SIGNATURE VENDEUR</div>
           <div style={{ textAlign: "center", padding: "15px 10px" }}>
             <div style={{ borderBottom: "1px solid #94a3b8", marginBottom: "5px", height: "40px" }}></div>
             <div className="small-text-print" style={{ color: "#64748b" }}>
@@ -224,7 +226,7 @@ export default function StaticPrintSheet() {
         </div>
 
         <div className="col-2-print section-print">
-          <div className="section-title-print">✍️ SIGNATURE DIRECTION</div>
+          <div className="section-title-print">✏️ SIGNATURE DIRECTION</div>
           <div style={{ textAlign: "center", padding: "15px 10px" }}>
             <div style={{ borderBottom: "1px solid #94a3b8", marginBottom: "5px", height: "40px" }}></div>
             <div className="small-text-print" style={{ color: "#64748b" }}>

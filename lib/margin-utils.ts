@@ -1,5 +1,47 @@
 // src/lib/margin-utils.ts
 
+export const VAT_RATE = 0.2
+const PAYPLAN_STORAGE_KEY = "payplanSettings"
+const MARGIN_SHEETS_STORAGE_KEY = "marginSheets"
+
+export interface VNOption {
+  id: string
+  name: string
+  priceHT: number
+  priceTTC: number
+}
+
+export interface VNDiscount {
+  id: string
+  name: string
+  amountHT: number
+  amountTTC: number
+}
+
+export interface VNFordRecovery {
+  attaque: number
+  renforcementStock: number
+  aideReprise: number
+  plusValueTarif: number
+}
+
+export interface CommissionDetails {
+  voBaseCommission: number
+  voBonus60Days: number
+  voBonusListedPrice: number
+  voBonusFinancing: number
+  voBonusElectricVehicle: number
+  vpCommission: number
+  vuCommission: number
+  financingBonus: number
+  deliveryPackBonus: number
+  packPenetrationBonus: number
+  cldBonus: number
+  maintenanceContractBonus: number
+  coyoteBonus: number
+  accessoryBonus: number
+}
+
 export interface CalculatedResults {
   purchasePriceHT: number
   sellingPriceHT: number
@@ -7,22 +49,16 @@ export interface CalculatedResults {
   remainingMarginHT: number
   sellerCommission: number
   finalMargin: number
-  commissionDetails: {
-    voBaseCommission: number // 80€ for VO
-    voBonus60Days: number // 30€ for VO
-    voBonusListedPrice: number // 30€ for VO
-    voBonusFinancing: number // NEW: 30€ bonus for VO financing
-    voBonusElectricVehicle: number // Calculated for VO
-    vpCommission: number // Calculated for VP
-    vuCommission: number // Calculated for VU
-    financingBonus: number // Sum of all financing bonuses
-    deliveryPackBonus: number // Sum of all delivery pack bonuses
-    packPenetrationBonus: number // High penetration bonus
-    cldBonus: number // Sum of all CLD bonuses
-    maintenanceContractBonus: number // Sum of all maintenance contract bonuses
-    coyoteBonus: number // Sum of all Coyote bonuses
-    accessoryBonus: number // Sum of all accessory bonuses
-  }
+  commissionDetails: CommissionDetails
+  
+  // Nouveaux champs pour VN
+  vnMarginPercentage?: number
+  vnCalculatedMargin?: number
+  vnTotalOptionsHT?: number
+  vnTotalOptionsTTC?: number
+  vnTotalDiscountsHT?: number
+  vnTotalDiscountsTTC?: number
+  vnFordRecoveryTotal?: number
 }
 
 export interface MarginSheet extends CalculatedResults {
@@ -32,187 +68,169 @@ export interface MarginSheet extends CalculatedResults {
   sellerName: string
   clientName: string
   vehicleSoldName: string
-  purchasePriceTTC: number
-  sellingPriceTTC: number
-  tradeInValueHT: number
-  warranty12Months: number
-  workshopTransfer: number
-  preparationHT: number
-  purchaseDate: string // YYYY-MM-DD
-  orderDate: string // YYYY-MM-DD
-  listedPriceTTC: number
-  hasFinancing: boolean
-  financedAmountHT: number
-  numberOfServicesSold: number // 0, 1, 2, or 3
-  deliveryPackSold: "none" | "pack1" | "pack2" | "pack3"
-  isHighPenetrationRate: boolean
-  isElectricVehicle: boolean
-  hasAccessories: boolean
-  accessoryAmountHT: number // Kept for compatibility, but accessoryAmountTTC is used for new rule
-  accessoryAmountTTC: number // New for tiered accessory bonus
-  isOtherStockCession: boolean
-
-  // New fields for Payplan integration
   vehicleType: "VO" | "VP" | "VU"
-  vpSalesType: "PART/VD/Prof Lib/Société" | "Vente Captive Ford Lease" | "GC/Loueurs LLD ou LCD" | ""
-  vpModel:
-    | "Carline"
-    | "Tourneo Courier"
-    | "Puma"
-    | "Puma Gen-E"
-    | "Focus"
-    | "Kuga"
-    | "Explorer"
-    | "Capri"
-    | "Mach-E"
-    | "Tourneo Connect"
-    | "Mustang"
-    | "Ranger"
-    | ""
-  margeFixeVehiculeOptions: number
-  margeFordPro: number
-  margeRepresentationMarque: number
-  margeAccessoiresAmenagesVU: number
-  assistanceConstructeur: number
-  remiseConsentie: number
-  financingType: "principal" | "specific"
-  isCreditBailVN: boolean
-  isLOAVO: boolean
-  isIDFord25Months: boolean
-  isLLDProFordLease: boolean
-  cldFordDuration: "none" | "3-4" | "5+"
-  hasMaintenanceContract: boolean
-  hasCoyote: boolean
-  coyoteDuration: "none" | "24" | "36" | "48"
-}
-
-interface CalculateInputs {
+  
+  // Prix de base
   purchasePriceTTC: number
   sellingPriceTTC: number
   tradeInValueHT: number
+  
+  // Frais
   warranty12Months: number
   workshopTransfer: number
   preparationHT: number
+  
+  // Dates VO
   purchaseDate: string
   orderDate: string
   listedPriceTTC: number
+  
+  // Flags généraux
+  isElectricVehicle: boolean
   hasFinancing: boolean
   financedAmountHT: number
   numberOfServicesSold: number
+  financingType: "principal" | "specific"
+  isOtherStockCession: boolean
+  
+  // Flags financement spécifiques
+  isCreditBailVN: boolean
+  isLOAVO: boolean
+  isIDFord25Months: boolean
+  isLLDProFordLease: boolean
+  
+  // Packs et services
   deliveryPackSold: "none" | "pack1" | "pack2" | "pack3"
   isHighPenetrationRate: boolean
-  isElectricVehicle: boolean
+  cldFordDuration: "none" | "3-4" | "5+"
+  hasMaintenanceContract: boolean
+  
+  // Coyote
+  hasCoyote: boolean
+  coyoteDuration: "none" | "24" | "36" | "48"
+  
+  // Accessoires
   hasAccessories: boolean
-  accessoryAmountHT: number // Kept for compatibility, but accessoryAmountTTC is used for new rule
-  accessoryAmountTTC: number // New for tiered accessory bonus
-  isOtherStockCession: boolean
-
-  // New fields for Payplan integration
-  vehicleType: "VO" | "VP" | "VU"
+  accessoryAmountHT: number
+  accessoryAmountTTC: number
+  
+  // VP (VN) spécifiques
   vpSalesType: "PART/VD/Prof Lib/Société" | "Vente Captive Ford Lease" | "GC/Loueurs LLD ou LCD" | ""
-  vpModel:
-    | "Carline"
-    | "Tourneo Courier"
-    | "Puma"
-    | "Puma Gen-E"
-    | "Focus"
-    | "Kuga"
-    | "Explorer"
-    | "Capri"
-    | "Mach-E"
-    | "Tourneo Connect"
-    | "Mustang"
-    | "Ranger"
-    | ""
+  vpModel: string
+  
+  // VU spécifiques
   margeFixeVehiculeOptions: number
   margeFordPro: number
   margeRepresentationMarque: number
   margeAccessoiresAmenagesVU: number
   assistanceConstructeur: number
   remiseConsentie: number
+  
+  // Nouveaux champs pour VN
+  vnClientKeyInHandPriceHT?: number
+  vnClientDeparturePriceHT?: number
+  vnOptions?: VNOption[]
+  vnDiscounts?: VNDiscount[]
+  vnFordRecovery?: VNFordRecovery
+}
+
+export interface CalculateInputs {
+  // Type véhicule
+  vehicleType: "VO" | "VP" | "VU"
+  isOtherStockCession: boolean
+  
+  // Prix de base
+  purchasePriceTTC: number
+  sellingPriceTTC: number
+  tradeInValueHT: number
+  
+  // Frais
+  warranty12Months: number
+  workshopTransfer: number
+  preparationHT: number
+  
+  // Dates VO
+  purchaseDate: string
+  orderDate: string
+  listedPriceTTC: number
+  
+  // Flags généraux
+  isElectricVehicle: boolean
+  hasFinancing: boolean
+  financedAmountHT: number
+  numberOfServicesSold: number
   financingType: "principal" | "specific"
+  
+  // Flags financement spécifiques
   isCreditBailVN: boolean
   isLOAVO: boolean
   isIDFord25Months: boolean
   isLLDProFordLease: boolean
+  
+  // Packs et services
+  deliveryPackSold: "none" | "pack1" | "pack2" | "pack3"
+  isHighPenetrationRate: boolean
   cldFordDuration: "none" | "3-4" | "5+"
   hasMaintenanceContract: boolean
+  
+  // Coyote
   hasCoyote: boolean
   coyoteDuration: "none" | "24" | "36" | "48"
+  
+  // Accessoires
+  hasAccessories: boolean
+  accessoryAmountHT: number
+  accessoryAmountTTC: number
+  
+  // VP (VN) spécifiques
+  vpSalesType: "PART/VD/Prof Lib/Société" | "Vente Captive Ford Lease" | "GC/Loueurs LLD ou LCD" | ""
+  vpModel: string
+  
+  // VU spécifiques
+  margeFixeVehiculeOptions: number
+  margeFordPro: number
+  margeRepresentationMarque: number
+  margeAccessoiresAmenagesVU: number
+  assistanceConstructeur: number
+  remiseConsentie: number
+  
+  // Nouveaux champs pour VN
+  vnClientKeyInHandPriceHT?: number
+  vnClientDeparturePriceHT?: number
+  vnOptions?: VNOption[]
+  vnDiscounts?: VNDiscount[]
+  vnFordRecovery?: VNFordRecovery
 }
 
 export interface Payplan {
   fixedSalary: number
-  // VO Commissions
   baseCommissionVO: number
   bonus60DaysVO: number
   bonusListedPriceVO: number
   electricVehicleMultiplierVO: number
-  bonusFinancingVO: number // Added: 30€ bonus for VO financing
+  bonusFinancingVO: number
 
-  // VP Commissions - Updated structure with 3 sales types
   vpCommissions: {
-    "PART/VD/Prof Lib/Société": {
-      Carline: number
-      "Tourneo Courier": number
-      Puma: number
-      "Puma Gen-E": number
-      Focus: number
-      Kuga: number
-      Explorer: number
-      Capri: number
-      "Mach-E": number
-      "Tourneo Connect": number
-      Mustang: number
-      Ranger: number
-    }
-    "Vente Captive Ford Lease": {
-      Carline: number
-      "Tourneo Courier": number
-      Puma: number
-      "Puma Gen-E": number
-      Focus: number
-      Kuga: number
-      Explorer: number
-      Capri: number
-      "Mach-E": number
-      "Tourneo Connect": number
-      Mustang: number
-      Ranger: number
-    }
-    "GC/Loueurs LLD ou LCD": {
-      Carline: number
-      "Tourneo Courier": number
-      Puma: number
-      "Puma Gen-E": number
-      Focus: number
-      Kuga: number
-      Explorer: number
-      Capri: number
-      "Mach-E": number
-      "Tourneo Connect": number
-      Mustang: number
-      Ranger: number
-    }
+    "PART/VD/Prof Lib/Société": Record<string, number>
+    "Vente Captive Ford Lease": Record<string, number>
+    "GC/Loueurs LLD ou LCD": Record<string, number>
   }
 
-  // VU Commissions
-  vuCommissionRate: number // 0.13 for 13%
+  vuCommissionRate: number
+  vnMarginPercentage: number
 
-  // Financing Commissions
-  financingMinAmount: number // 6001
+  financingMinAmount: number
   financingRates: {
-    principal: { service1: number; service2: number; service3: number } // 0.0045, 0.0085, 0.0100
-    specific: { service1: number; service2: number; service3: number } // 0.0010, 0.0030, 0.0045
+    principal: { service1: number; service2: number; service3: number }
+    specific: { service1: number; service2: number; service3: number }
   }
   financingBonus: {
-    creditBailVN: number // 0.002 (0.2%)
-    loaVO: number // 0.003 (0.3%) - Updated for LOA CGI Finance sur VO
-    idFord25Months: number // 0.002 (0.2%)
-    lldProFordLease: number // Fixed 30€
+    creditBailVN: number
+    loaVO: number
+    idFord25Months: number
+    lldProFordLease: number
   }
 
-  // Packs & Peripherals Commissions - Updated values
   packCommissions: { none: number; pack1: number; pack2: number; pack3: number }
   packCommissionsHighPenetration: { none: number; pack1: number; pack2: number; pack3: number }
   cldCommissions: { "3-4": number; "5+": number }
@@ -220,48 +238,38 @@ export interface Payplan {
   maintenanceContractCommission: number
   maintenanceContractCommissionHighPenetration: number
 
-  // Coyote Commissions
   coyoteCommissions: { "24": number; "36": number; "48": number }
 
-  // Accessory Commissions (updated tiers)
   accessoryTiers: {
-    tier1: { min: number; max: number; bonus: number } // 50-250 TTC, 10€
-    tier2: { min: number; max: number; bonus: number } // 251-800 TTC, 50€
-    tier3: { min: number; bonus: number } // 801+ TTC, 75€
+    tier1: { min: number; max: number; bonus: number }
+    tier2: { min: number; max: number; bonus: number }
+    tier3: { min: number; bonus: number }
   }
 
-  // Financial Penetration Bonuses (new from payplan)
   financialPenetrationBonuses: {
-    realization100: {
-      "< 35%": number
-      "35% à 40%": number
-      "40% à 50%": number
-      "> 50%": number
-    }
-    realization120: {
-      "< 35%": number
-      "35% à 40%": number
-      "40% à 50%": number
-      "> 50%": number
-    }
+    realization100: Record<string, number>
+    realization120: Record<string, number>
   }
 }
 
-export const VAT_RATE = 0.2 // Assuming 20% VAT for TTC to HT conversion
-const PAYPLAN_STORAGE_KEY = "payplanSettings"
-const MARGIN_SHEETS_STORAGE_KEY = "marginSheets"
+// Fonction utilitaire pour conversion automatique HT/TTC
+export function convertHTToTTC(amountHT: number): number {
+  return amountHT * (1 + VAT_RATE)
+}
+
+export function convertTTCToHT(amountTTC: number): number {
+  return amountTTC / (1 + VAT_RATE)
+}
 
 export function getDefaultPayplan(): Payplan {
   return {
     fixedSalary: 1200,
-    // VO
     baseCommissionVO: 80,
     bonus60DaysVO: 30,
     bonusListedPriceVO: 30,
     electricVehicleMultiplierVO: 1.5,
     bonusFinancingVO: 30,
 
-    // VP - Updated with new models and values from payplan
     vpCommissions: {
       "PART/VD/Prof Lib/Société": {
         Carline: 50,
@@ -303,68 +311,43 @@ export function getDefaultPayplan(): Payplan {
         "Mach-E": 80,
         "Tourneo Connect": 80,
         Mustang: 80,
-        Ranger: 100, // Not specified in image, using previous value
+        Ranger: 100,
       },
     },
 
-    // VU
-    vuCommissionRate: 0.13, // 13%
+    vuCommissionRate: 0.13,
+    vnMarginPercentage: 0.05,
 
-    // Financing - Updated with 3 services levels and correct rates from payplan
     financingMinAmount: 6001,
     financingRates: {
-      principal: { service1: 0.0045, service2: 0.0085, service3: 0.0100 }, // Barème Principal VN/VD/VO
-      specific: { service1: 0.001, service2: 0.003, service3: 0.0045 },    // Barème Promo (CC Ford/LOA/LLD/CGI)
+      principal: { service1: 0.0045, service2: 0.0085, service3: 0.0100 },
+      specific: { service1: 0.001, service2: 0.003, service3: 0.0045 },
     },
     financingBonus: {
-      creditBailVN: 0.002, // 0.2%
-      loaVO: 0.003, // 0.3% for LOA CGI Finance sur VO
-      idFord25Months: 0.002, // 0.2%
-      lldProFordLease: 30, // Fixed 30€
+      creditBailVN: 0.002,
+      loaVO: 0.003,
+      idFord25Months: 0.002,
+      lldProFordLease: 30,
     },
 
-    // Packs & Peripherals - Updated values from payplan
-    packCommissions: {
-      none: 0,
-      pack1: 0, // Non commissionné
-      pack2: 20,
-      pack3: 35,
-    },
-    packCommissionsHighPenetration: {
-      none: 0,
-      pack1: 0, // Non commissionné même en haute pénétration
-      pack2: 20, // Assuming same as regular
-      pack3: 35, // Assuming same as regular
-    },
+    packCommissions: { none: 0, pack1: 0, pack2: 20, pack3: 35 },
+    packCommissionsHighPenetration: { none: 0, pack1: 0, pack2: 20, pack3: 35 },
     cldCommissions: { "3-4": 10, "5+": 20 },
     cldCommissionsHighPenetration: { "3-4": 20, "5+": 50 },
     maintenanceContractCommission: 20,
     maintenanceContractCommissionHighPenetration: 50,
 
-    // Coyote - keeping previous values as not specified in new payplan
     coyoteCommissions: { "24": 30, "36": 40, "48": 50 },
 
-    // Accessory - Updated tiers from new payplan
     accessoryTiers: {
       tier1: { min: 50, max: 250, bonus: 10 },
       tier2: { min: 251, max: 800, bonus: 50 },
       tier3: { min: 801, bonus: 75 },
     },
 
-    // Financial Penetration Bonuses - New from payplan
     financialPenetrationBonuses: {
-      realization100: {
-        "< 35%": 0,
-        "35% à 40%": 0,
-        "40% à 50%": 400,
-        "> 50%": 800,
-      },
-      realization120: {
-        "< 35%": 0,
-        "35% à 40%": 200,
-        "40% à 50%": 600,
-        "> 50%": 1200,
-      },
+      realization100: { "< 35%": 0, "35% à 40%": 0, "40% à 50%": 400, "> 50%": 800 },
+      realization120: { "< 35%": 0, "35% à 40%": 200, "40% à 50%": 600, "> 50%": 1200 },
     },
   }
 }
@@ -376,8 +359,6 @@ export function getPayplan(): Payplan {
   try {
     const storedPayplan = localStorage.getItem(PAYPLAN_STORAGE_KEY)
     const parsedPayplan = storedPayplan ? JSON.parse(storedPayplan) : getDefaultPayplan()
-
-    // Merge with default payplan to ensure new fields are present
     return { ...getDefaultPayplan(), ...parsedPayplan }
   } catch (error) {
     console.error("Failed to load payplan from localStorage:", error)
@@ -386,9 +367,7 @@ export function getPayplan(): Payplan {
 }
 
 export function savePayplan(payplan: Payplan): void {
-  if (typeof window === "undefined") {
-    return
-  }
+  if (typeof window === "undefined") return
   try {
     localStorage.setItem(PAYPLAN_STORAGE_KEY, JSON.stringify(payplan))
   } catch (error) {
@@ -434,33 +413,77 @@ export function calculateMarginSheet(inputs: CalculateInputs, payplan: Payplan):
     hasMaintenanceContract,
     hasCoyote,
     coyoteDuration,
+    vnClientKeyInHandPriceHT,
+    vnClientDeparturePriceHT,
+    vnOptions,
+    vnDiscounts,
+    vnFordRecovery,
   } = inputs
 
   let calculatedPurchasePriceHT: number
   let calculatedSellingPriceHT: number
   let calculatedInitialMarginHT: number
   let calculatedRemainingMarginHT: number
+  let vnMarginPercentage: number | undefined
+  let vnCalculatedMargin: number | undefined
+  let vnTotalOptionsHT: number | undefined
+  let vnTotalOptionsTTC: number | undefined
+  let vnTotalDiscountsHT: number | undefined
+  let vnTotalDiscountsTTC: number | undefined
+  let vnFordRecoveryTotal: number | undefined
 
-  if (isOtherStockCession) {
+  // LOGIQUE VN (Véhicule Neuf)
+  if (vehicleType === "VP" && vnClientKeyInHandPriceHT && vnClientDeparturePriceHT) {
+    calculatedPurchasePriceHT = vnClientKeyInHandPriceHT
+    calculatedSellingPriceHT = vnClientDeparturePriceHT
+    
+    // Calcul des totaux des options
+    vnTotalOptionsHT = vnOptions?.reduce((sum, option) => sum + option.priceHT, 0) || 0
+    vnTotalOptionsTTC = vnOptions?.reduce((sum, option) => sum + option.priceTTC, 0) || 0
+    
+    // Calcul des totaux des remises
+    vnTotalDiscountsHT = vnDiscounts?.reduce((sum, discount) => sum + discount.amountHT, 0) || 0
+    vnTotalDiscountsTTC = vnDiscounts?.reduce((sum, discount) => sum + discount.amountTTC, 0) || 0
+    
+    // Calcul récupération Ford (version simplifiée)
+    vnFordRecoveryTotal = 0
+    if (vnFordRecovery) {
+      vnFordRecoveryTotal = vnFordRecovery.attaque + 
+                          vnFordRecovery.renforcementStock + 
+                          vnFordRecovery.aideReprise + 
+                          vnFordRecovery.plusValueTarif
+    }
+    
+    // Calcul de la marge à 5% du prix départ client HT
+    vnMarginPercentage = payplan.vnMarginPercentage
+    vnCalculatedMargin = vnClientDeparturePriceHT * vnMarginPercentage
+    
+    // Marge finale après options, remises et récupération Ford
+    calculatedInitialMarginHT = vnCalculatedMargin + vnTotalOptionsHT - vnTotalDiscountsHT + vnFordRecoveryTotal
+    calculatedRemainingMarginHT = calculatedInitialMarginHT - warranty12Months - workshopTransfer - preparationHT - tradeInValueHT
+    
+  } 
+  // LOGIQUE CESSION AUTRE STOCK
+  else if (isOtherStockCession) {
     const fixedCessionMarginTTC = 1800
     const fixedCessionMarginHT = fixedCessionMarginTTC / (1 + VAT_RATE)
 
-    calculatedPurchasePriceHT = 0 // Not relevant for fixed margin calculation
-    calculatedSellingPriceHT = fixedCessionMarginHT // Selling price effectively becomes the margin
+    calculatedPurchasePriceHT = 0
+    calculatedSellingPriceHT = fixedCessionMarginHT
     calculatedInitialMarginHT = fixedCessionMarginHT
-    calculatedRemainingMarginHT = fixedCessionMarginHT // No other costs apply
-  } else {
-    // Existing margin calculation logic
+    calculatedRemainingMarginHT = fixedCessionMarginHT
+  } 
+  // LOGIQUE STANDARD VO/VU
+  else {
     calculatedPurchasePriceHT = purchasePriceTTC / (1 + VAT_RATE)
     calculatedSellingPriceHT = sellingPriceTTC / (1 + VAT_RATE)
     calculatedInitialMarginHT = calculatedSellingPriceHT - calculatedPurchasePriceHT
-    calculatedRemainingMarginHT =
-      calculatedInitialMarginHT - warranty12Months - workshopTransfer - preparationHT - tradeInValueHT
+    calculatedRemainingMarginHT = calculatedInitialMarginHT - warranty12Months - workshopTransfer - preparationHT - tradeInValueHT
   }
 
-  // --- Commission Vendeur Calculation ---
+  // CALCUL DES COMMISSIONS
   let sellerCommission = 0
-  const commissionDetails: CalculatedResults["commissionDetails"] = {
+  const commissionDetails: CommissionDetails = {
     voBaseCommission: 0,
     voBonus60Days: 0,
     voBonusListedPrice: 0,
@@ -477,11 +500,12 @@ export function calculateMarginSheet(inputs: CalculateInputs, payplan: Payplan):
     accessoryBonus: 0,
   }
 
-  // 1. Base Commission by Vehicle Type
+  // 1. Commission de base selon type véhicule
   if (vehicleType === "VO") {
+    // Commission de base VO
     commissionDetails.voBaseCommission = payplan.baseCommissionVO
 
-    // Bonus -60 Jours (VO only)
+    // Bonus -60 jours
     if (purchaseDate && orderDate) {
       const pDate = new Date(purchaseDate)
       const oDate = new Date(orderDate)
@@ -492,50 +516,50 @@ export function calculateMarginSheet(inputs: CalculateInputs, payplan: Payplan):
       }
     }
 
-    // Bonus Prix Affiché (VO only)
+    // Bonus prix affiché
     if (sellingPriceTTC >= listedPriceTTC && listedPriceTTC > 0) {
       commissionDetails.voBonusListedPrice = payplan.bonusListedPriceVO
     }
 
-    // Bonus Financement VO (30€ fixed bonus if VO and has financing)
+    // Bonus financement VO
     if (hasFinancing) {
       commissionDetails.voBonusFinancing = payplan.bonusFinancingVO
     }
 
-    // Sum VO specific bonuses before EV multiplier
-    const voCommissionBeforeEV =
-      commissionDetails.voBaseCommission +
-      commissionDetails.voBonus60Days +
-      commissionDetails.voBonusListedPrice +
-      commissionDetails.voBonusFinancing
+    // Calcul commission VO avant multiplicateur électrique
+    const voCommissionBeforeEV = commissionDetails.voBaseCommission + 
+                                 commissionDetails.voBonus60Days + 
+                                 commissionDetails.voBonusListedPrice + 
+                                 commissionDetails.voBonusFinancing
 
-    // Bonus Véhicule Électrique (VO only)
+    // Bonus véhicule électrique (multiplicateur)
     if (isElectricVehicle) {
       commissionDetails.voBonusElectricVehicle = voCommissionBeforeEV * (payplan.electricVehicleMultiplierVO - 1)
       sellerCommission += voCommissionBeforeEV * payplan.electricVehicleMultiplierVO
     } else {
       sellerCommission += voCommissionBeforeEV
     }
+    
   } else if (vehicleType === "VP") {
+    // Commission VN selon payplan VP
     if (vpSalesType && vpModel) {
       commissionDetails.vpCommission = payplan.vpCommissions[vpSalesType][vpModel] || 0
       sellerCommission += commissionDetails.vpCommission
     }
+    
   } else if (vehicleType === "VU") {
-    const margeRestanteVU =
-      margeFixeVehiculeOptions +
-      margeFordPro +
-      margeRepresentationMarque +
-      margeAccessoiresAmenagesVU +
-      assistanceConstructeur -
-      remiseConsentie
+    // Commission VU basée sur marge restante
+    const margeRestanteVU = margeFixeVehiculeOptions + margeFordPro + margeRepresentationMarque + 
+                           margeAccessoiresAmenagesVU + assistanceConstructeur - remiseConsentie
     commissionDetails.vuCommission = margeRestanteVU * payplan.vuCommissionRate
     sellerCommission += commissionDetails.vuCommission
   }
 
-  // 2. Financing Commission (updated with 3 services)
+  // 2. Bonus financement
   if (hasFinancing && financedAmountHT > payplan.financingMinAmount) {
     let currentFinancingRate = 0
+    
+    // Taux selon type et services
     if (financingType === "principal") {
       if (numberOfServicesSold === 1) currentFinancingRate = payplan.financingRates.principal.service1
       else if (numberOfServicesSold === 2) currentFinancingRate = payplan.financingRates.principal.service2
@@ -545,53 +569,48 @@ export function calculateMarginSheet(inputs: CalculateInputs, payplan: Payplan):
       else if (numberOfServicesSold === 2) currentFinancingRate = payplan.financingRates.specific.service2
       else if (numberOfServicesSold === 3) currentFinancingRate = payplan.financingRates.specific.service3
     }
+    
     commissionDetails.financingBonus += financedAmountHT * currentFinancingRate
 
-    // Additional financing bonuses
+    // Bonus financement spécifiques
     if (isCreditBailVN) commissionDetails.financingBonus += financedAmountHT * payplan.financingBonus.creditBailVN
     if (isLOAVO) commissionDetails.financingBonus += financedAmountHT * payplan.financingBonus.loaVO
     if (isIDFord25Months) commissionDetails.financingBonus += financedAmountHT * payplan.financingBonus.idFord25Months
-    if (isLLDProFordLease) commissionDetails.financingBonus += payplan.financingBonus.lldProFordLease // Fixed amount
+    if (isLLDProFordLease) commissionDetails.financingBonus += payplan.financingBonus.lldProFordLease
   }
   sellerCommission += commissionDetails.financingBonus
 
-  // 3. Packs & Peripherals Commission (updated values)
-  const currentPackCommissions = isHighPenetrationRate
-    ? payplan.packCommissionsHighPenetration
-    : payplan.packCommissions
+  // 3. Bonus packs livraison
+  const currentPackCommissions = isHighPenetrationRate ? payplan.packCommissionsHighPenetration : payplan.packCommissions
   commissionDetails.deliveryPackBonus = currentPackCommissions[deliveryPackSold]
   sellerCommission += commissionDetails.deliveryPackBonus
 
+  // 4. Bonus CLD Ford
   if (cldFordDuration !== "none") {
     const currentCldCommissions = isHighPenetrationRate ? payplan.cldCommissionsHighPenetration : payplan.cldCommissions
     commissionDetails.cldBonus = currentCldCommissions[cldFordDuration]
     sellerCommission += commissionDetails.cldBonus
   }
 
+  // 5. Bonus contrat entretien
   if (hasMaintenanceContract) {
-    commissionDetails.maintenanceContractBonus = isHighPenetrationRate
-      ? payplan.maintenanceContractCommissionHighPenetration
-      : payplan.maintenanceContractCommission
+    commissionDetails.maintenanceContractBonus = isHighPenetrationRate ? 
+      payplan.maintenanceContractCommissionHighPenetration : 
+      payplan.maintenanceContractCommission
     sellerCommission += commissionDetails.maintenanceContractBonus
   }
 
-  // 4. Coyote Commission
+  // 6. Bonus Coyote
   if (hasCoyote && coyoteDuration !== "none") {
     commissionDetails.coyoteBonus = payplan.coyoteCommissions[coyoteDuration]
     sellerCommission += commissionDetails.coyoteBonus
   }
 
-  // 5. Accessory Commission (updated tiers)
+  // 7. Bonus accessoires
   if (hasAccessories && accessoryAmountTTC > 0) {
-    if (
-      accessoryAmountTTC >= payplan.accessoryTiers.tier1.min &&
-      accessoryAmountTTC <= payplan.accessoryTiers.tier1.max
-    ) {
+    if (accessoryAmountTTC >= payplan.accessoryTiers.tier1.min && accessoryAmountTTC <= payplan.accessoryTiers.tier1.max) {
       commissionDetails.accessoryBonus = payplan.accessoryTiers.tier1.bonus
-    } else if (
-      accessoryAmountTTC >= payplan.accessoryTiers.tier2.min &&
-      accessoryAmountTTC <= payplan.accessoryTiers.tier2.max
-    ) {
+    } else if (accessoryAmountTTC >= payplan.accessoryTiers.tier2.min && accessoryAmountTTC <= payplan.accessoryTiers.tier2.max) {
       commissionDetails.accessoryBonus = payplan.accessoryTiers.tier2.bonus
     } else if (accessoryAmountTTC >= payplan.accessoryTiers.tier3.min) {
       commissionDetails.accessoryBonus = payplan.accessoryTiers.tier3.bonus
@@ -599,10 +618,11 @@ export function calculateMarginSheet(inputs: CalculateInputs, payplan: Payplan):
   }
   sellerCommission += commissionDetails.accessoryBonus
 
-  // Marge Finale (Concessionnaire)
+  // Marge finale pour le concessionnaire
   const finalMargin = calculatedRemainingMarginHT - sellerCommission
 
-  return {
+  // Construction du résultat
+  const result: CalculatedResults = {
     purchasePriceHT: Number.parseFloat(calculatedPurchasePriceHT.toFixed(2)),
     sellingPriceHT: Number.parseFloat(calculatedSellingPriceHT.toFixed(2)),
     initialMarginHT: Number.parseFloat(calculatedInitialMarginHT.toFixed(2)),
@@ -626,12 +646,21 @@ export function calculateMarginSheet(inputs: CalculateInputs, payplan: Payplan):
       accessoryBonus: Number.parseFloat(commissionDetails.accessoryBonus.toFixed(2)),
     },
   }
+
+  // Ajout des champs VN si applicables
+  if (vnMarginPercentage !== undefined) result.vnMarginPercentage = vnMarginPercentage
+  if (vnCalculatedMargin !== undefined) result.vnCalculatedMargin = Number.parseFloat(vnCalculatedMargin.toFixed(2))
+  if (vnTotalOptionsHT !== undefined) result.vnTotalOptionsHT = Number.parseFloat(vnTotalOptionsHT.toFixed(2))
+  if (vnTotalOptionsTTC !== undefined) result.vnTotalOptionsTTC = Number.parseFloat(vnTotalOptionsTTC.toFixed(2))
+  if (vnTotalDiscountsHT !== undefined) result.vnTotalDiscountsHT = Number.parseFloat(vnTotalDiscountsHT.toFixed(2))
+  if (vnTotalDiscountsTTC !== undefined) result.vnTotalDiscountsTTC = Number.parseFloat(vnTotalDiscountsTTC.toFixed(2))
+  if (vnFordRecoveryTotal !== undefined) result.vnFordRecoveryTotal = Number.parseFloat(vnFordRecoveryTotal.toFixed(2))
+
+  return result
 }
 
 export function getMarginSheets(): MarginSheet[] {
-  if (typeof window === "undefined") {
-    return []
-  }
+  if (typeof window === "undefined") return []
   try {
     const storedSheets = localStorage.getItem(MARGIN_SHEETS_STORAGE_KEY)
     return storedSheets ? JSON.parse(storedSheets) : []
@@ -642,9 +671,7 @@ export function getMarginSheets(): MarginSheet[] {
 }
 
 export function saveMarginSheets(sheets: MarginSheet[]): void {
-  if (typeof window === "undefined") {
-    return
-  }
+  if (typeof window === "undefined") return
   try {
     localStorage.setItem(MARGIN_SHEETS_STORAGE_KEY, JSON.stringify(sheets))
   } catch (error) {

@@ -26,6 +26,8 @@ interface PrintableMarginSheetProps {
   warranty12Months: number | string
   workshopTransfer: number | string
   preparationHT: number | string
+  vnClientKeyInHandPriceHT?: number | string
+  vnClientDeparturePriceHT?: number | string
 }
 
 export function PrintableMarginSheet({
@@ -51,6 +53,8 @@ export function PrintableMarginSheet({
   warranty12Months,
   workshopTransfer,
   preparationHT,
+  vnClientKeyInHandPriceHT,
+  vnClientDeparturePriceHT,
 }: PrintableMarginSheetProps) {
   const formatCurrency = (value: number | null | undefined | string) => {
     if (value === null || typeof value === "undefined" || value === "") return "0,00 €"
@@ -68,7 +72,7 @@ export function PrintableMarginSheet({
   const getVehicleTypeLabel = (type: string) => {
     switch (type) {
       case "VO": return "Véhicule d'Occasion (VO)"
-      case "VP": return "Véhicule Particulier (VP)"
+      case "VP": return "Véhicule Neuf (VN)"
       case "VU": return "Véhicule Utilitaire (VU)"
       default: return type
     }
@@ -91,6 +95,8 @@ export function PrintableMarginSheet({
     }
   }
 
+  const isVNMode = vehicleType === "VP" && vnClientKeyInHandPriceHT && vnClientDeparturePriceHT
+
   return (
     <div className="print-only" style={{ display: "none" }}>
       <style jsx>{`
@@ -100,11 +106,13 @@ export function PrintableMarginSheet({
         
           .section { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 6px; }
           .section-title { background: #0ea5e9; color: #fff; padding: 3px 6px; border-radius: 4px 4px 0 0; font-weight: bold; }
+          .section-title-vn { background: #059669; color: #fff; padding: 3px 6px; border-radius: 4px 4px 0 0; font-weight: bold; }
           .row { display: grid; gap: 6px; padding: 6px; }
           .grid-2 { grid-template-columns: 1fr 1fr; }
           .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
           .label { color: #475569; }
           .value { font-weight: 700; color: #111827; }
+          .value-vn { font-weight: 700; color: #059669; }
           .hl { color: #059669; font-weight: 800; }
           .total { background: #fee2e2; color: #b91c1c; font-weight: 800; text-align: center; padding: 4px; border-radius: 4px; }
 
@@ -118,8 +126,6 @@ export function PrintableMarginSheet({
           .sig-date { text-align: right; color: #475569; font-weight: 600; margin: 6px 40px 4px 0; }
         }
       `}</style>
-
-    
 
       {/* Informations générales */}
       <div className="section">
@@ -144,33 +150,54 @@ export function PrintableMarginSheet({
         </div>
       </div>
 
-      {/* PRIX & DATES */}
+      {/* PRIX & DATES - Adapté pour VN */}
       <div className="section">
-        <div className="section-title">💶 PRIX & DATES</div>
+        <div className={isVNMode ? "section-title-vn" : "section-title"}>
+          {isVNMode ? "💶 PRIX VN (VÉHICULE NEUF)" : "💶 PRIX & DATES"}
+        </div>
         <div className="row grid-3">
-          <div><span className="label">Prix achat TTC :</span> <span className="value">{formatCurrency(purchasePriceTTC)}</span></div>
-          <div><span className="label">Prix vente TTC :</span> <span className="value">{formatCurrency(sellingPriceTTC)}</span></div>
-          <div><span className="label">Date achat VO :</span> <span className="value">{formatDate(purchaseDate)}</span></div>
+          {isVNMode ? (
+            <>
+              <div><span className="label">Prix client clé en main HT :</span> <span className="value-vn">{formatCurrency(vnClientKeyInHandPriceHT)}</span></div>
+              <div><span className="label">Prix départ client HT :</span> <span className="value-vn">{formatCurrency(vnClientDeparturePriceHT)}</span></div>
+              <div><span className="label">Marge calculée (5%) :</span> <span className="value-vn">{formatCurrency(calculatedResults.vnCalculatedMargin)}</span></div>
+            </>
+          ) : (
+            <>
+              <div><span className="label">Prix achat TTC :</span> <span className="value">{formatCurrency(purchasePriceTTC)}</span></div>
+              <div><span className="label">Prix vente TTC :</span> <span className="value">{formatCurrency(sellingPriceTTC)}</span></div>
+              <div><span className="label">Date achat VO :</span> <span className="value">{formatDate(purchaseDate)}</span></div>
+            </>
+          )}
           <div><span className="label">Date commande :</span> <span className="value">{formatDate(orderDate)}</span></div>
         </div>
       </div>
 
-      {/* Calcul marge */}
+      {/* Calcul marge - Adapté pour VN */}
       <div className="section">
-        <div className="section-title">📊 CALCUL MARGE</div>
+        <div className={isVNMode ? "section-title-vn" : "section-title"}>
+          {isVNMode ? "📊 CALCUL MARGE VN (5%)" : "📊 CALCUL MARGE"}
+        </div>
         <div className="row grid-3">
-          {isOtherStockCession ? (
+          {isVNMode ? (
+            <>
+              <div><span className="label">Base de calcul (Prix départ client) :</span> <span className="value-vn">{formatCurrency(vnClientDeparturePriceHT)}</span></div>
+              <div><span className="label">Pourcentage marge :</span> <span className="value-vn">5,0%</span></div>
+              <div><span className="label">Marge HT Calculée :</span> <span className="value-vn">{formatCurrency(calculatedResults.vnCalculatedMargin)}</span></div>
+            </>
+          ) : isOtherStockCession ? (
             <>
               <div><span className="label">Prix cession TTC :</span> <span className="value">{formatCurrency(1800)}</span></div>
               <div><span className="label">Prix cession HT :</span> <span className="value">{formatCurrency(1800 / 1.2)}</span></div>
+              <div><span className="label">Marge HT Initiale :</span> <span className="value">{formatCurrency(calculatedResults.initialMarginHT)}</span></div>
             </>
           ) : (
             <>
               <div><span className="label">Prix Achat HT :</span> <span className="value">{formatCurrency(calculatedResults.purchasePriceHT)}</span></div>
               <div><span className="label">Prix Vente HT :</span> <span className="value">{formatCurrency(calculatedResults.sellingPriceHT)}</span></div>
+              <div><span className="label">Marge HT Initiale :</span> <span className="value">{formatCurrency(calculatedResults.initialMarginHT)}</span></div>
             </>
           )}
-          <div><span className="label">Marge HT Initiale :</span> <span className="value">{formatCurrency(calculatedResults.initialMarginHT)}</span></div>
           <div><span className="label">Marge Restante HT :</span> <span className="value hl">{formatCurrency(calculatedResults.remainingMarginHT)}</span></div>
           <div><span className="label">Marge Finale (Concess.) :</span> <span className="value hl">{formatCurrency(calculatedResults.finalMargin)}</span></div>
         </div>
@@ -202,7 +229,7 @@ export function PrintableMarginSheet({
             </>
           )}
           {vehicleType === "VP" && (
-            <div><span className="label">Commission VP :</span> <span className="value">{formatCurrency(calculatedResults.commissionDetails.vpCommission)}</span></div>
+            <div><span className="label">Commission {isVNMode ? "VN" : "VP"} :</span> <span className="value">{formatCurrency(calculatedResults.commissionDetails.vpCommission)}</span></div>
           )}
           {vehicleType === "VU" && (
             <div><span className="label">Commission VU :</span> <span className="value">{formatCurrency(calculatedResults.commissionDetails.vuCommission)}</span></div>

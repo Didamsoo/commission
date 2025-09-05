@@ -28,6 +28,15 @@ export default function HomePage() {
     saveMarginSheets(updatedSheets)
   }
 
+  // Statistiques pour l'affichage
+  const vehicleStats = marginSheets.reduce((acc, sheet) => {
+    const isVNMode = sheet.vehicleType === "VP" && sheet.vnClientKeyInHandPriceHT && sheet.vnClientDeparturePriceHT
+    const type = isVNMode ? "VN" : sheet.vehicleType
+    
+    acc[type] = (acc[type] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 text-gray-900 p-3 sm:p-6 lg:p-12">
       {/* Header complètement masqué lors de l'impression */}
@@ -36,8 +45,30 @@ export default function HomePage() {
           Gestionnaire de Marges Automobile
         </h1>
         <p className="text-sm sm:text-base md:text-lg lg:text-xl text-gray-600 mt-2 animate-fade-in delay-200 px-4">
-          Calculez, suivez et optimisez vos commissions de vente.
+          Calculez, suivez et optimisez vos commissions de vente - VO / VN / VU.
         </p>
+        
+        {/* Statistiques rapides */}
+        {marginSheets.length > 0 && (
+          <div className="mt-4 flex justify-center">
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+              <div className="flex items-center gap-4 text-sm">
+                <span className="text-gray-600">Fiches enregistrées:</span>
+                {Object.entries(vehicleStats).map(([type, count]) => (
+                  <span key={type} className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                    type === "VN" 
+                      ? "bg-green-100 text-green-800" 
+                      : type === "VO" 
+                      ? "bg-blue-100 text-blue-800"
+                      : "bg-purple-100 text-purple-800"
+                  }`}>
+                    {type}: {count}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="max-w-7xl mx-auto">
