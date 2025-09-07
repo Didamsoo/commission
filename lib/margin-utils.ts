@@ -318,7 +318,7 @@ export function getDefaultPayplan(): Payplan {
     vuCommissionRate: 0.13,
     vnMarginPercentage: 0.05,
 
-    financingMinAmount: 6001,
+    financingMinAmount: 6001 / (1 + VAT_RATE), // Conversion du montant TTC (6001€) en HT
     financingRates: {
       principal: { service1: 0.0045, service2: 0.0085, service3: 0.0100 },
       specific: { service1: 0.001, service2: 0.003, service3: 0.0045 },
