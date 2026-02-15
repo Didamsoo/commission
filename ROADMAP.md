@@ -45,19 +45,19 @@
 > Passer du localStorage à une vraie base partagée.
 
 - [x] Choisir la base de données (Supabase PostgreSQL / Firebase Firestore) → **Supabase PostgreSQL**
-- [ ] Créer la table `users` (id, email, nom, rôle, concession, avatar, stats)
-- [ ] Créer la table `concessions` (id, nom, adresse, marque, directeur)
-- [ ] Créer la table `marques` (id, nom, groupe)
-- [ ] Créer la table `equipes` (id, nom, chef_ventes_id, concession_id)
-- [ ] Créer la table `fiches_marge` (toutes les données du calculateur)
-- [ ] Créer la table `payplan` (règles de commission par concession)
-- [ ] Créer la table `defis_plateforme` (défis créés par la direction)
-- [ ] Créer la table `defis_p2p` (défis entre commerciaux)
-- [ ] Créer la table `badges` (id, nom, description, critères)
-- [ ] Créer la table `badges_utilisateur` (user_id, badge_id, date_obtention)
-- [ ] Créer la table `notes_coaching` (chef_ventes → commercial)
-- [ ] Créer la table `approbations` (ventes en attente de validation)
-- [ ] Créer la table `notifications` (système de notifications)
+- [x] Créer la table `users` (id, email, nom, rôle, concession, avatar, stats) → `profiles` + trigger auto
+- [x] Créer la table `concessions` (id, nom, adresse, marque, directeur)
+- [x] Créer la table `marques` (id, nom, groupe)
+- [x] Créer la table `equipes` (id, nom, chef_ventes_id, concession_id)
+- [x] Créer la table `fiches_marge` (toutes les données du calculateur)
+- [x] Créer la table `payplan` (règles de commission par concession) → `payplans`
+- [x] Créer la table `defis_plateforme` (défis créés par la direction)
+- [x] Créer la table `defis_p2p` (défis entre commerciaux)
+- [x] Créer la table `badges` (id, nom, description, critères)
+- [x] Créer la table `badges_utilisateur` (user_id, badge_id, date_obtention)
+- [x] Créer la table `notes_coaching` (chef_ventes → commercial)
+- [x] Créer la table `approbations` (ventes en attente de validation)
+- [x] Créer la table `notifications` (système de notifications)
 - [ ] Migrer les données du localStorage vers la base
 
 ---
