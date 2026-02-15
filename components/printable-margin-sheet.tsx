@@ -50,9 +50,6 @@ export function PrintableMarginSheet({
   hasMaintenanceContract,
   hasCoyote,
   hasAccessories,
-  warranty12Months,
-  workshopTransfer,
-  preparationHT,
   vnClientKeyInHandPriceHT,
   vnClientDeparturePriceHT,
 }: PrintableMarginSheetProps) {
@@ -69,213 +66,556 @@ export function PrintableMarginSheet({
     return date.toLocaleDateString("fr-FR")
   }
 
-  const getVehicleTypeLabel = (type: string) => {
-    switch (type) {
-      case "VO": return "Véhicule d'Occasion (VO)"
-      case "VP": return "Véhicule Neuf (VN)"
-      case "VU": return "Véhicule Utilitaire (VU)"
-      default: return type
-    }
-  }
-
   const getDeliveryPackLabel = (pack: string) => {
     switch (pack) {
-      case "pack1": return "Pack 1 (199€)"
-      case "pack2": return "Pack 2 (699€)"
-      case "pack3": return "Pack 3 (899€)"
-      default: return "Aucun Pack"
+      case "pack1": return "Pack 1"
+      case "pack2": return "Pack 2"
+      case "pack3": return "Pack 3"
+      default: return "-"
     }
   }
 
   const getCldDurationLabel = (duration: string) => {
     switch (duration) {
-      case "3-4": return "3 ou 4 ans"
-      case "5+": return "5 ans et +"
-      default: return "Aucun CLD"
+      case "3-4": return "3-4 ans"
+      case "5+": return "5+ ans"
+      default: return "-"
     }
   }
 
   const isVNMode = vehicleType === "VP" && vnClientKeyInHandPriceHT && vnClientDeparturePriceHT
+  const displayType = isVNMode ? "VN" : vehicleType
+
+  // Couleurs selon le type
+  const getColors = () => {
+    if (isVNMode) return { primary: "#059669", light: "#d1fae5", text: "#047857" }
+    switch (vehicleType) {
+      case "VO": return { primary: "#2563eb", light: "#dbeafe", text: "#1d4ed8" }
+      case "VU": return { primary: "#7c3aed", light: "#ede9fe", text: "#6d28d9" }
+      default: return { primary: "#2563eb", light: "#dbeafe", text: "#1d4ed8" }
+    }
+  }
+
+  const colors = getColors()
+
+  // Styles de base
+  const styles = {
+    container: {
+      fontFamily: "Arial, sans-serif",
+      fontSize: "9pt",
+      color: "#1f2937",
+      lineHeight: 1.4,
+      padding: "8mm",
+      background: "white",
+      maxWidth: "210mm",
+      margin: "0 auto",
+    } as React.CSSProperties,
+    header: {
+      display: "flex",
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingBottom: "8px",
+      marginBottom: "12px",
+      borderBottom: `2px solid ${colors.primary}`,
+    } as React.CSSProperties,
+    title: {
+      fontSize: "16pt",
+      fontWeight: "bold",
+      color: colors.primary,
+      margin: 0,
+    } as React.CSSProperties,
+    subtitle: {
+      fontSize: "8pt",
+      color: "#6b7280",
+      margin: 0,
+    } as React.CSSProperties,
+    badge: {
+      display: "inline-block",
+      background: colors.primary,
+      color: "white",
+      padding: "4px 12px",
+      borderRadius: "12px",
+      fontSize: "10pt",
+      fontWeight: "bold",
+    } as React.CSSProperties,
+    dateInfo: {
+      fontSize: "8pt",
+      color: "#6b7280",
+      marginTop: "4px",
+      textAlign: "right" as const,
+    } as React.CSSProperties,
+    section: {
+      border: "1px solid #e5e7eb",
+      borderRadius: "6px",
+      marginBottom: "8px",
+      overflow: "hidden",
+    } as React.CSSProperties,
+    sectionHeader: {
+      background: colors.primary,
+      color: "white",
+      padding: "4px 10px",
+      fontWeight: "bold",
+      fontSize: "9pt",
+    } as React.CSSProperties,
+    sectionBody: {
+      padding: "8px 10px",
+    } as React.CSSProperties,
+    grid: {
+      display: "grid",
+      gap: "6px 12px",
+    } as React.CSSProperties,
+    grid4: {
+      gridTemplateColumns: "repeat(4, 1fr)",
+    } as React.CSSProperties,
+    grid3: {
+      gridTemplateColumns: "repeat(3, 1fr)",
+    } as React.CSSProperties,
+    label: {
+      fontSize: "7pt",
+      color: "#6b7280",
+      textTransform: "uppercase" as const,
+      letterSpacing: "0.3px",
+      marginBottom: "1px",
+    } as React.CSSProperties,
+    value: {
+      fontSize: "9pt",
+      fontWeight: "bold",
+      color: "#111827",
+    } as React.CSSProperties,
+    valueHighlight: {
+      fontSize: "9pt",
+      fontWeight: "bold",
+      color: colors.primary,
+    } as React.CSSProperties,
+    optionsGrid: {
+      display: "grid",
+      gridTemplateColumns: "repeat(5, 1fr)",
+      gap: "6px",
+    } as React.CSSProperties,
+    optionActive: {
+      textAlign: "center" as const,
+      padding: "6px 4px",
+      borderRadius: "6px",
+      fontSize: "7pt",
+      background: colors.light,
+      border: `1px solid ${colors.primary}`,
+      color: colors.text,
+    } as React.CSSProperties,
+    optionInactive: {
+      textAlign: "center" as const,
+      padding: "6px 4px",
+      borderRadius: "6px",
+      fontSize: "7pt",
+      background: "#f3f4f6",
+      border: "1px solid #e5e7eb",
+      color: "#9ca3af",
+    } as React.CSSProperties,
+    optionLabel: {
+      fontWeight: "bold",
+      display: "block",
+    } as React.CSSProperties,
+    commissionTable: {
+      width: "100%",
+      borderCollapse: "collapse" as const,
+      fontSize: "8pt",
+    } as React.CSSProperties,
+    commissionTd: {
+      padding: "3px 6px",
+      borderBottom: "1px solid #f3f4f6",
+    } as React.CSSProperties,
+    commissionValue: {
+      textAlign: "right" as const,
+      fontWeight: "bold",
+    } as React.CSSProperties,
+    commissionZero: {
+      color: "#9ca3af",
+    } as React.CSSProperties,
+    summaryBox: {
+      background: colors.light,
+      border: `2px solid ${colors.primary}`,
+      borderRadius: "8px",
+      padding: "10px",
+      marginTop: "10px",
+    } as React.CSSProperties,
+    summaryGrid: {
+      display: "grid",
+      gridTemplateColumns: "repeat(3, 1fr)",
+      gap: "10px",
+      textAlign: "center" as const,
+      marginBottom: "8px",
+    } as React.CSSProperties,
+    summaryLabel: {
+      fontSize: "7pt",
+      color: "#6b7280",
+      textTransform: "uppercase" as const,
+    } as React.CSSProperties,
+    summaryValue: {
+      fontSize: "12pt",
+      fontWeight: "bold",
+      color: colors.primary,
+    } as React.CSSProperties,
+    summaryTotal: {
+      background: colors.primary,
+      color: "white",
+      padding: "8px",
+      borderRadius: "6px",
+      textAlign: "center" as const,
+    } as React.CSSProperties,
+    summaryTotalLabel: {
+      fontSize: "8pt",
+    } as React.CSSProperties,
+    summaryTotalValue: {
+      fontSize: "14pt",
+      fontWeight: "bold",
+    } as React.CSSProperties,
+    signatures: {
+      display: "grid",
+      gridTemplateColumns: "1fr 1fr",
+      gap: "12px",
+      marginTop: "12px",
+    } as React.CSSProperties,
+    signatureBox: {
+      border: "1px solid #e5e7eb",
+      borderRadius: "6px",
+      overflow: "hidden",
+    } as React.CSSProperties,
+    signatureHeader: {
+      background: "#f3f4f6",
+      padding: "4px 10px",
+      fontWeight: "bold",
+      fontSize: "8pt",
+      borderBottom: "1px solid #e5e7eb",
+    } as React.CSSProperties,
+    signatureContent: {
+      padding: "8px 10px",
+      minHeight: "50px",
+    } as React.CSSProperties,
+    signatureRole: {
+      fontSize: "7pt",
+      color: "#6b7280",
+      textAlign: "center" as const,
+    } as React.CSSProperties,
+    signatureLine: {
+      borderTop: "1px solid #9ca3af",
+      margin: "25px 20px 0",
+    } as React.CSSProperties,
+    signatureDate: {
+      fontSize: "7pt",
+      color: "#6b7280",
+      textAlign: "right" as const,
+      marginTop: "6px",
+    } as React.CSSProperties,
+    footer: {
+      marginTop: "8px",
+      paddingTop: "6px",
+      borderTop: "1px solid #e5e7eb",
+      display: "flex",
+      justifyContent: "space-between",
+      fontSize: "7pt",
+      color: "#9ca3af",
+    } as React.CSSProperties,
+  }
 
   return (
-    <div className="print-only" style={{ display: "none" }}>
-      <style jsx>{`
+    <>
+      <style>{`
+        @media screen {
+          .print-sheet-container {
+            display: none !important;
+          }
+        }
         @media print {
-          @page { size: A4; margin: 8mm; }
-          .print-only { display: block !important; font-family: Arial, sans-serif; font-size: 10px; }
-        
-          .section { background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 6px; }
-          .section-title { background: #0ea5e9; color: #fff; padding: 3px 6px; border-radius: 4px 4px 0 0; font-weight: bold; }
-          .section-title-vn { background: #059669; color: #fff; padding: 3px 6px; border-radius: 4px 4px 0 0; font-weight: bold; }
-          .row { display: grid; gap: 6px; padding: 6px; }
-          .grid-2 { grid-template-columns: 1fr 1fr; }
-          .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
-          .label { color: #475569; }
-          .value { font-weight: 700; color: #111827; }
-          .value-vn { font-weight: 700; color: #059669; }
-          .hl { color: #059669; font-weight: 800; }
-          .total { background: #fee2e2; color: #b91c1c; font-weight: 800; text-align: center; padding: 4px; border-radius: 4px; }
-
-          /* Styles signatures */
-          .sig-wrapper { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 8px; }
-          .sig-card { border: 1px solid #cbd5e1; border-radius: 6px; background: #e2e8f0; }
-          .sig-title { background: #64748b; color: #fff; font-weight: 800; padding: 6px 10px; border-radius: 6px 6px 0 0; }
-          .sig-box { background: #f8fafc; border: 2px solid #cbd5e1; border-radius: 4px; margin: 8px; padding: 10px; min-height: 70px; display: grid; gap: 10px; }
-          .sig-role { text-align: center; color: #475569; font-weight: 700; }
-          .sig-line { height: 0; border-top: 3px solid #94a3b8; margin: 10px 40px 0 40px; }
-          .sig-date { text-align: right; color: #475569; font-weight: 600; margin: 6px 40px 4px 0; }
+          @page {
+            size: A4 portrait;
+            margin: 0;
+          }
+          body * {
+            visibility: hidden;
+          }
+          .print-sheet-container,
+          .print-sheet-container * {
+            visibility: visible !important;
+          }
+          .print-sheet-container {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            display: block !important;
+          }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
         }
       `}</style>
 
-      {/* Informations générales */}
-      <div className="section">
-        <div className="section-title">📋 INFORMATIONS GÉNÉRALES</div>
-        <div className="row grid-2">
-          <div><span className="label">Date :</span> <span className="value">{new Date().toLocaleDateString("fr-FR")}</span></div>
-          <div><span className="label">N° Véhicule :</span> <span className="value">{vehicleNumber || "N/A"}</span></div>
-          <div><span className="label">Vendeur :</span> <span className="value">{sellerName || "N/A"}</span></div>
-          <div><span className="label">Client :</span> <span className="value">{clientName || "N/A"}</span></div>
-          <div style={{ gridColumn: "1 / -1" }}><span className="label">Véhicule :</span> <span className="value">{vehicleSoldName || "N/A"}</span></div>
-        </div>
-      </div>
-
-      {/* Détails véhicule */}
-      <div className="section">
-        <div className="section-title">🚗 DÉTAILS VÉHICULE</div>
-        <div className="row grid-3">
-          <div><span className="label">Type :</span> <span className="value">{getVehicleTypeLabel(vehicleType)}</span></div>
-          {vehicleType === "VP" && vpModel && <div><span className="label">Modèle :</span> <span className="value">{vpModel}</span></div>}
-          <div><span className="label">Électrique :</span> <span className="value">{isElectricVehicle ? "✅ Oui" : "❌ Non"}</span></div>
-          <div><span className="label">Financement :</span> <span className="value">{hasFinancing ? "✅ Oui" : "❌ Non"}</span></div>
-        </div>
-      </div>
-
-      {/* PRIX & DATES - Adapté pour VN */}
-      <div className="section">
-        <div className={isVNMode ? "section-title-vn" : "section-title"}>
-          {isVNMode ? "💶 PRIX VN (VÉHICULE NEUF)" : "💶 PRIX & DATES"}
-        </div>
-        <div className="row grid-3">
-          {isVNMode ? (
-            <>
-              <div><span className="label">Prix client clé en main HT :</span> <span className="value-vn">{formatCurrency(vnClientKeyInHandPriceHT)}</span></div>
-              <div><span className="label">Prix départ client HT :</span> <span className="value-vn">{formatCurrency(vnClientDeparturePriceHT)}</span></div>
-              <div><span className="label">Marge calculée (5%) :</span> <span className="value-vn">{formatCurrency(calculatedResults.vnCalculatedMargin)}</span></div>
-            </>
-          ) : (
-            <>
-              <div><span className="label">Prix achat TTC :</span> <span className="value">{formatCurrency(purchasePriceTTC)}</span></div>
-              <div><span className="label">Prix vente TTC :</span> <span className="value">{formatCurrency(sellingPriceTTC)}</span></div>
-              <div><span className="label">Date achat VO :</span> <span className="value">{formatDate(purchaseDate)}</span></div>
-            </>
-          )}
-          <div><span className="label">Date commande :</span> <span className="value">{formatDate(orderDate)}</span></div>
-        </div>
-      </div>
-
-      {/* Calcul marge - Adapté pour VN */}
-      <div className="section">
-        <div className={isVNMode ? "section-title-vn" : "section-title"}>
-          {isVNMode ? "📊 CALCUL MARGE VN (5%)" : "📊 CALCUL MARGE"}
-        </div>
-        <div className="row grid-3">
-          {isVNMode ? (
-            <>
-              <div><span className="label">Base de calcul (Prix départ client) :</span> <span className="value-vn">{formatCurrency(vnClientDeparturePriceHT)}</span></div>
-              <div><span className="label">Pourcentage marge :</span> <span className="value-vn">5,0%</span></div>
-              <div><span className="label">Marge HT Calculée :</span> <span className="value-vn">{formatCurrency(calculatedResults.vnCalculatedMargin)}</span></div>
-            </>
-          ) : isOtherStockCession ? (
-            <>
-              <div><span className="label">Prix cession TTC :</span> <span className="value">{formatCurrency(1800)}</span></div>
-              <div><span className="label">Prix cession HT :</span> <span className="value">{formatCurrency(1800 / 1.2)}</span></div>
-              <div><span className="label">Marge HT Initiale :</span> <span className="value">{formatCurrency(calculatedResults.initialMarginHT)}</span></div>
-            </>
-          ) : (
-            <>
-              <div><span className="label">Prix Achat HT :</span> <span className="value">{formatCurrency(calculatedResults.purchasePriceHT)}</span></div>
-              <div><span className="label">Prix Vente HT :</span> <span className="value">{formatCurrency(calculatedResults.sellingPriceHT)}</span></div>
-              <div><span className="label">Marge HT Initiale :</span> <span className="value">{formatCurrency(calculatedResults.initialMarginHT)}</span></div>
-            </>
-          )}
-          <div><span className="label">Marge Restante HT :</span> <span className="value hl">{formatCurrency(calculatedResults.remainingMarginHT)}</span></div>
-          <div><span className="label">Marge Finale (Concess.) :</span> <span className="value hl">{formatCurrency(calculatedResults.finalMargin)}</span></div>
-        </div>
-      </div>
-
-      {/* Services & options */}
-      <div className="section">
-        <div className="section-title">🎁 SERVICES & OPTIONS</div>
-        <div className="row grid-3">
-          <div><span className="label">Pack Livraison :</span> <span className="value">{getDeliveryPackLabel(deliveryPackSold)}</span></div>
-          <div><span className="label">CLD Ford :</span> <span className="value">{getCldDurationLabel(cldFordDuration)}</span></div>
-          <div><span className="label">Contrat Entretien :</span> <span className="value">{hasMaintenanceContract ? "✅ Oui" : "❌ Non"}</span></div>
-          <div><span className="label">Coyote Tracker :</span> <span className="value">{hasCoyote ? "✅ Oui" : "❌ Non"}</span></div>
-          <div><span className="label">Accessoires :</span> <span className="value">{hasAccessories ? "✅ Oui" : "❌ Non"}</span></div>
-        </div>
-      </div>
-
-      {/* DÉTAIL COMMISSION VENDEUR */}
-      <div className="section">
-        <div className="section-title">💼 DÉTAIL COMMISSION VENDEUR</div>
-        <div className="row grid-3">
-          {vehicleType === "VO" && (
-            <>
-              <div><span className="label">Commission VO (Base) :</span> <span className="value">{formatCurrency(calculatedResults.commissionDetails.voBaseCommission)}</span></div>
-              <div><span className="label">Bonus -60 jours :</span> <span className="value">{formatCurrency(calculatedResults.commissionDetails.voBonus60Days)}</span></div>
-              <div><span className="label">Bonus Prix Affiché :</span> <span className="value">{formatCurrency(calculatedResults.commissionDetails.voBonusListedPrice)}</span></div>
-              <div><span className="label">Bonus Financement VO :</span> <span className="value">{formatCurrency(calculatedResults.commissionDetails.voBonusFinancing)}</span></div>
-              <div><span className="label">Bonus Véhicule Électrique :</span> <span className="value">{formatCurrency(calculatedResults.commissionDetails.voBonusElectricVehicle)}</span></div>
-            </>
-          )}
-          {vehicleType === "VP" && (
-            <div><span className="label">Commission {isVNMode ? "VN" : "VP"} :</span> <span className="value">{formatCurrency(calculatedResults.commissionDetails.vpCommission)}</span></div>
-          )}
-          {vehicleType === "VU" && (
-            <div><span className="label">Commission VU :</span> <span className="value">{formatCurrency(calculatedResults.commissionDetails.vuCommission)}</span></div>
-          )}
-          <div><span className="label">Bonus Financement :</span> <span className="value">{formatCurrency(calculatedResults.commissionDetails.financingBonus)}</span></div>
-          <div><span className="label">Bonus Pack Livraison :</span> <span className="value">{formatCurrency(calculatedResults.commissionDetails.deliveryPackBonus)}</span></div>
-          <div><span className="label">Bonus CLD Ford :</span> <span className="value">{formatCurrency(calculatedResults.commissionDetails.cldBonus)}</span></div>
-          <div><span className="label">Bonus Contrat Entretien :</span> <span className="value">{formatCurrency(calculatedResults.commissionDetails.maintenanceContractBonus)}</span></div>
-          <div><span className="label">Bonus Coyote :</span> <span className="value">{formatCurrency(calculatedResults.commissionDetails.coyoteBonus)}</span></div>
-          <div><span className="label">Bonus Accessoires :</span> <span className="value">{formatCurrency(calculatedResults.commissionDetails.accessoryBonus)}</span></div>
-        </div>
-      </div>
-
-      {/* RÉSUMÉ FINAL */}
-      <div className="section">
-        <div className="section-title">✅ RÉSUMÉ FINAL</div>
-        <div className="row grid-3">
-          <div><span className="label">Marge Restante HT :</span> <span className="value hl">{formatCurrency(calculatedResults.remainingMarginHT)}</span></div>
-          <div><span className="label">Commission Vendeur :</span> <span className="value hl">{formatCurrency(calculatedResults.sellerCommission)}</span></div>
-          <div><span className="label">Marge Finale (Concess.) :</span> <span className="value hl">{formatCurrency(calculatedResults.finalMargin)}</span></div>
-          <div style={{ gridColumn: "1 / -1" }} className="total">💰 COMMISSION TOTALE VENDEUR : {formatCurrency(calculatedResults.sellerCommission)}</div>
-        </div>
-      </div>
-
-      {/* SIGNATURES */}
-      <div className="sig-wrapper">
-        {/* Signature vendeur */}
-        <div className="sig-card">
-          <div className="sig-title">✏️ SIGNATURE VENDEUR</div>
-          <div className="sig-box">
-            <div className="sig-role">Nom, Prénom &amp; Signature</div>
-            <div style={{ height: "40px" }} /> {/* espace pour signature */}
-            <div className="sig-date">Date : ___/___/_____</div>
+      <div className="print-sheet-container" style={styles.container}>
+        {/* Header */}
+        <div style={styles.header}>
+          <div>
+            <h1 style={styles.title}>Feuille de Marge</h1>
+            <p style={styles.subtitle}>Ford Paris Est</p>
+          </div>
+          <div>
+            <span style={styles.badge}>{displayType}</span>
+            <div style={styles.dateInfo}>{new Date().toLocaleDateString("fr-FR")}</div>
           </div>
         </div>
 
-        {/* Signature direction */}
-        <div className="sig-card">
-          <div className="sig-title">✏️ SIGNATURE DIRECTION</div>
-          <div className="sig-box">
-            <div className="sig-role">Chef/Directeur de Vente</div>
-            <div style={{ height: "40px" }} /> {/* espace pour signature */}
-            <div className="sig-date">Date : ___/___/_____</div>
+        {/* Informations générales */}
+        <div style={styles.section}>
+          <div style={styles.sectionHeader}>INFORMATIONS GÉNÉRALES</div>
+          <div style={styles.sectionBody}>
+            <div style={{ ...styles.grid, ...styles.grid4 }}>
+              <div>
+                <div style={styles.label}>N° Véhicule</div>
+                <div style={styles.value}>{vehicleNumber || "N/A"}</div>
+              </div>
+              <div>
+                <div style={styles.label}>Vendeur</div>
+                <div style={styles.value}>{sellerName || "N/A"}</div>
+              </div>
+              <div>
+                <div style={styles.label}>Client</div>
+                <div style={styles.value}>{clientName || "N/A"}</div>
+              </div>
+              <div>
+                <div style={styles.label}>Date commande</div>
+                <div style={styles.value}>{formatDate(orderDate)}</div>
+              </div>
+            </div>
+            <div style={{ ...styles.grid, gridTemplateColumns: "2fr 1fr 1fr", marginTop: "6px" }}>
+              <div>
+                <div style={styles.label}>Véhicule</div>
+                <div style={styles.value}>{vehicleSoldName || "N/A"}</div>
+              </div>
+              <div>
+                <div style={styles.label}>Électrique</div>
+                <div style={styles.value}>{isElectricVehicle ? "Oui" : "Non"}</div>
+              </div>
+              <div>
+                <div style={styles.label}>Financement</div>
+                <div style={styles.value}>{hasFinancing ? "Oui" : "Non"}</div>
+              </div>
+            </div>
           </div>
         </div>
+
+        {/* Prix & Marge */}
+        <div style={styles.section}>
+          <div style={styles.sectionHeader}>{isVNMode ? "PRIX VN & CALCUL MARGE (5%)" : "PRIX & CALCUL MARGE"}</div>
+          <div style={styles.sectionBody}>
+            <div style={{ ...styles.grid, ...styles.grid4 }}>
+              {isVNMode ? (
+                <>
+                  <div>
+                    <div style={styles.label}>Prix clé en main HT</div>
+                    <div style={styles.valueHighlight}>{formatCurrency(vnClientKeyInHandPriceHT)}</div>
+                  </div>
+                  <div>
+                    <div style={styles.label}>Prix départ client HT</div>
+                    <div style={styles.valueHighlight}>{formatCurrency(vnClientDeparturePriceHT)}</div>
+                  </div>
+                  <div>
+                    <div style={styles.label}>Marge calculée (5%)</div>
+                    <div style={styles.valueHighlight}>{formatCurrency(calculatedResults.vnCalculatedMargin)}</div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <div style={styles.label}>Prix achat TTC</div>
+                    <div style={styles.value}>{formatCurrency(purchasePriceTTC)}</div>
+                  </div>
+                  <div>
+                    <div style={styles.label}>Prix vente TTC</div>
+                    <div style={styles.value}>{formatCurrency(sellingPriceTTC)}</div>
+                  </div>
+                  <div>
+                    <div style={styles.label}>Marge HT initiale</div>
+                    <div style={styles.valueHighlight}>{formatCurrency(calculatedResults.initialMarginHT)}</div>
+                  </div>
+                </>
+              )}
+              <div>
+                <div style={styles.label}>Marge restante HT</div>
+                <div style={styles.valueHighlight}>{formatCurrency(calculatedResults.remainingMarginHT)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Services & Options */}
+        <div style={styles.section}>
+          <div style={styles.sectionHeader}>SERVICES & OPTIONS</div>
+          <div style={styles.sectionBody}>
+            <div style={styles.optionsGrid}>
+              <div style={deliveryPackSold !== "none" ? styles.optionActive : styles.optionInactive}>
+                <span style={styles.optionLabel}>Pack Livraison</span>
+                <span>{getDeliveryPackLabel(deliveryPackSold)}</span>
+              </div>
+              <div style={cldFordDuration !== "none" ? styles.optionActive : styles.optionInactive}>
+                <span style={styles.optionLabel}>CLD Ford</span>
+                <span>{getCldDurationLabel(cldFordDuration)}</span>
+              </div>
+              <div style={hasMaintenanceContract ? styles.optionActive : styles.optionInactive}>
+                <span style={styles.optionLabel}>Contrat Entretien</span>
+                <span>{hasMaintenanceContract ? "Oui" : "Non"}</span>
+              </div>
+              <div style={hasCoyote ? styles.optionActive : styles.optionInactive}>
+                <span style={styles.optionLabel}>Coyote</span>
+                <span>{hasCoyote ? "Oui" : "Non"}</span>
+              </div>
+              <div style={hasAccessories ? styles.optionActive : styles.optionInactive}>
+                <span style={styles.optionLabel}>Accessoires</span>
+                <span>{hasAccessories ? "Oui" : "Non"}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Détail Commission */}
+        <div style={styles.section}>
+          <div style={styles.sectionHeader}>DÉTAIL COMMISSION VENDEUR</div>
+          <div style={styles.sectionBody}>
+            <table style={styles.commissionTable}>
+              <tbody>
+                {vehicleType === "VO" && (
+                  <>
+                    <tr>
+                      <td style={styles.commissionTd}>Commission VO (Base)</td>
+                      <td style={{ ...styles.commissionTd, ...styles.commissionValue, ...(calculatedResults.commissionDetails.voBaseCommission === 0 ? styles.commissionZero : {}) }}>
+                        {formatCurrency(calculatedResults.commissionDetails.voBaseCommission)}
+                      </td>
+                      <td style={styles.commissionTd}>Bonus -60 jours</td>
+                      <td style={{ ...styles.commissionTd, ...styles.commissionValue, ...(calculatedResults.commissionDetails.voBonus60Days === 0 ? styles.commissionZero : {}) }}>
+                        {formatCurrency(calculatedResults.commissionDetails.voBonus60Days)}
+                      </td>
+                      <td style={styles.commissionTd}>Bonus Prix Affiché</td>
+                      <td style={{ ...styles.commissionTd, ...styles.commissionValue, ...(calculatedResults.commissionDetails.voBonusListedPrice === 0 ? styles.commissionZero : {}) }}>
+                        {formatCurrency(calculatedResults.commissionDetails.voBonusListedPrice)}
+                      </td>
+                    </tr>
+                    <tr>
+                      <td style={styles.commissionTd}>Bonus Financement VO</td>
+                      <td style={{ ...styles.commissionTd, ...styles.commissionValue, ...(calculatedResults.commissionDetails.voBonusFinancing === 0 ? styles.commissionZero : {}) }}>
+                        {formatCurrency(calculatedResults.commissionDetails.voBonusFinancing)}
+                      </td>
+                      <td style={styles.commissionTd}>Bonus Électrique</td>
+                      <td style={{ ...styles.commissionTd, ...styles.commissionValue, ...(calculatedResults.commissionDetails.voBonusElectricVehicle === 0 ? styles.commissionZero : {}) }}>
+                        {formatCurrency(calculatedResults.commissionDetails.voBonusElectricVehicle)}
+                      </td>
+                      <td style={styles.commissionTd}></td>
+                      <td style={styles.commissionTd}></td>
+                    </tr>
+                  </>
+                )}
+                {vehicleType === "VP" && (
+                  <tr>
+                    <td style={styles.commissionTd}>Commission {isVNMode ? "VN" : "VP"}</td>
+                    <td style={{ ...styles.commissionTd, ...styles.commissionValue, ...(calculatedResults.commissionDetails.vpCommission === 0 ? styles.commissionZero : {}) }}>
+                      {formatCurrency(calculatedResults.commissionDetails.vpCommission)}
+                    </td>
+                    <td style={styles.commissionTd}></td>
+                    <td style={styles.commissionTd}></td>
+                    <td style={styles.commissionTd}></td>
+                    <td style={styles.commissionTd}></td>
+                  </tr>
+                )}
+                {vehicleType === "VU" && (
+                  <tr>
+                    <td style={styles.commissionTd}>Commission VU</td>
+                    <td style={{ ...styles.commissionTd, ...styles.commissionValue, ...(calculatedResults.commissionDetails.vuCommission === 0 ? styles.commissionZero : {}) }}>
+                      {formatCurrency(calculatedResults.commissionDetails.vuCommission)}
+                    </td>
+                    <td style={styles.commissionTd}></td>
+                    <td style={styles.commissionTd}></td>
+                    <td style={styles.commissionTd}></td>
+                    <td style={styles.commissionTd}></td>
+                  </tr>
+                )}
+                <tr>
+                  <td style={styles.commissionTd}>Bonus Financement</td>
+                  <td style={{ ...styles.commissionTd, ...styles.commissionValue, ...(calculatedResults.commissionDetails.financingBonus === 0 ? styles.commissionZero : {}) }}>
+                    {formatCurrency(calculatedResults.commissionDetails.financingBonus)}
+                  </td>
+                  <td style={styles.commissionTd}>Bonus Pack Livraison</td>
+                  <td style={{ ...styles.commissionTd, ...styles.commissionValue, ...(calculatedResults.commissionDetails.deliveryPackBonus === 0 ? styles.commissionZero : {}) }}>
+                    {formatCurrency(calculatedResults.commissionDetails.deliveryPackBonus)}
+                  </td>
+                  <td style={styles.commissionTd}>Bonus CLD</td>
+                  <td style={{ ...styles.commissionTd, ...styles.commissionValue, ...(calculatedResults.commissionDetails.cldBonus === 0 ? styles.commissionZero : {}) }}>
+                    {formatCurrency(calculatedResults.commissionDetails.cldBonus)}
+                  </td>
+                </tr>
+                <tr>
+                  <td style={styles.commissionTd}>Bonus Entretien</td>
+                  <td style={{ ...styles.commissionTd, ...styles.commissionValue, ...(calculatedResults.commissionDetails.maintenanceContractBonus === 0 ? styles.commissionZero : {}) }}>
+                    {formatCurrency(calculatedResults.commissionDetails.maintenanceContractBonus)}
+                  </td>
+                  <td style={styles.commissionTd}>Bonus Coyote</td>
+                  <td style={{ ...styles.commissionTd, ...styles.commissionValue, ...(calculatedResults.commissionDetails.coyoteBonus === 0 ? styles.commissionZero : {}) }}>
+                    {formatCurrency(calculatedResults.commissionDetails.coyoteBonus)}
+                  </td>
+                  <td style={styles.commissionTd}>Bonus Accessoires</td>
+                  <td style={{ ...styles.commissionTd, ...styles.commissionValue, ...(calculatedResults.commissionDetails.accessoryBonus === 0 ? styles.commissionZero : {}) }}>
+                    {formatCurrency(calculatedResults.commissionDetails.accessoryBonus)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Résumé Final */}
+        <div style={styles.summaryBox}>
+          <div style={styles.summaryGrid}>
+            <div>
+              <div style={styles.summaryLabel}>Marge Restante HT</div>
+              <div style={styles.summaryValue}>{formatCurrency(calculatedResults.remainingMarginHT)}</div>
+            </div>
+            <div>
+              <div style={styles.summaryLabel}>Commission Vendeur</div>
+              <div style={styles.summaryValue}>{formatCurrency(calculatedResults.sellerCommission)}</div>
+            </div>
+            <div>
+              <div style={styles.summaryLabel}>Marge Finale (Concess.)</div>
+              <div style={styles.summaryValue}>{formatCurrency(calculatedResults.finalMargin)}</div>
+            </div>
+          </div>
+          <div style={styles.summaryTotal}>
+            <div style={styles.summaryTotalLabel}>COMMISSION TOTALE VENDEUR</div>
+            <div style={styles.summaryTotalValue}>{formatCurrency(calculatedResults.sellerCommission)}</div>
+          </div>
+        </div>
+
+        {/* Signatures */}
+        <div style={styles.signatures}>
+          <div style={styles.signatureBox}>
+            <div style={styles.signatureHeader}>SIGNATURE VENDEUR</div>
+            <div style={styles.signatureContent}>
+              <div style={styles.signatureRole}>Nom, Prénom & Signature</div>
+              <div style={styles.signatureLine}></div>
+              <div style={styles.signatureDate}>Date : ___/___/_____</div>
+            </div>
+          </div>
+          <div style={styles.signatureBox}>
+            <div style={styles.signatureHeader}>SIGNATURE DIRECTION</div>
+            <div style={styles.signatureContent}>
+              <div style={styles.signatureRole}>Chef/Directeur de Vente</div>
+              <div style={styles.signatureLine}></div>
+              <div style={styles.signatureDate}>Date : ___/___/_____</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={styles.footer}>
+          <span>Document généré automatiquement - Commission Marge</span>
+          <span>N° {vehicleNumber || "N/A"} - {new Date().toLocaleDateString("fr-FR")}</span>
+        </div>
       </div>
-    </div>
+    </>
   )
 }

@@ -2,15 +2,25 @@
 
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { v4 as uuidv4 } from "uuid"
-import { CheckCircle, DollarSign, Car, Info, CalendarDays, Printer, Plus, Trash2, Calculator } from "lucide-react"
+import { CheckCircle, DollarSign, Car, Info, CalendarDays, Printer, Plus, Trash2, Calculator, Eye, Download, X } from "lucide-react"
 import {
   calculateMarginSheet,
   type Payplan,
@@ -24,6 +34,7 @@ import {
   VAT_RATE,
 } from "@/lib/margin-utils"
 import { PrintableMarginSheet } from "./printable-margin-sheet"
+import { MarginSheetPreview } from "./margin-sheet-preview"
 
 interface MarginCalculatorProps {
   onSave: (sheet: MarginSheet) => void
@@ -109,6 +120,10 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
 
   // Résultats
   const [calculatedResults, setCalculatedResults] = useState<CalculatedResults | null>(null)
+
+  // Dialog aperçu
+  const [showPreview, setShowPreview] = useState(false)
+  const previewRef = useRef<HTMLDivElement>(null)
 
   // Fonctions pour gérer les options VN
   const addVnOption = () => {
@@ -895,7 +910,7 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
           </div>
           <div className="flex items-center space-x-2">
             <Checkbox id="pen65" checked={isHighPenetrationRate} onCheckedChange={(c) => setIsHighPenetrationRate(!!c)} />
-            <Label htmlFor="pen65" className="text-sm">Pénétration Pack > 65% (Bonus)</Label>
+            <Label htmlFor="pen65" className="text-sm">Pénétration Pack &gt; 65% (Bonus)</Label>
           </div>
           <div className="grid gap-2">
             <Label className="text-sm font-medium">CLD Ford</Label>
@@ -1100,52 +1115,114 @@ export function MarginCalculator({ onSave, payplan }: MarginCalculatorProps) {
               </div>
             </div>
 
-            {/* Version imprimable */}
-            <div className="print-only" style={{ display: "none" }}>
-              <PrintableMarginSheet
-                calculatedResults={calculatedResults}
-                vehicleNumber={vehicleNumber}
-                sellerName={sellerName}
-                clientName={clientName}
-                vehicleSoldName={vehicleSoldName}
-                vehicleType={vehicleType}
-                vpModel={vpModel}
-                purchasePriceTTC={purchasePriceTTC}
-                sellingPriceTTC={sellingPriceTTC}
-                purchaseDate={purchaseDate}
-                orderDate={orderDate}
-                isOtherStockCession={isOtherStockCession}
-                hasFinancing={hasFinancing}
-                isElectricVehicle={isElectricVehicle}
-                deliveryPackSold={deliveryPackSold}
-                cldFordDuration={cldFordDuration}
-                hasMaintenanceContract={hasMaintenanceContract}
-                hasCoyote={hasCoyote}
-                hasAccessories={hasAccessories}
-                warranty12Months={warranty12Months}
-                workshopTransfer={workshopTransfer}
-                preparationHT={preparationHT}
-                vnClientKeyInHandPriceHT={vnClientKeyInHandPriceHT}
-                vnClientDeparturePriceHT={vnClientDeparturePriceHT}
-                vnOptions={vnOptions}
-                vnDiscounts={vnDiscounts}
-                vnFordRecovery={vnFordRecovery}
-              />
-            </div>
+            {/* Version imprimable - rendu directement sans wrapper */}
+            <PrintableMarginSheet
+              calculatedResults={calculatedResults}
+              vehicleNumber={vehicleNumber}
+              sellerName={sellerName}
+              clientName={clientName}
+              vehicleSoldName={vehicleSoldName}
+              vehicleType={vehicleType}
+              vpModel={vpModel}
+              purchasePriceTTC={purchasePriceTTC}
+              sellingPriceTTC={sellingPriceTTC}
+              purchaseDate={purchaseDate}
+              orderDate={orderDate}
+              isOtherStockCession={isOtherStockCession}
+              hasFinancing={hasFinancing}
+              isElectricVehicle={isElectricVehicle}
+              deliveryPackSold={deliveryPackSold}
+              cldFordDuration={cldFordDuration}
+              hasMaintenanceContract={hasMaintenanceContract}
+              hasCoyote={hasCoyote}
+              hasAccessories={hasAccessories}
+              warranty12Months={warranty12Months}
+              workshopTransfer={workshopTransfer}
+              preparationHT={preparationHT}
+              vnClientKeyInHandPriceHT={vnClientKeyInHandPriceHT}
+              vnClientDeparturePriceHT={vnClientDeparturePriceHT}
+            />
           </>
         )}
       </CardContent>
 
       <CardFooter className="border-t border-gray-200 pt-4 flex flex-col sm:flex-row justify-end gap-2 bg-gray-50 no-print">
+        <Dialog open={showPreview} onOpenChange={setShowPreview}>
+          <DialogTrigger asChild>
+            <Button variant="outline" className="w-full sm:w-auto" disabled={!calculatedResults}>
+              <Eye className="h-4 w-4 mr-1" />
+              Aperçu
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b bg-gray-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <DialogTitle className="text-xl">Aperçu de la Feuille de Marge</DialogTitle>
+                  <DialogDescription>
+                    Vérifiez les informations avant d'imprimer ou d'enregistrer
+                  </DialogDescription>
+                </div>
+              </div>
+            </DialogHeader>
+            <ScrollArea className="max-h-[calc(90vh-180px)]">
+              <div className="p-6">
+                {calculatedResults && (
+                  <MarginSheetPreview
+                    ref={previewRef}
+                    calculatedResults={calculatedResults}
+                    vehicleNumber={vehicleNumber}
+                    sellerName={sellerName}
+                    clientName={clientName}
+                    vehicleSoldName={vehicleSoldName}
+                    vehicleType={vehicleType}
+                    vpModel={vpModel}
+                    purchasePriceTTC={purchasePriceTTC}
+                    sellingPriceTTC={sellingPriceTTC}
+                    purchaseDate={purchaseDate}
+                    orderDate={orderDate}
+                    isOtherStockCession={isOtherStockCession}
+                    hasFinancing={hasFinancing}
+                    financedAmountHT={financedAmountHT}
+                    isElectricVehicle={isElectricVehicle}
+                    deliveryPackSold={deliveryPackSold}
+                    cldFordDuration={cldFordDuration}
+                    hasMaintenanceContract={hasMaintenanceContract}
+                    hasCoyote={hasCoyote}
+                    hasAccessories={hasAccessories}
+                    accessoryAmountTTC={accessoryAmountTTC}
+                    warranty12Months={warranty12Months}
+                    workshopTransfer={workshopTransfer}
+                    preparationHT={preparationHT}
+                    vnClientKeyInHandPriceHT={vnClientKeyInHandPriceHT}
+                    vnClientDeparturePriceHT={vnClientDeparturePriceHT}
+                    vnOptions={vnOptions}
+                    vnDiscounts={vnDiscounts}
+                    vnFordRecovery={vnFordRecovery}
+                  />
+                )}
+              </div>
+            </ScrollArea>
+            <DialogFooter className="px-6 py-4 border-t bg-gray-50">
+              <Button variant="outline" onClick={() => setShowPreview(false)}>
+                Fermer
+              </Button>
+              <Button onClick={handlePrint} className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+                <Printer className="h-4 w-4 mr-2" />
+                Imprimer / PDF
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
         <Button onClick={handlePrint} variant="outline" className="w-full sm:w-auto" disabled={!calculatedResults}>
           <Printer className="h-4 w-4 mr-1" />
-          Imprimer / Télécharger PDF
+          Imprimer
         </Button>
         <Button onClick={resetForm} variant="outline" className="w-full sm:w-auto">Réinitialiser</Button>
         <Button
           onClick={handleSave}
           disabled={!calculatedResults || !vehicleSoldName || !clientName || !sellerName}
-          className="w-full sm:w-auto bg-green-600 text-white hover:bg-green-700"
+          className="w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white"
         >
           Enregistrer la Fiche
         </Button>
