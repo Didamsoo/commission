@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import Link from "next/link"
 import {
   User,
@@ -22,7 +22,8 @@ import {
   Lock,
   Crown,
   Medal,
-  Sparkles
+  Sparkles,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -30,34 +31,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-// Mock user data
-const mockUser = {
-  id: "1",
-  fullName: "Jean Dupont",
-  email: "jean.dupont@ford-paris.fr",
-  role: "commercial",
-  avatarUrl: "",
-  dealership: "Ford Paris Est",
-  joinedAt: "2023-06-15",
-  stats: {
-    totalSales: 45,
-    totalCommission: 18500,
-    totalPoints: 4850,
-    currentRank: 3,
-    bestRank: 1,
-    currentStreak: 5,
-    longestStreak: 12,
-    challengesWon: 8,
-    badgesEarned: 12
-  },
-  level: {
-    current: 5,
-    name: "Expert",
-    progress: 65,
-    pointsToNext: 350
-  }
-}
+import { useProfil } from "@/hooks/use-profil"
+import { useDashboard } from "@/hooks/use-dashboard"
+import { useAvatarUpload } from "@/hooks/use-avatar-upload"
+import { useToast } from "@/hooks/use-toast"
 
 // Mock badges
 const allBadges = [
@@ -150,9 +127,71 @@ function BadgeCard({ badge }: { badge: typeof allBadges[0] }) {
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("overview")
+  const { data: profil, loading: profilLoading } = useProfil()
+  const { data: dashData } = useDashboard<{ kpis: { totalSales: number; totalCommission: number; totalMargin: number } }>("commercial")
+  const { uploadAvatar, uploading: avatarUploading } = useAvatarUpload()
+  const { toast } = useToast()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const avatarUrl = await uploadAvatar(file)
+    if (avatarUrl) {
+      toast({ title: "Avatar mis \u00e0 jour !" })
+      window.location.reload()
+    } else {
+      toast({ title: "Erreur d'upload", variant: "destructive" })
+    }
+  }
+
+  const kpis = dashData?.kpis
+
+  // Build user object from API data
+  const mockUser = {
+    id: profil?.id || "",
+    fullName: profil?.full_name || "Utilisateur",
+    email: profil?.email || "",
+    role: profil?.role || "commercial",
+    avatarUrl: profil?.avatar_url || "",
+    dealership: "Ma Concession",
+    joinedAt: profil?.created_at || "",
+    stats: {
+      totalSales: kpis?.totalSales || 0,
+      totalCommission: kpis?.totalCommission || 0,
+      totalPoints: 0, // TODO: from points API
+      currentRank: 0,
+      bestRank: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      challengesWon: 0,
+      badgesEarned: 0
+    },
+    level: {
+      current: profil?.level || 1,
+      name: profil?.role || "Commercial",
+      progress: 0,
+      pointsToNext: 0
+    }
+  }
 
   const earnedBadges = allBadges.filter(b => b.earned)
   const lockedBadges = allBadges.filter(b => !b.earned)
+
+  if (profilLoading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <p className="text-gray-500">Chargement du profil...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6">
@@ -168,9 +207,20 @@ export default function ProfilePage() {
                   {mockUser.fullName.split(" ").map(n => n[0]).join("")}
                 </AvatarFallback>
               </Avatar>
-              <button className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg hover:bg-blue-700 transition-colors">
-                <Camera className="w-4 h-4" />
+              <button
+                onClick={handleAvatarClick}
+                disabled={avatarUploading}
+                className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                {avatarUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Camera className="w-4 h-4" />}
               </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={handleFileChange}
+                className="hidden"
+              />
             </div>
             <div className="flex-1">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

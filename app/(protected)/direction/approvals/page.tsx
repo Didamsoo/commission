@@ -26,8 +26,10 @@ import {
   Shield,
   BadgeCheck,
   TrendingUp,
-  FileText
+  FileText,
+  Loader2
 } from "lucide-react"
+import { useApprobations, reviewApproval } from "@/hooks/use-approbations"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -87,71 +89,6 @@ interface PendingSale {
   status: "pending" | "approved" | "rejected"
   rejectionReason?: string
 }
-
-const mockPendingSales: PendingSale[] = [
-  {
-    id: "1",
-    seller: { name: "Jean Dupont", avatar: "", email: "jean.dupont@ford.fr" },
-    vehicle: { type: "VN", name: "Ford Kuga Titanium", number: "VH-2024-001", year: 2024 },
-    client: "Mme Moreau",
-    pricing: { purchasePrice: 28500, sellingPrice: 32000, margin: 1850, commission: 420, marginRate: 12.8 },
-    hasFinancing: true,
-    financedAmount: 25000,
-    hasAccessories: true,
-    accessoryAmount: 450,
-    createdAt: "2024-02-20T10:30:00",
-    status: "pending"
-  },
-  {
-    id: "2",
-    seller: { name: "Sophie Bernard", avatar: "", email: "sophie.bernard@ford.fr" },
-    vehicle: { type: "VO", name: "Ford Focus ST-Line", number: "VH-2024-002", year: 2022 },
-    client: "M. Garcia",
-    pricing: { purchasePrice: 18000, sellingPrice: 21500, margin: 1200, commission: 320, marginRate: 15.2 },
-    hasFinancing: false,
-    hasAccessories: false,
-    createdAt: "2024-02-20T08:15:00",
-    status: "pending"
-  },
-  {
-    id: "3",
-    seller: { name: "Lucas Petit", avatar: "", email: "lucas.petit@ford.fr" },
-    vehicle: { type: "VN", name: "Ford Puma ST", number: "VH-2024-003", year: 2024 },
-    client: "M. Martinez",
-    pricing: { purchasePrice: 32000, sellingPrice: 36500, margin: 2100, commission: 480, marginRate: 13.2 },
-    hasFinancing: true,
-    financedAmount: 30000,
-    hasAccessories: true,
-    accessoryAmount: 280,
-    createdAt: "2024-02-19T16:45:00",
-    status: "pending"
-  },
-  {
-    id: "4",
-    seller: { name: "Marie Martin", avatar: "", email: "marie.martin@ford.fr" },
-    vehicle: { type: "VU", name: "Ford Transit Custom", number: "VH-2024-004", year: 2023 },
-    client: "SARL Durand Transport",
-    pricing: { purchasePrice: 35000, sellingPrice: 42000, margin: 3500, commission: 650, marginRate: 18.5 },
-    hasFinancing: true,
-    financedAmount: 38000,
-    hasAccessories: false,
-    createdAt: "2024-02-19T14:20:00",
-    status: "approved"
-  },
-  {
-    id: "5",
-    seller: { name: "Pierre Durand", avatar: "", email: "pierre.durand@ford.fr" },
-    vehicle: { type: "VO", name: "Ford Fiesta Active", number: "VH-2024-005", year: 2021 },
-    client: "Mme Petit",
-    pricing: { purchasePrice: 12000, sellingPrice: 14500, margin: 850, commission: 220, marginRate: 16.3 },
-    hasFinancing: false,
-    hasAccessories: true,
-    accessoryAmount: 150,
-    createdAt: "2024-02-19T11:00:00",
-    status: "rejected",
-    rejectionReason: "Documents incomplets - carte grise manquante"
-  }
-]
 
 const vehicleTypeConfig = {
   VN: { label: "Véhicule Neuf", color: "bg-emerald-100 text-emerald-700 border-emerald-200", icon: "🚗" },
@@ -354,23 +291,36 @@ function SaleDetailDialog({
 }
 
 export default function ApprovalsPage() {
-  const [sales, setSales] = useState<PendingSale[]>(mockPendingSales)
+  const { data: approbationsData, loading, refetch } = useApprobations()
   const [filter, setFilter] = useState<"all" | "pending" | "approved" | "rejected">("all")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedSale, setSelectedSale] = useState<PendingSale | null>(null)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
-  const handleApprove = (saleId: string) => {
-    setSales(sales.map(sale =>
-      sale.id === saleId ? { ...sale, status: "approved" as const } : sale
-    ))
+  const sales: PendingSale[] = ((approbationsData || []) as any[]).map(a => ({
+    id: a.id || "",
+    seller: { name: a.commercial_name || "", avatar: "", email: a.commercial_email || "" },
+    vehicle: { type: a.vehicle_type || "VN", name: a.vehicle_name || "", number: a.vehicle_number || "", year: a.vehicle_year || 2024 },
+    client: a.client_name || "",
+    pricing: { purchasePrice: a.purchase_price || 0, sellingPrice: a.selling_price || 0, margin: a.margin || 0, commission: a.commission || 0, marginRate: a.margin_rate || 0 },
+    hasFinancing: a.has_financing || false,
+    financedAmount: a.financed_amount,
+    hasAccessories: a.has_accessories || false,
+    accessoryAmount: a.accessory_amount,
+    createdAt: a.created_at || "",
+    status: a.status || "pending",
+    rejectionReason: a.rejection_reason
+  }))
+
+  const handleApprove = async (saleId: string) => {
+    await reviewApproval(saleId, { status: "approved" })
+    refetch()
     setIsDialogOpen(false)
   }
 
-  const handleReject = (saleId: string, reason: string) => {
-    setSales(sales.map(sale =>
-      sale.id === saleId ? { ...sale, status: "rejected" as const, rejectionReason: reason } : sale
-    ))
+  const handleReject = async (saleId: string, reason: string) => {
+    await reviewApproval(saleId, { status: "rejected", comment: reason })
+    refetch()
     setIsDialogOpen(false)
   }
 
@@ -394,6 +344,14 @@ export default function ApprovalsPage() {
 
   const totalMargin = filteredSales.reduce((sum, s) => sum + s.pricing.margin, 0)
   const totalCommission = filteredSales.reduce((sum, s) => sum + s.pricing.commission, 0)
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl mx-auto">

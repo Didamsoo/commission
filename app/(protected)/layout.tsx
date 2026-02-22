@@ -13,14 +13,12 @@ import {
   Settings,
   LogOut,
   Menu,
-  X,
   ChevronDown,
   Car,
   Users,
   FileText,
   BarChart3,
   CheckCircle,
-  Search,
   Sparkles,
   Crown,
   Zap,
@@ -47,11 +45,15 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Input } from "@/components/ui/input"
+import { GlobalSearchDialog } from "@/components/search/global-search-dialog"
+import { ConcessionContextProvider } from "@/lib/contexts/concession-context"
+import { ConcessionSwitcher } from "@/components/concession-switcher"
 import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { createClient } from "@/lib/supabase/client"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
+import { useNotifications, markRead, markAllRead, type Notification } from "@/hooks/use-notifications"
+import { useProfil } from "@/hooks/use-profil"
 
 // ============================================
 // PREMIUM PROTECTED LAYOUT - AutoPerf Pro
@@ -602,6 +604,23 @@ export default function ProtectedLayout({
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
   const [loading, setLoading] = useState(true)
 
+  // Fetch profile and notifications from real API
+  const { data: profilData } = useProfil()
+  const { data: notifications, refetch: refetchNotifications } = useNotifications()
+
+  const unreadNotifications = notifications?.filter(n => !n.is_read) || []
+  const unreadCount = unreadNotifications.length
+
+  const handleMarkRead = useCallback(async (id: string) => {
+    await markRead(id)
+    refetchNotifications()
+  }, [refetchNotifications])
+
+  const handleMarkAllRead = useCallback(async () => {
+    await markAllRead()
+    refetchNotifications()
+  }, [refetchNotifications])
+
   const handleSignOut = useCallback(async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
@@ -633,6 +652,23 @@ export default function ProtectedLayout({
     return () => subscription.unsubscribe()
   }, [router])
 
+  // Enrich currentUser with real profile data
+  useEffect(() => {
+    if (profilData && currentUser) {
+      setCurrentUser(prev => prev ? {
+        ...prev,
+        fullName: profilData.full_name || prev.fullName,
+        role: profilData.role || prev.role,
+        level: profilData.level || prev.level,
+        avatarUrl: profilData.avatar_url || prev.avatarUrl,
+        stats: {
+          ...prev.stats,
+          unreadNotifications: unreadCount,
+        }
+      } : prev)
+    }
+  }, [profilData, unreadCount])
+
   // Handle scroll for header
   useEffect(() => {
     const handleScroll = () => {
@@ -640,6 +676,15 @@ export default function ProtectedLayout({
     }
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
+
+  // Register service worker for push notifications
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(() => {
+        // Service worker registration failed silently
+      })
+    }
   }, [])
 
   // Loading screen
@@ -665,6 +710,7 @@ export default function ProtectedLayout({
   }
 
   return (
+    <ConcessionContextProvider>
     <TooltipProvider delayDuration={0}>
       <div className="min-h-screen bg-gray-50/50">
         {/* ============================================
@@ -754,14 +800,11 @@ export default function ProtectedLayout({
         }`}>
           {/* Search */}
           <div className="flex-1 max-w-md">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                placeholder="Rechercher..."
-                className="pl-10 bg-gray-50 border-gray-200 focus:bg-white transition-colors"
-              />
-            </div>
+            <GlobalSearchDialog />
           </div>
+
+          {/* Concession Switcher */}
+          <ConcessionSwitcher />
 
           {/* Right Actions */}
           <div className="flex items-center gap-4">
@@ -776,9 +819,9 @@ export default function ProtectedLayout({
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative rounded-xl">
                   <Bell className="w-5 h-5" />
-                  {currentUser.stats.unreadNotifications > 0 && (
+                  {unreadCount > 0 && (
                     <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-br from-red-500 to-red-600 text-white text-xs rounded-full flex items-center justify-center font-medium shadow-sm">
-                      {currentUser.stats.unreadNotifications}
+                      {unreadCount}
                     </span>
                   )}
                 </Button>
@@ -786,25 +829,44 @@ export default function ProtectedLayout({
               <DropdownMenuContent align="end" className="w-80">
                 <DropdownMenuLabel className="flex items-center justify-between">
                   <span>Notifications</span>
-                  <Badge variant="secondary" className="text-xs">{currentUser.stats.unreadNotifications} nouvelles</Badge>
+                  {unreadCount > 0 && (
+                    <Badge variant="secondary" className="text-xs cursor-pointer" onClick={handleMarkAllRead}>
+                      {unreadCount} nouvelles — tout lire
+                    </Badge>
+                  )}
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <div className="max-h-64 overflow-y-auto">
-                  {[1, 2, 3].map((i) => (
-                    <DropdownMenuItem key={i} className="flex items-start gap-3 py-3 cursor-pointer">
-                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                        <Trophy className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">Nouveau badge débloqué !</p>
-                        <p className="text-xs text-gray-500">Il y a {i} heure{i > 1 ? "s" : ""}</p>
-                      </div>
-                    </DropdownMenuItem>
-                  ))}
+                  {(!notifications || notifications.length === 0) ? (
+                    <div className="py-6 text-center text-sm text-gray-500">
+                      Aucune notification
+                    </div>
+                  ) : (
+                    notifications.slice(0, 8).map((notif) => (
+                      <DropdownMenuItem
+                        key={notif.id}
+                        className={`flex items-start gap-3 py-3 cursor-pointer ${!notif.is_read ? "bg-blue-50/50" : ""}`}
+                        onClick={() => !notif.is_read && handleMarkRead(notif.id)}
+                      >
+                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                          <Bell className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className={`text-sm ${!notif.is_read ? "font-medium" : "text-gray-600"}`}>{notif.title || notif.message}</p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(notif.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        </div>
+                        {!notif.is_read && (
+                          <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-2" />
+                        )}
+                      </DropdownMenuItem>
+                    ))
+                  )}
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="justify-center text-blue-600">
-                  Voir toutes les notifications
+                <DropdownMenuItem className="justify-center text-blue-600" asChild>
+                  <Link href="/notifications">Voir toutes les notifications</Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -882,5 +944,6 @@ export default function ProtectedLayout({
         </main>
       </div>
     </TooltipProvider>
+    </ConcessionContextProvider>
   )
 }

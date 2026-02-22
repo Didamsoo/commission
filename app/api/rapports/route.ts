@@ -11,8 +11,10 @@ export async function GET(request: NextRequest) {
   if (!hasMinRole(auth.profile, 'chef_ventes')) return forbidden()
 
   const type = getFilterParam(request, 'type') || 'ventes'
-  const dateFrom = getDateFilterParam(request, 'date_from')
-  const dateTo = getDateFilterParam(request, 'date_to')
+  const startDate = request.nextUrl.searchParams.get('startDate')
+  const endDate = request.nextUrl.searchParams.get('endDate')
+  const dateFrom = (startDate && endDate) ? startDate : getDateFilterParam(request, 'date_from')
+  const dateTo = (startDate && endDate) ? endDate : getDateFilterParam(request, 'date_to')
   const vehicleType = getFilterParam(request, 'vehicle_type')
   const groupBy = getFilterParam(request, 'group_by') || 'user'
 

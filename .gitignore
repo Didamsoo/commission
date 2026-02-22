@@ -27,3 +27,11 @@ lerna-debug.log*
 .env
 .env.*.local
 *.pem
+
+# Sentry
+.sentry/
+
+# Test outputs
+/test-results/
+/playwright-report/
+e2e/.auth/

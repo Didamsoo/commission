@@ -27,7 +27,8 @@ import {
   AlertCircle,
   BarChart3,
   ThumbsUp,
-  Plus
+  Plus,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -35,12 +36,9 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  teamMembers,
-  coachingNotes,
-  teamChallenges,
-  getTeamMemberById
-} from "@/lib/mock-chef-ventes-data"
+import { useEquipe, type EquipeMember } from "@/hooks/use-equipe"
+import { useCoaching } from "@/hooks/use-coaching"
+import { useDefis } from "@/hooks/use-defis"
 
 // ============================================
 // COMPONENTS
@@ -152,7 +150,7 @@ function PerformanceHistoryMock() {
   )
 }
 
-function CoachingNoteCard({ note }: { note: typeof coachingNotes[0] }) {
+function CoachingNoteCard({ note }: { note: { id: string; type: string; content: string; createdAt: string; isPrivate: boolean; commercialName: string; commercialId: string; managerId: string } }) {
   const typeConfig = {
     feedback: { icon: MessageSquare, color: "text-blue-600", bg: "bg-blue-100" },
     objective: { icon: Target, color: "text-purple-600", bg: "bg-purple-100" },
@@ -160,7 +158,7 @@ function CoachingNoteCard({ note }: { note: typeof coachingNotes[0] }) {
     meeting: { icon: Calendar, color: "text-emerald-600", bg: "bg-emerald-100" }
   }
 
-  const config = typeConfig[note.type]
+  const config = typeConfig[note.type as keyof typeof typeConfig] || typeConfig.feedback
   const Icon = config.icon
 
   return (
@@ -185,7 +183,7 @@ function CoachingNoteCard({ note }: { note: typeof coachingNotes[0] }) {
   )
 }
 
-function ChallengeCard({ challenge, memberId }: { challenge: typeof teamChallenges[0], memberId: string }) {
+function ChallengeCard({ challenge, memberId }: { challenge: { id: string; title: string; description: string; target_unit: string; end_date: string; participants: { id: string; currentScore: number; targetScore: number; progressRate: number; isCompleted: boolean }[] }, memberId: string }) {
   const participant = challenge.participants.find(p => p.id === memberId)
   if (!participant) return null
 
@@ -213,7 +211,7 @@ function ChallengeCard({ challenge, memberId }: { challenge: typeof teamChalleng
       <div className="space-y-2">
         <div className="flex justify-between text-sm">
           <span className="text-gray-500">
-            {participant.currentScore}/{participant.targetScore} {challenge.targetUnit}
+            {participant.currentScore}/{participant.targetScore} {challenge.target_unit}
           </span>
           <span className="font-semibold text-gray-900">{progress}%</span>
         </div>
@@ -224,7 +222,7 @@ function ChallengeCard({ challenge, memberId }: { challenge: typeof teamChalleng
 
       <p className="text-xs text-gray-500 mt-3">
         <Calendar className="w-3 h-3 inline mr-1" />
-        Fin le {new Date(challenge.endDate).toLocaleDateString("fr-FR")}
+        Fin le {new Date(challenge.end_date).toLocaleDateString("fr-FR")}
       </p>
     </div>
   )
@@ -234,22 +232,52 @@ function ChallengeCard({ challenge, memberId }: { challenge: typeof teamChalleng
 // MAIN COMPONENT
 // ============================================
 
+interface MemberData {
+  id: string; name: string; avatar?: string; email: string;
+  kpis: { sales: number; salesTarget: number; margin: number; gpu: number; financingRate: number; conversionRate: number; ranking: number; rankingTotal: number; points: number; streak: number; satisfaction: number; revenue: number; accessories: number };
+  trend: "up" | "down" | "stable";
+  alerts: { id: string; severity: string; title: string; message: string }[];
+  joinedAt: string;
+}
+
 export function CommercialDetailContent({ id }: { id: string }) {
   const memberId = id
-  const member = getTeamMemberById(memberId)
+  const { data: equipeData, loading: equipeLoading } = useEquipe()
+  const { data: coachingData } = useCoaching(id)
+  const { data: defisData } = useDefis()
+
+  const [tab, setTab] = useState<"performance" | "coaching" | "challenges">("performance")
+
+  const allMembers: MemberData[] = (equipeData || []).map((m, i) => ({
+    id: m.user_id || m.id,
+    name: m.full_name,
+    avatar: m.avatar_url || "",
+    email: m.email || "",
+    kpis: { sales: m.total_sales || 0, salesTarget: m.sales_target || 10, margin: m.total_margin || 0, gpu: m.total_sales ? Math.round((m.total_margin || 0) / m.total_sales) : 0, financingRate: m.financing_rate || 0, conversionRate: m.conversion_rate || 0, ranking: i + 1, rankingTotal: (equipeData || []).length, points: m.total_points || 0, streak: m.streak || 0, satisfaction: 0, revenue: m.total_revenue || 0, accessories: 0 },
+    trend: (m.trend as "up" | "down" | "stable") || "stable",
+    alerts: [],
+    joinedAt: m.joined_at || "2023-01-01",
+  }))
+  const member = allMembers.find(m => m.id === id)
+
+  if (equipeLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+      </div>
+    )
+  }
 
   if (!member) {
     notFound()
   }
 
-  const [tab, setTab] = useState<"performance" | "coaching" | "challenges">("performance")
-
-  const memberNotes = coachingNotes.filter(n => n.commercialId === memberId)
-  const memberChallenges = teamChallenges.filter(c =>
-    c.participants.some(p => p.id === memberId)
+  const memberNotes = ((coachingData || []) as any[]).filter(n => n.commercial_id === memberId)
+  const memberChallenges = ((defisData || []) as any[]).filter(c =>
+    c.participants?.some((p: any) => p.id === memberId)
   )
   const completedChallenges = memberChallenges.filter(c =>
-    c.participants.find(p => p.id === memberId)?.isCompleted
+    c.participants.find((p: any) => p.id === memberId)?.isCompleted
   )
 
   const objectiveRate = Math.round((member.kpis.sales / member.kpis.salesTarget) * 100)
@@ -595,7 +623,7 @@ export function CommercialDetailContent({ id }: { id: string }) {
                 <CardDescription>Position par rapport aux collègues</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {teamMembers
+                {allMembers
                   .sort((a, b) => b.kpis.sales - a.kpis.sales)
                   .map((m, index) => (
                     <div

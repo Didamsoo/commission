@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect, useCallback } from "react"
 import {
   Calculator,
   Car,
@@ -18,11 +18,16 @@ import {
   Eye,
   Save,
   ChevronRight,
+  ChevronDown,
   Info,
   TrendingUp,
   Trophy,
   Zap,
-  Shield
+  Shield,
+  History,
+  FileText,
+  PenLine,
+  Trash2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -36,6 +41,12 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { generateFicheMargePDF } from "@/lib/pdf/fiche-marge"
+import { useProfil } from "@/hooks/use-profil"
+import { useFichesMarge, saveFicheMarge } from "@/hooks/use-fiches-marge"
+import { useDashboard } from "@/hooks/use-dashboard"
+import { Loader2 } from "lucide-react"
 
 // ============================================
 // PREMIUM CALCULATOR PAGE - AutoPerf Pro
@@ -53,6 +64,24 @@ interface CalculationResult {
   marginRate: number
 }
 
+interface HistoryProfile {
+  full_name: string
+  email: string
+  avatar_url: string | null
+}
+
+interface HistoryEntry {
+  id: string
+  fiche_marge_id: string
+  user_id: string
+  action: "INSERT" | "UPDATE" | "DELETE"
+  before_data: Record<string, unknown> | null
+  after_data: Record<string, unknown> | null
+  changed_fields: string[] | null
+  created_at: string
+  profiles: HistoryProfile | null
+}
+
 // Step indicators
 const steps = [
   { id: "info", label: "Informations", icon: User },
@@ -67,7 +96,14 @@ export default function CalculatorPage() {
   const [vehicleType, setVehicleType] = useState<VehicleType>("VO")
   const [showResults, setShowResults] = useState(false)
   const [showPreview, setShowPreview] = useState(false)
-  
+  const [saving, setSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+
+  // API hooks
+  const { data: profil } = useProfil()
+  const { data: dashboardData } = useDashboard<{ kpis?: { total_sales?: number; total_commission?: number; financing_rate?: number }; ranking?: number }>("commercial")
+  const { data: recentFiches } = useFichesMarge({ limit: 3 })
+
   // Form states
   const [formData, setFormData] = useState({
     sellerName: "",
@@ -88,6 +124,34 @@ export default function CalculatorPage() {
   })
 
   const [result, setResult] = useState<CalculationResult | null>(null)
+
+  // History (audit trail) state
+  const [historyData, setHistoryData] = useState<HistoryEntry[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
+  const [currentFicheId, setCurrentFicheId] = useState<string | null>(null)
+
+  // Pre-fill seller name from profile
+  useEffect(() => {
+    if (profil?.full_name && !formData.sellerName) {
+      setFormData(prev => ({ ...prev, sellerName: profil.full_name }))
+    }
+  }, [profil?.full_name])
+
+  const fetchHistory = useCallback(async (ficheId: string) => {
+    setHistoryLoading(true)
+    try {
+      const res = await fetch(`/api/fiches-marge/${ficheId}/history`)
+      if (res.ok) {
+        const json = await res.json()
+        setHistoryData(json.data || [])
+      }
+    } catch {
+      // Silently handle errors
+    } finally {
+      setHistoryLoading(false)
+    }
+  }, [])
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -148,6 +212,77 @@ export default function CalculatorPage() {
     setResult(null)
     setShowResults(false)
     setCurrentStep(0)
+    setCurrentFicheId(null)
+    setHistoryData([])
+    setHistoryOpen(false)
+  }
+
+  const handleSave = async () => {
+    if (!result) return
+    setSaving(true)
+    setSaveSuccess(false)
+    try {
+      const response = await saveFicheMarge({
+        vehicle_type: vehicleType,
+        vehicle_name: formData.vehicleName,
+        vehicle_number: formData.vehicleNumber,
+        client_name: formData.clientName,
+        purchase_price: parseFloat(formData.purchasePrice) || 0,
+        selling_price: parseFloat(formData.sellingPrice) || 0,
+        trade_in_value: parseFloat(formData.tradeInValue) || 0,
+        has_financing: formData.hasFinancing,
+        financed_amount: parseFloat(formData.financedAmount) || 0,
+        has_accessories: formData.hasAccessories,
+        accessory_amount: parseFloat(formData.accessoryAmount) || 0,
+        has_warranty: formData.hasWarranty,
+        warranty_amount: parseFloat(formData.warrantyAmount) || 0,
+        preparation_cost: parseFloat(formData.preparationCost) || 0,
+        delivery_pack: formData.deliveryPack,
+        gross_margin: result.grossMargin,
+        seller_commission: result.commission,
+        final_margin: result.netMargin,
+        margin_rate: result.marginRate,
+      })
+      setSaveSuccess(true)
+      // Capture fiche id for audit trail
+      const savedFiche = response?.data as Record<string, unknown> | undefined
+      if (savedFiche?.id) {
+        setCurrentFicheId(String(savedFiche.id))
+      }
+    } catch {
+      // Error handled silently, user sees button state
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleExportPDF = () => {
+    if (!result) return
+    generateFicheMargePDF({
+      vehicleName: formData.vehicleName,
+      vehicleNumber: formData.vehicleNumber,
+      sellerName: formData.sellerName,
+      clientName: formData.clientName,
+      date: new Date().toLocaleDateString("fr-FR"),
+      vehicleType,
+      purchasePrice: parseFloat(formData.purchasePrice) || 0,
+      sellingPrice: parseFloat(formData.sellingPrice) || 0,
+      tradeInValue: parseFloat(formData.tradeInValue) || 0,
+      hasFinancing: formData.hasFinancing,
+      financedAmount: parseFloat(formData.financedAmount) || 0,
+      hasAccessories: formData.hasAccessories,
+      accessoryAmount: parseFloat(formData.accessoryAmount) || 0,
+      hasWarranty: formData.hasWarranty,
+      warrantyAmount: parseFloat(formData.warrantyAmount) || 0,
+      preparationCost: parseFloat(formData.preparationCost) || 0,
+      deliveryPack: formData.deliveryPack,
+      totalRevenue: result.totalRevenue,
+      totalCosts: result.totalCosts,
+      grossMargin: result.grossMargin,
+      commission: result.commission,
+      netMargin: result.netMargin,
+      marginRate: result.marginRate,
+    })
   }
 
   const formatCurrency = (value: number) => {
@@ -609,13 +744,23 @@ export default function CalculatorPage() {
                       <Eye className="w-4 h-4 mr-2" />
                       Aperçu
                     </Button>
-                    <Button variant="outline" className="flex-1">
+                    <Button variant="outline" className="flex-1" onClick={handleExportPDF}>
                       <Printer className="w-4 h-4 mr-2" />
-                      Imprimer
+                      Exporter PDF
                     </Button>
-                    <Button className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700">
-                      <Save className="w-4 h-4 mr-2" />
-                      Enregistrer
+                    <Button
+                      className="flex-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700"
+                      onClick={handleSave}
+                      disabled={saving}
+                    >
+                      {saving ? (
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      ) : saveSuccess ? (
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                      ) : (
+                        <Save className="w-4 h-4 mr-2" />
+                      )}
+                      {saving ? "Enregistrement..." : saveSuccess ? "Enregistré !" : "Enregistrer"}
                     </Button>
                   </div>
                 </div>
@@ -682,22 +827,22 @@ export default function CalculatorPage() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Ventes ce mois</span>
-                <span className="font-bold text-gray-900">8</span>
+                <span className="font-bold text-gray-900">{dashboardData?.kpis?.total_sales ?? "—"}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Commission totale</span>
-                <span className="font-bold text-emerald-600">3 450 €</span>
+                <span className="font-bold text-emerald-600">{dashboardData?.kpis?.total_commission != null ? `${dashboardData.kpis.total_commission.toLocaleString()} €` : "—"}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Taux de financement</span>
-                <span className="font-bold text-blue-600">75%</span>
+                <span className="font-bold text-blue-600">{dashboardData?.kpis?.financing_rate != null ? `${dashboardData.kpis.financing_rate}%` : "—"}</span>
               </div>
               <Separator />
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Classement</span>
                 <Badge className="bg-amber-100 text-amber-700">
                   <Trophy className="w-3 h-3 mr-1" />
-                  #3
+                  #{dashboardData?.ranking ?? "—"}
                 </Badge>
               </div>
             </CardContent>
@@ -710,19 +855,17 @@ export default function CalculatorPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {[
-                  { vehicle: "Ford Puma ST-Line", date: "Aujourd'hui", commission: 350 },
-                  { vehicle: "Ford Kuga Titanium", date: "Hier", commission: 420 },
-                  { vehicle: "Ford Fiesta Active", date: "Il y a 2 jours", commission: 280 }
-                ].map((calc, i) => (
+                {recentFiches && recentFiches.length > 0 ? (recentFiches as Record<string, unknown>[]).map((fiche, i) => (
                   <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
                     <div>
-                      <p className="font-medium text-gray-900 text-sm">{calc.vehicle}</p>
-                      <p className="text-xs text-gray-500">{calc.date}</p>
+                      <p className="font-medium text-gray-900 text-sm">{String(fiche.vehicle_name || "Véhicule")}</p>
+                      <p className="text-xs text-gray-500">{fiche.created_at ? new Date(String(fiche.created_at)).toLocaleDateString("fr-FR") : ""}</p>
                     </div>
-                    <span className="font-bold text-emerald-600 text-sm">+{calc.commission}€</span>
+                    <span className="font-bold text-emerald-600 text-sm">+{Number(fiche.seller_commission || 0).toLocaleString()}€</span>
                   </div>
-                ))}
+                )) : (
+                  <p className="text-sm text-gray-500 text-center py-4">Aucun calcul récent</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -750,13 +893,83 @@ export default function CalculatorPage() {
             <Button variant="outline" onClick={() => setShowPreview(false)}>
               Fermer
             </Button>
-            <Button className="bg-gradient-to-r from-blue-600 to-indigo-600">
+            <Button className="bg-gradient-to-r from-blue-600 to-indigo-600" onClick={handleExportPDF}>
               <Printer className="w-4 h-4 mr-2" />
-              Imprimer / PDF
+              Exporter PDF
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Historique des modifications — Audit Trail */}
+      {currentFicheId && (
+        <div className="mt-8 max-w-7xl mx-auto animate-fade-in-up opacity-0-initial" style={{ animationFillMode: "forwards", animationDelay: "100ms" }}>
+          <Collapsible open={historyOpen} onOpenChange={(open) => {
+            setHistoryOpen(open)
+            if (open && currentFicheId && historyData.length === 0) {
+              fetchHistory(currentFicheId)
+            }
+          }}>
+            <Card className="border-0 shadow-premium overflow-hidden">
+              <CollapsibleTrigger asChild>
+                <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <History className="w-5 h-5 text-blue-600" />
+                      Historique des modifications
+                    </CardTitle>
+                    <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${historyOpen ? "rotate-180" : ""}`} />
+                  </div>
+                  <CardDescription>
+                    Suivi de toutes les modifications apportées à cette fiche de marge
+                  </CardDescription>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="p-6">
+                  {historyLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-blue-600 mr-3" />
+                      <span className="text-gray-500">Chargement de l'historique...</span>
+                    </div>
+                  ) : historyData.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <History className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                      <p>Aucune modification enregistrée</p>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      {/* Timeline line */}
+                      <div className="absolute left-[19px] top-2 bottom-2 w-0.5 bg-gray-200" />
+
+                      <div className="space-y-6">
+                        {historyData.map((entry) => (
+                          <HistoryTimelineEntry key={entry.id} entry={entry} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Refresh button */}
+                  {historyData.length > 0 && (
+                    <div className="mt-6 flex justify-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => currentFicheId && fetchHistory(currentFicheId)}
+                        disabled={historyLoading}
+                      >
+                        <RotateCcw className={`w-4 h-4 mr-2 ${historyLoading ? "animate-spin" : ""}`} />
+                        Actualiser
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        </div>
+      )}
     </div>
   )
 }
@@ -770,7 +983,7 @@ function EuroIcon({ className }: { className?: string }) {
   )
 }
 
-function ResultLine({ label, value, isNegative, highlight, success }: { 
+function ResultLine({ label, value, isNegative, highlight, success }: {
   label: string
   value: number
   isNegative?: boolean
@@ -788,6 +1001,139 @@ function ResultLine({ label, value, isNegative, highlight, success }: {
       }`}>
         {isNegative ? "-" : ""}{value.toLocaleString("fr-FR", { style: "currency", currency: "EUR" })}
       </span>
+    </div>
+  )
+}
+
+// Field name mapping for audit trail display
+const FIELD_LABELS: Record<string, string> = {
+  vehicle_type: "Type de vehicule",
+  vehicle_number: "N. vehicule",
+  seller_name: "Vendeur",
+  client_name: "Client",
+  vehicle_sold_name: "Vehicule vendu",
+  purchase_price_ht: "Prix achat HT",
+  purchase_price_ttc: "Prix achat TTC",
+  selling_price_ht: "Prix vente HT",
+  selling_price_ttc: "Prix vente TTC",
+  trade_in_value_ht: "Reprise HT",
+  listed_price_ttc: "Prix catalogue TTC",
+  warranty_12months: "Garantie 12 mois",
+  workshop_transfer: "Transfert atelier",
+  preparation_ht: "Preparation HT",
+  initial_margin_ht: "Marge initiale HT",
+  remaining_margin_ht: "Marge restante HT",
+  seller_commission: "Commission vendeur",
+  final_margin: "Marge finale",
+  commission_details: "Details commission",
+  is_electric_vehicle: "Vehicule electrique",
+  has_financing: "Financement",
+  financed_amount_ht: "Montant finance HT",
+  financing_type: "Type financement",
+  number_of_services_sold: "Services vendus",
+  status: "Statut",
+  delivery_pack_sold: "Pack livraison",
+  has_accessories: "Accessoires",
+  accessory_amount_ht: "Montant accessoires HT",
+  accessory_amount_ttc: "Montant accessoires TTC",
+  approved_by: "Approuve par",
+  approved_at: "Date approbation",
+  user_id: "Utilisateur",
+  concession_id: "Concession",
+}
+
+function formatFieldName(field: string): string {
+  return FIELD_LABELS[field] || field.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function formatHistoryDate(dateStr: string): string {
+  const date = new Date(dateStr)
+  return date.toLocaleDateString("fr-FR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+const ACTION_CONFIG = {
+  INSERT: {
+    label: "Creation",
+    icon: FileText,
+    color: "text-green-600",
+    bg: "bg-green-100",
+    border: "border-green-200",
+  },
+  UPDATE: {
+    label: "Modification",
+    icon: PenLine,
+    color: "text-blue-600",
+    bg: "bg-blue-100",
+    border: "border-blue-200",
+  },
+  DELETE: {
+    label: "Suppression",
+    icon: Trash2,
+    color: "text-red-600",
+    bg: "bg-red-100",
+    border: "border-red-200",
+  },
+} as const
+
+function HistoryTimelineEntry({ entry }: { entry: HistoryEntry }) {
+  const config = ACTION_CONFIG[entry.action]
+  const Icon = config.icon
+  const changedFields = entry.changed_fields?.filter(
+    (f) => !["id", "created_at", "updated_at"].includes(f)
+  ) || []
+
+  return (
+    <div className="relative flex gap-4 pl-1">
+      {/* Timeline dot */}
+      <div className={`relative z-10 flex-shrink-0 w-10 h-10 rounded-full ${config.bg} flex items-center justify-center border-2 ${config.border}`}>
+        <Icon className={`w-4 h-4 ${config.color}`} />
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 pb-2">
+        <div className="flex items-start justify-between gap-2">
+          <div>
+            <span className={`inline-flex items-center gap-1.5 text-sm font-semibold ${config.color}`}>
+              {config.label}
+            </span>
+            {entry.profiles && (
+              <p className="text-sm text-gray-600 mt-0.5">
+                par <span className="font-medium text-gray-900">{entry.profiles.full_name}</span>
+                <span className="text-gray-400 ml-1">({entry.profiles.email})</span>
+              </p>
+            )}
+          </div>
+          <span className="text-xs text-gray-400 whitespace-nowrap mt-1">
+            {formatHistoryDate(entry.created_at)}
+          </span>
+        </div>
+
+        {/* Changed fields for UPDATE actions */}
+        {entry.action === "UPDATE" && changedFields.length > 0 && (
+          <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+              Champs modifies ({changedFields.length})
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {changedFields.map((field) => (
+                <Badge
+                  key={field}
+                  variant="outline"
+                  className="text-xs font-normal bg-white"
+                >
+                  {formatFieldName(field)}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

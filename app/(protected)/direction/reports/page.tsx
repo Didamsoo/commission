@@ -25,7 +25,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   BadgeCheck,
-  Clock
+  Clock,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -47,11 +48,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useDashboard } from "@/hooks/use-dashboard"
+import { useEquipe, type EquipeMember } from "@/hooks/use-equipe"
+import { exportToExcel, exportToCSV, type ExportTeamMember } from "@/lib/excel/rapports"
 
 // ============================================
 // REPORTS PAGE PREMIUM - AutoPerf Pro
 // ============================================
 
+// TODO: replace with API data
 const monthlyData = [
   { month: "Jan", sales: 65, margin: 72000, commission: 21000 },
   { month: "Fév", sales: 78, margin: 85600, commission: 24500 },
@@ -61,20 +66,14 @@ const monthlyData = [
   { month: "Juin", sales: 92, margin: 102000, commission: 29800 }
 ]
 
-const topPerformers = [
-  { name: "Marie Martin", sales: 12, margin: 18500, commission: 5200, trend: "up" },
-  { name: "Pierre Durand", sales: 11, margin: 16200, commission: 4800, trend: "up" },
-  { name: "Jean Dupont", sales: 8, margin: 12400, commission: 3450, trend: "down" },
-  { name: "Sophie Bernard", sales: 7, margin: 11800, commission: 3200, trend: "up" },
-  { name: "Lucas Petit", sales: 7, margin: 10500, commission: 2900, trend: "same" }
-]
-
+// TODO: replace with API data
 const vehicleTypeData = [
   { type: "VN", label: "Véhicules Neufs", sales: 42, margin: 52000, color: "bg-emerald-500" },
   { type: "VO", label: "Occasions", sales: 28, margin: 28000, color: "bg-blue-500" },
   { type: "VU", label: "Utilitaires", sales: 8, margin: 5600, color: "bg-purple-500" }
 ]
 
+// TODO: replace with API data
 const financingData = [
   { label: "Avec financement", value: 56, amount: 48000 },
   { label: "Sans financement", value: 22, amount: 37600 }
@@ -82,12 +81,67 @@ const financingData = [
 
 export default function ReportsPage() {
   const [period, setPeriod] = useState("month")
+  const { data: dashboardRaw, loading: dashLoading } = useDashboard<Record<string, unknown>>("dir_concession")
+  const { data: equipeData, loading: equipeLoading } = useEquipe()
+
+  const topPerformers = (equipeData || [])
+    .filter((m: EquipeMember) => m.role === "commercial" || !m.role)
+    .map((m: EquipeMember) => ({
+      name: m.full_name,
+      sales: m.total_sales || 0,
+      margin: m.total_margin || 0,
+      commission: m.total_commission || 0,
+      trend: (m.trend as string) || "same"
+    }))
+    .sort((a, b) => b.sales - a.sales)
+    .slice(0, 5)
+
   const currentMonth = monthlyData[monthlyData.length - 1]
   const previousMonth = monthlyData[monthlyData.length - 2]
-  
+
   const salesGrowth = ((currentMonth.sales - previousMonth.sales) / previousMonth.sales * 100).toFixed(1)
   const marginGrowth = ((currentMonth.margin - previousMonth.margin) / previousMonth.margin * 100).toFixed(1)
   const commissionGrowth = ((currentMonth.commission - previousMonth.commission) / previousMonth.commission * 100).toFixed(1)
+
+  const buildExportMembers = (): ExportTeamMember[] => {
+    return topPerformers.map((m, i) => ({
+      rang: i + 1,
+      nom: m.name,
+      ventes: m.sales,
+      objectif: 0,
+      taux: "-",
+      marge: `${m.margin.toLocaleString("fr-FR")} \u20ac`,
+      gpu: m.sales > 0 ? `${Math.round(m.margin / m.sales)} \u20ac` : "0 \u20ac",
+      financement: "-",
+    }))
+  }
+
+  const handleExportExcel = () => {
+    exportToExcel({
+      title: "Rapport Direction Concession",
+      period,
+      teamMembers: buildExportMembers(),
+      kpis: {
+        totalSales: currentMonth.sales,
+        totalMargin: currentMonth.margin,
+        avgGPU: currentMonth.sales > 0 ? Math.round(currentMonth.margin / currentMonth.sales) : 0,
+        financingRate: 72,
+        objectiveRate: 78,
+      },
+    })
+  }
+
+  const handleExportCSV = () => {
+    exportToCSV(buildExportMembers(), period)
+  }
+
+  if (dashLoading || equipeLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl mx-auto">
@@ -128,7 +182,7 @@ export default function ReportsPage() {
             <Printer className="w-4 h-4" />
             Imprimer
           </Button>
-          <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 gap-2">
+          <Button onClick={handleExportExcel} className="bg-gradient-to-r from-blue-600 to-indigo-600 gap-2">
             <Download className="w-4 h-4" />
             Exporter
           </Button>

@@ -36,7 +36,62 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select"
-import { brands } from "@/lib/mock-dir-plaque-data"
+import { createDefi } from "@/hooks/use-defis"
+
+// ---------------------------------------------------------------------------
+// Inline interfaces (previously imported from mock-dir-plaque-data)
+// ---------------------------------------------------------------------------
+
+interface BrandData {
+  id: string
+  name: string
+  logo: string
+  color: string
+  directorId: string
+  directorName: string
+  dealershipCount: number
+  employeeCount: number
+  stats: {
+    totalSales: number
+    salesTarget: number
+    objectiveRate: number
+    totalRevenue: number
+    totalMargin: number
+    avgGPU: number
+    financingRate: number
+    satisfaction: number
+    marketShare: number
+  }
+  trend: "up" | "down" | "stable"
+  quarterlyGrowth: number
+}
+
+// TODO: replace with API data
+const brands: BrandData[] = [
+  {
+    id: "brand-ford", name: "Ford", logo: "\u{1F699}", color: "from-blue-600 to-blue-700",
+    directorId: "dir-marque-1", directorName: "Jean Legrand",
+    dealershipCount: 6, employeeCount: 420,
+    stats: { totalSales: 287, salesTarget: 300, objectiveRate: 95.7, totalRevenue: 8610000, totalMargin: 430500, avgGPU: 1500, financingRate: 76, satisfaction: 86, marketShare: 4.2 },
+    trend: "up", quarterlyGrowth: 8
+  },
+  {
+    id: "brand-nissan", name: "Nissan", logo: "\u{1F697}", color: "from-red-600 to-red-700",
+    directorId: "dir-marque-2", directorName: "Marie Dupont",
+    dealershipCount: 5, employeeCount: 350,
+    stats: { totalSales: 312, salesTarget: 320, objectiveRate: 97.5, totalRevenue: 9360000, totalMargin: 468000, avgGPU: 1500, financingRate: 72, satisfaction: 84, marketShare: 3.8 },
+    trend: "stable", quarterlyGrowth: 3
+  },
+  {
+    id: "brand-suzuki", name: "Suzuki", logo: "\u{1F690}", color: "from-yellow-500 to-yellow-600",
+    directorId: "dir-marque-3", directorName: "Thomas Petit",
+    dealershipCount: 4, employeeCount: 280,
+    stats: { totalSales: 293, salesTarget: 320, objectiveRate: 91.6, totalRevenue: 8790000, totalMargin: 439500, avgGPU: 1500, financingRate: 74, satisfaction: 88, marketShare: 2.9 },
+    trend: "up", quarterlyGrowth: 12
+  }
+]
+
+// ---------------------------------------------------------------------------
 
 type ChallengeType = "volume" | "revenue" | "margin" | "satisfaction" | "market_share"
 type RewardType = "bonus" | "trophy" | "recognition" | "prize"
@@ -134,9 +189,25 @@ function ChallengeNewContent() {
     }
   }
 
-  const handleSubmit = () => {
-    console.log("Challenge créé:", formData)
-    router.push("/groupe")
+  const handleSubmit = async () => {
+    try {
+      await createDefi({
+        title: formData.title,
+        description: formData.description,
+        type: formData.type,
+        target_value: formData.targetValue,
+        target_unit: formData.targetUnit,
+        start_date: formData.startDate,
+        end_date: formData.endDate,
+        participants: formData.participants,
+        reward_type: formData.rewardType,
+        reward_value: formData.rewardValue,
+        reward_description: formData.rewardDescription,
+      })
+      router.push("/groupe")
+    } catch (error) {
+      console.error("Error creating challenge:", error)
+    }
   }
 
   return (

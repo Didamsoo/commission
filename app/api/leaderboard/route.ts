@@ -11,11 +11,16 @@ export async function GET(request: NextRequest) {
   const metric = getFilterParam(request, 'metric') || 'final_margin'
   const vehicleType = getFilterParam(request, 'vehicle_type')
   const limitParam = parseInt(request.nextUrl.searchParams.get('limit') || '20', 10)
+  const startDate = request.nextUrl.searchParams.get('startDate')
+  const endDate = request.nextUrl.searchParams.get('endDate')
 
   // Construire les filtres de date
   let dateFrom: string | undefined
   let dateTo: string | undefined
-  if (period) {
+  if (startDate && endDate) {
+    dateFrom = startDate
+    dateTo = endDate
+  } else if (period) {
     const [year, month] = period.split('-')
     dateFrom = `${year}-${month}-01`
     const nextMonth = parseInt(month, 10) + 1

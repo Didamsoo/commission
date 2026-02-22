@@ -33,7 +33,8 @@ import {
   Phone,
   BarChart3,
   CheckCircle,
-  XCircle
+  XCircle,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -58,15 +59,10 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import {
-  currentChefVentes,
-  teamMembers,
-  chefVentesKPIs,
-  coachingNotes,
-  getTeamMembersAtObjective,
-  getTeamMembersBelowObjective,
-  TeamMember
-} from "@/lib/mock-chef-ventes-data"
+import { useProfil } from "@/hooks/use-profil"
+import { useDashboard } from "@/hooks/use-dashboard"
+import { useEquipe, type EquipeMember } from "@/hooks/use-equipe"
+import { useCoaching } from "@/hooks/use-coaching"
 
 // ============================================
 // TYPES
@@ -75,6 +71,32 @@ import {
 type SortField = "ranking" | "sales" | "margin" | "financing" | "name"
 type SortOrder = "asc" | "desc"
 type FilterStatus = "all" | "at_objective" | "below_objective" | "in_danger"
+
+interface TeamMember {
+  id: string
+  name: string
+  avatar?: string
+  email: string
+  role: string
+  joinedAt: string
+  kpis: {
+    sales: number
+    salesTarget: number
+    margin: number
+    gpu: number
+    financingRate: number
+    conversionRate: number
+    ranking: number
+    rankingTotal: number
+    points: number
+    streak: number
+    satisfaction: number
+    revenue: number
+    accessories: number
+  }
+  trend: "up" | "down" | "stable"
+  alerts: { id: string; severity: "critical" | "warning" | "info"; title: string; message: string }[]
+}
 
 // ============================================
 // COMPONENTS
@@ -127,11 +149,11 @@ function KPIBadge({
   )
 }
 
-function TeamMemberCard({ member, rank }: { member: TeamMember; rank: number }) {
+function TeamMemberCard({ member, rank, coachingData }: { member: TeamMember; rank: number; coachingData: unknown[] }) {
   const objectiveRate = Math.round((member.kpis.sales / member.kpis.salesTarget) * 100)
   const hasAlerts = member.alerts.length > 0
   const hasCriticalAlert = member.alerts.some(a => a.severity === "critical")
-  const memberNotes = coachingNotes.filter(n => n.commercialId === member.id)
+  const memberNotes = (coachingData || []).filter((n: any) => n.commercial_id === member.id)
 
   // Calculate days since joined
   const joinedDate = new Date(member.joinedAt)
@@ -297,7 +319,7 @@ function TeamMemberCard({ member, rank }: { member: TeamMember; rank: number }) 
                 {memberNotes.length} note{memberNotes.length > 1 ? "s" : ""} de coaching
               </span>
             </div>
-            <p className="text-xs text-gray-600 line-clamp-2">{memberNotes[0].content}</p>
+            <p className="text-xs text-gray-600 line-clamp-2">{(memberNotes[0] as any).content}</p>
           </div>
         )}
 
@@ -370,8 +392,49 @@ export default function EquipePage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc")
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all")
 
-  const membersAtObjective = getTeamMembersAtObjective()
-  const membersBelowObjective = getTeamMembersBelowObjective()
+  const { data: equipeData, loading } = useEquipe()
+  const { data: dashboardRaw } = useDashboard<Record<string, unknown>>("chef_ventes")
+  const { data: coachingData } = useCoaching()
+
+  // Build teamMembers from API data
+  const teamMembers: TeamMember[] = (equipeData || []).map((m, i) => ({
+    id: m.user_id || m.id,
+    name: m.full_name,
+    avatar: m.avatar_url || "",
+    email: m.email || "",
+    role: m.role,
+    joinedAt: m.joined_at || m.is_active ? "2023-01-01" : "",
+    kpis: {
+      sales: m.total_sales || 0,
+      salesTarget: m.sales_target || 10,
+      margin: m.total_margin || 0,
+      gpu: m.total_sales ? Math.round((m.total_margin || 0) / m.total_sales) : 0,
+      financingRate: m.financing_rate || 0,
+      conversionRate: m.conversion_rate || 0,
+      ranking: i + 1,
+      rankingTotal: (equipeData || []).length,
+      points: m.total_points || 0,
+      streak: m.streak || 0,
+      satisfaction: 0,
+      revenue: m.total_revenue || 0,
+      accessories: 0,
+    },
+    trend: (m.trend as "up" | "down" | "stable") || "stable",
+    alerts: [],
+  }))
+
+  // Build KPIs from dashboard data
+  const kpis = (dashboardRaw?.kpis || {}) as Record<string, number>
+  const chefVentesKPIs = {
+    teamSales: kpis.total_sales ?? teamMembers.reduce((s, m) => s + m.kpis.sales, 0),
+    teamSalesTarget: kpis.total_sales_target ?? teamMembers.reduce((s, m) => s + m.kpis.salesTarget, 0),
+    teamSize: teamMembers.length,
+    objectiveRate: 0,
+  }
+  chefVentesKPIs.objectiveRate = chefVentesKPIs.teamSalesTarget > 0 ? Math.round((chefVentesKPIs.teamSales / chefVentesKPIs.teamSalesTarget) * 100) : 0
+
+  const membersAtObjective = teamMembers.filter(m => m.kpis.sales >= m.kpis.salesTarget)
+  const membersBelowObjective = teamMembers.filter(m => m.kpis.sales < m.kpis.salesTarget)
   const membersInDanger = teamMembers.filter(m => (m.kpis.sales / m.kpis.salesTarget) < 0.6)
 
   // Filter and sort members
@@ -420,7 +483,15 @@ export default function EquipePage() {
     })
 
     return result
-  }, [searchQuery, sortField, sortOrder, filterStatus])
+  }, [equipeData, searchQuery, sortField, sortOrder, filterStatus])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
@@ -570,6 +641,7 @@ export default function EquipePage() {
               key={member.id}
               member={member}
               rank={sortField === "ranking" ? member.kpis.ranking : index + 1}
+              coachingData={coachingData || []}
             />
           ))}
         </div>

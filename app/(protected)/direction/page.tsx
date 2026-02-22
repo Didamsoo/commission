@@ -35,7 +35,8 @@ import {
   ThumbsDown,
   Minus,
   Package,
-  Timer
+  Timer,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -44,23 +45,151 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Separator } from "@/components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  currentDirConcession,
-  chefsVentes,
-  dirConcessionKPIs,
-  departmentStats,
-  directionAlerts,
-  interTeamChallenges,
-  pendingSales,
-  stockInfo,
-  concessionPerformanceHistory,
-  plData,
-  getUnreadDirectionAlerts,
-  getPendingSalesCount,
-  getTotalStockOver60Days,
-  getConcessionObjectiveRate
-} from "@/lib/mock-dir-concession-data"
+import { format } from "date-fns"
+import { DateRange } from "react-day-picker"
+import { useProfil } from "@/hooks/use-profil"
+import { useDashboard } from "@/hooks/use-dashboard"
+import { useEquipe } from "@/hooks/use-equipe"
+import { useApprobations } from "@/hooks/use-approbations"
+import { useDefis } from "@/hooks/use-defis"
+import { useNotifications } from "@/hooks/use-notifications"
 import { TEAM_TYPE_CONFIG, TeamType } from "@/types/hierarchy"
+import { DateRangePicker } from "@/components/ui/date-range-picker"
+import { SalesTrendChart } from "@/components/charts/sales-trend-chart"
+
+// ============================================
+// LOCAL INTERFACES
+// ============================================
+
+interface ChefVentesInfo {
+  id: string
+  name: string
+  avatar?: string
+  email: string
+  teamType: TeamType
+  teamSize: number
+  kpis: {
+    teamSales: number
+    teamSalesTarget: number
+    teamMargin: number
+    teamGPU: number
+    teamFinancingRate: number
+    teamConversionRate: number
+    stockRotation: number
+    membersAtObjective: number
+    teamSize: number
+    objectiveRate: number
+    constructorBonusEstimate: number
+    teamRanking: number
+    teamRankingTotal: number
+  }
+  trend: "up" | "down" | "stable"
+  alerts: { id: string; type: string; severity: "critical" | "warning" | "info"; title: string; message: string; isRead: boolean; createdAt: string }[]
+}
+
+interface DirConcessionKPIsType {
+  totalSales: number
+  totalRevenue: number
+  totalMargin: number
+  absorption: number
+  satisfaction: number
+  constructorBonus: number
+}
+
+interface TeamStats {
+  totalSales: number
+  totalRevenue: number
+  totalMargin: number
+  avgGPU: number
+  financingRate: number
+  objectiveRate: number
+  membersAtObjective: number
+  stockRotation: number
+  trend: "up" | "down" | "stable"
+}
+
+interface PLLine {
+  label: string
+  category: "revenue" | "cost" | "margin" | "result"
+  actual: number
+  budget: number
+  variance: number
+  variancePercent: number
+}
+
+interface StockInfoType {
+  teamType: TeamType
+  totalVehicles: number
+  under30Days: number
+  between30And60Days: number
+  over60Days: number
+  avgDaysInStock: number
+}
+
+interface PendingSaleType {
+  id: string
+  vehicleType: "VN" | "VO" | "VU"
+  vehicleName: string
+  clientName: string
+  commercialName: string
+  margin: number
+  status: string
+}
+
+interface AlertType {
+  id: string
+  type: string
+  severity: "critical" | "warning" | "info"
+  title: string
+  message: string
+  isRead: boolean
+  createdAt: string
+}
+
+interface ChallengeType {
+  id: string
+  title: string
+  description: string
+  endDate: string
+  reward: { type: string; value: number }
+  participants: { id: string; name: string; avatar?: string; currentScore: number; progressRate: number; isCompleted: boolean }[]
+}
+
+// ============================================
+// STATIC DATA (TODO: replace with API when available)
+// ============================================
+
+const departmentStats: Record<string, TeamStats> = {
+  VN: { totalSales: 45, totalRevenue: 1800000, totalMargin: 67500, avgGPU: 1500, financingRate: 78, objectiveRate: 75, membersAtObjective: 3, stockRotation: 28, trend: "up" },
+  VO: { totalSales: 32, totalRevenue: 960000, totalMargin: 48000, avgGPU: 1500, financingRate: 65, objectiveRate: 80, membersAtObjective: 2, stockRotation: 35, trend: "stable" },
+  VU: { totalSales: 18, totalRevenue: 720000, totalMargin: 36000, avgGPU: 2000, financingRate: 85, objectiveRate: 90, membersAtObjective: 3, stockRotation: 22, trend: "up" },
+  APV: { totalSales: 0, totalRevenue: 370000, totalMargin: 33300, avgGPU: 0, financingRate: 0, objectiveRate: 85, membersAtObjective: 0, stockRotation: 0, trend: "up" },
+  ADMIN: { totalSales: 0, totalRevenue: 0, totalMargin: 0, avgGPU: 0, financingRate: 0, objectiveRate: 0, membersAtObjective: 0, stockRotation: 0, trend: "stable" }
+}
+
+const stockInfo: StockInfoType[] = [
+  { teamType: "VN" as TeamType, totalVehicles: 45, under30Days: 32, between30And60Days: 10, over60Days: 3, avgDaysInStock: 28 },
+  { teamType: "VO" as TeamType, totalVehicles: 38, under30Days: 18, between30And60Days: 8, over60Days: 12, avgDaysInStock: 35 },
+  { teamType: "VU" as TeamType, totalVehicles: 15, under30Days: 12, between30And60Days: 2, over60Days: 1, avgDaysInStock: 22 }
+]
+
+const plData: PLLine[] = [
+  { label: "CA Véhicules Neufs", category: "revenue", actual: 1800000, budget: 1700000, variance: 100000, variancePercent: 5.9 },
+  { label: "CA Véhicules Occasion", category: "revenue", actual: 960000, budget: 1000000, variance: -40000, variancePercent: -4.0 },
+  { label: "CA Véhicules Utilitaires", category: "revenue", actual: 720000, budget: 650000, variance: 70000, variancePercent: 10.8 },
+  { label: "CA Après-Vente", category: "revenue", actual: 370000, budget: 350000, variance: 20000, variancePercent: 5.7 },
+  { label: "Total Revenus", category: "revenue", actual: 3850000, budget: 3700000, variance: 150000, variancePercent: 4.1 },
+  { label: "Marge VN", category: "margin", actual: 67500, budget: 68000, variance: -500, variancePercent: -0.7 },
+  { label: "Marge VO", category: "margin", actual: 48000, budget: 50000, variance: -2000, variancePercent: -4.0 },
+  { label: "Marge VU", category: "margin", actual: 36000, budget: 32500, variance: 3500, variancePercent: 10.8 },
+  { label: "Marge APV", category: "margin", actual: 33300, budget: 31500, variance: 1800, variancePercent: 5.7 },
+  { label: "Total Marges", category: "margin", actual: 184800, budget: 182000, variance: 2800, variancePercent: 1.5 },
+  { label: "Frais de personnel", category: "cost", actual: -45000, budget: -46000, variance: 1000, variancePercent: 2.2 },
+  { label: "Loyers et charges", category: "cost", actual: -12000, budget: -12000, variance: 0, variancePercent: 0 },
+  { label: "Marketing", category: "cost", actual: -3500, budget: -4000, variance: 500, variancePercent: 12.5 },
+  { label: "Autres charges", category: "cost", actual: -5300, budget: -5000, variance: -300, variancePercent: -6.0 },
+  { label: "Résultat Net", category: "result", actual: 119000, budget: 115000, variance: 4000, variancePercent: 3.5 }
+]
 
 // ============================================
 // COMPONENTS
@@ -124,8 +253,9 @@ function StatCard({
   )
 }
 
-function DepartmentCard({ teamType }: { teamType: TeamType }) {
+function DepartmentCard({ teamType, chefsVentes }: { teamType: TeamType; chefsVentes: ChefVentesInfo[] }) {
   const stats = departmentStats[teamType]
+  if (!stats) return null
   const config = TEAM_TYPE_CONFIG[teamType]
   const chef = chefsVentes.find(cv => cv.teamType === teamType)
 
@@ -246,7 +376,7 @@ function DepartmentCard({ teamType }: { teamType: TeamType }) {
   )
 }
 
-function PendingSaleRow({ sale }: { sale: typeof pendingSales[0] }) {
+function PendingSaleRow({ sale }: { sale: PendingSaleType }) {
   return (
     <div className="flex items-center gap-4 p-4 rounded-xl hover:bg-gray-50 transition-colors group">
       <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
@@ -286,7 +416,7 @@ function PendingSaleRow({ sale }: { sale: typeof pendingSales[0] }) {
   )
 }
 
-function AlertCard({ alert }: { alert: typeof directionAlerts[0] }) {
+function AlertCard({ alert }: { alert: AlertType }) {
   const severityStyles = {
     critical: "border-red-200 bg-red-50",
     warning: "border-amber-200 bg-amber-50",
@@ -312,7 +442,7 @@ function AlertCard({ alert }: { alert: typeof directionAlerts[0] }) {
   )
 }
 
-function ChallengeCard({ challenge }: { challenge: typeof interTeamChallenges[0] }) {
+function ChallengeCard({ challenge }: { challenge: ChallengeType }) {
   const leader = challenge.participants.sort((a, b) => b.currentScore - a.currentScore)[0]
 
   return (
@@ -356,7 +486,7 @@ function ChallengeCard({ challenge }: { challenge: typeof interTeamChallenges[0]
 }
 
 function StockSummaryCard() {
-  const totalOver60 = getTotalStockOver60Days()
+  const totalOver60 = stockInfo.reduce((sum, s) => sum + s.over60Days, 0)
 
   return (
     <Card className="border-0 shadow-premium">
@@ -411,16 +541,138 @@ function StockSummaryCard() {
 
 export default function DirectionDashboard() {
   const [tab, setTab] = useState<"overview" | "alerts" | "pl">("overview")
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
 
-  const unreadAlerts = getUnreadDirectionAlerts()
-  const pendingCount = getPendingSalesCount()
-  const objectiveRate = getConcessionObjectiveRate()
-  const daysRemaining = 9
+  const dateRangeParams = dateRange?.from && dateRange?.to ? {
+    startDate: format(dateRange.from, 'yyyy-MM-dd'),
+    endDate: format(dateRange.to, 'yyyy-MM-dd'),
+  } : undefined
+
+  const { data: profil } = useProfil()
+  const { data: dashboardRaw, loading: dashLoading } = useDashboard<Record<string, unknown>>("dir_concession", undefined, dateRangeParams)
+  const { data: equipeData, loading: equipeLoading } = useEquipe()
+  const { data: approbationsData } = useApprobations("pending")
+  const { data: defisData } = useDefis("active")
+  const { data: notifData } = useNotifications(false)
+
+  // Build chefsVentes from equipe data (filter managers / chef_ventes role)
+  const chefsVentes: ChefVentesInfo[] = (equipeData || [])
+    .filter(m => m.role === "chef_ventes" || m.role === "manager")
+    .map(m => ({
+      id: m.user_id || m.id,
+      name: m.full_name,
+      avatar: m.avatar_url || "",
+      email: m.email,
+      teamType: (m.equipes?.type as TeamType) || "VN",
+      teamSize: 5,
+      kpis: {
+        teamSales: m.total_sales || 0,
+        teamSalesTarget: m.sales_target || 20,
+        teamMargin: m.total_margin || 0,
+        teamGPU: (m.total_margin && m.total_sales) ? Math.round((m.total_margin) / Math.max(m.total_sales, 1)) : 0,
+        teamFinancingRate: m.financing_rate || 0,
+        teamConversionRate: m.conversion_rate || 0,
+        stockRotation: 28,
+        membersAtObjective: 0,
+        teamSize: 5,
+        objectiveRate: m.sales_target ? Math.round(((m.total_sales || 0) / m.sales_target) * 100) : 0,
+        constructorBonusEstimate: 0,
+        teamRanking: 1,
+        teamRankingTotal: 3
+      },
+      trend: (m.trend as "up" | "down" | "stable") || "stable",
+      alerts: []
+    }))
+
+  // Build KPIs from dashboard data
+  const kpisRaw = (dashboardRaw as Record<string, unknown>)?.kpis as Record<string, unknown> | undefined
+  const dirConcessionKPIs: DirConcessionKPIsType = {
+    totalSales: (kpisRaw?.total_sales as number) || 0,
+    totalRevenue: (kpisRaw?.total_revenue as number) || 0,
+    totalMargin: (kpisRaw?.total_margin as number) || 0,
+    absorption: (kpisRaw?.absorption as number) || 82,
+    satisfaction: (kpisRaw?.satisfaction as number) || 87,
+    constructorBonus: (kpisRaw?.constructor_bonus as number) || 45000
+  }
+
+  // Derive alerts from notifications
+  const allAlerts: AlertType[] = ((notifData as unknown[]) || []).map((n: unknown) => {
+    const notif = n as Record<string, unknown>
+    return {
+      id: notif.id as string || "",
+      type: notif.type as string || "info",
+      severity: (notif.severity as "critical" | "warning" | "info") || "info",
+      title: notif.title as string || "",
+      message: notif.message as string || "",
+      isRead: notif.is_read as boolean || false,
+      createdAt: notif.created_at as string || ""
+    }
+  })
+  const unreadAlerts = allAlerts.filter(a => !a.isRead)
+
+  // Derive pending sales from approbations
+  const pendingSalesList: PendingSaleType[] = ((approbationsData as unknown[]) || []).map((a: unknown) => {
+    const sale = a as Record<string, unknown>
+    return {
+      id: sale.id as string || "",
+      vehicleType: (sale.vehicle_type as "VN" | "VO" | "VU") || "VN",
+      vehicleName: sale.vehicle_name as string || "",
+      clientName: sale.client_name as string || "",
+      commercialName: sale.commercial_name as string || "",
+      margin: sale.margin as number || 0,
+      status: sale.status as string || "pending"
+    }
+  })
+  const pendingCount = pendingSalesList.filter(s => s.status === "pending").length
+
+  // Derive challenges from defis
+  const interTeamChallenges: ChallengeType[] = ((defisData as unknown[]) || []).map((d: unknown) => {
+    const defi = d as Record<string, unknown>
+    return {
+      id: defi.id as string || "",
+      title: defi.title as string || "",
+      description: defi.description as string || "",
+      endDate: defi.end_date as string || "",
+      reward: {
+        type: (defi.reward_type as string) || "bonus",
+        value: (defi.reward_value as number) || 0
+      },
+      participants: ((defi.participants as unknown[]) || []).map((p: unknown) => {
+        const part = p as Record<string, unknown>
+        return {
+          id: part.id as string || "",
+          name: part.name as string || "",
+          avatar: part.avatar as string,
+          currentScore: part.current_score as number || 0,
+          progressRate: part.progress_rate as number || 0,
+          isCompleted: part.is_completed as boolean || false
+        }
+      })
+    }
+  })
 
   // Calculate totals
-  const totalSales = chefsVentes.reduce((sum, cv) => sum + cv.kpis.teamSales, 0)
-  const totalTarget = chefsVentes.reduce((sum, cv) => sum + cv.kpis.teamSalesTarget, 0)
-  const totalMargin = chefsVentes.reduce((sum, cv) => sum + cv.kpis.teamMargin, 0)
+  const totalSales = chefsVentes.reduce((sum, cv) => sum + cv.kpis.teamSales, 0) || dirConcessionKPIs.totalSales
+  const totalTarget = chefsVentes.reduce((sum, cv) => sum + cv.kpis.teamSalesTarget, 0) || 120
+  const totalMargin = chefsVentes.reduce((sum, cv) => sum + cv.kpis.teamMargin, 0) || dirConcessionKPIs.totalMargin
+  const objectiveRate = totalTarget > 0 ? Math.round((totalSales / totalTarget) * 100) : 0
+
+  // Dynamic days remaining in month
+  const now = new Date()
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  const daysRemaining = Math.max(0, endOfMonth.getDate() - now.getDate())
+
+  // Loading state
+  if (dashLoading || equipeLoading) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+          <p className="text-gray-500">Chargement du tableau de bord...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
@@ -434,14 +686,15 @@ export default function DirectionDashboard() {
           </div>
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              Bonjour, {currentDirConcession.fullName.split(" ")[0]} !
+              Bonjour, {(profil?.full_name || "Directeur").split(" ")[0]} !
             </h1>
             <p className="text-gray-500">
               Directeur de Concession • Ford Paris Est
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
           <Link href="/direction/reports">
             <Button variant="outline" className="gap-2">
               <BarChart3 className="w-4 h-4" />
@@ -546,12 +799,34 @@ export default function DirectionDashboard() {
           Performance par département
         </h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <DepartmentCard teamType="VN" />
-          <DepartmentCard teamType="VO" />
-          <DepartmentCard teamType="VU" />
-          <DepartmentCard teamType="APV" />
+          <DepartmentCard teamType="VN" chefsVentes={chefsVentes} />
+          <DepartmentCard teamType="VO" chefsVentes={chefsVentes} />
+          <DepartmentCard teamType="VU" chefsVentes={chefsVentes} />
+          <DepartmentCard teamType="APV" chefsVentes={chefsVentes} />
         </div>
       </div>
+
+      {/* ============================================
+          PERFORMANCE CHART
+          ============================================ */}
+      {(() => {
+        const perfHistory = (dashboardRaw as Record<string, unknown>)?.performanceHistory as { period: string; label: string; sales: number; target: number; margin: number; financingRate: number }[] | undefined
+        if (!perfHistory || perfHistory.length === 0) return null
+        return (
+          <Card className="border-0 shadow-premium">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-purple-600" />
+                Tendance des ventes par département
+              </CardTitle>
+              <CardDescription>6 derniers mois — Toutes équipes confondues</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SalesTrendChart data={perfHistory} />
+            </CardContent>
+          </Card>
+        )
+      })()}
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* ============================================
@@ -577,7 +852,7 @@ export default function DirectionDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-1">
-              {pendingSales.filter(s => s.status === "pending").slice(0, 3).map(sale => (
+              {pendingSalesList.filter(s => s.status === "pending").slice(0, 3).map(sale => (
                 <PendingSaleRow key={sale.id} sale={sale} />
               ))}
             </div>
@@ -628,7 +903,7 @@ export default function DirectionDashboard() {
           <Card className="border-0 shadow-premium">
             <CardContent className="p-6">
               <div className="space-y-3">
-                {directionAlerts.map(alert => (
+                {allAlerts.map(alert => (
                   <AlertCard key={alert.id} alert={alert} />
                 ))}
               </div>

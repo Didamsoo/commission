@@ -34,7 +34,331 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { getDealershipById, getDealershipRanking, brandChallenges } from "@/lib/mock-dir-marque-data"
+// ============================================
+// TYPES
+// ============================================
+
+interface DealershipData {
+  id: string
+  name: string
+  code: string
+  location: string
+  address: string
+  directorId: string
+  directorName: string
+  directorAvatar?: string
+  coordinates: { lat: number; lng: number }
+  stats: {
+    totalSales: number
+    salesTarget: number
+    objectiveRate: number
+    totalMargin: number
+    avgGPU: number
+    financingRate: number
+    satisfaction: number
+    stockDays: number
+  }
+  departments: {
+    vn: { sales: number; target: number; margin: number }
+    vo: { sales: number; target: number; margin: number }
+    vu: { sales: number; target: number; margin: number }
+  }
+  trend: "up" | "down" | "stable"
+  alerts: Array<{
+    type: "warning" | "critical" | "info"
+    message: string
+  }>
+}
+
+interface BrandChallenge {
+  id: string
+  title: string
+  description: string
+  type: "volume" | "margin" | "financing" | "satisfaction" | "electric"
+  targetValue: number
+  targetUnit: string
+  startDate: string
+  endDate: string
+  reward: {
+    type: "bonus" | "recognition" | "trophy"
+    value: string
+    description: string
+  }
+  participants: Array<{
+    dealershipId: string
+    dealershipName: string
+    currentValue: number
+    progressRate: number
+    isCompleted: boolean
+  }>
+  status: "active" | "completed" | "upcoming"
+}
+
+// ============================================
+// STATIC DATA
+// ============================================
+
+// TODO: replace with API data
+const dealerships: DealershipData[] = [
+  {
+    id: "dealership-paris-est",
+    name: "Ford Paris Est",
+    code: "FPE-001",
+    location: "Paris Est",
+    address: "125 Avenue de la République, 75011 Paris",
+    directorId: "dir-concession-1",
+    directorName: "Marie Dubois",
+    coordinates: { lat: 48.8634, lng: 2.3815 },
+    stats: {
+      totalSales: 58,
+      salesTarget: 52,
+      objectiveRate: 112,
+      totalMargin: 87000,
+      avgGPU: 1500,
+      financingRate: 82,
+      satisfaction: 89,
+      stockDays: 35
+    },
+    departments: {
+      vn: { sales: 32, target: 28, margin: 48000 },
+      vo: { sales: 18, target: 16, margin: 27000 },
+      vu: { sales: 8, target: 8, margin: 12000 }
+    },
+    trend: "up",
+    alerts: []
+  },
+  {
+    id: "dealership-paris-ouest",
+    name: "Ford Paris Ouest",
+    code: "FPO-002",
+    location: "Paris Ouest",
+    address: "45 Boulevard Exelmans, 75016 Paris",
+    directorId: "dir-concession-2",
+    directorName: "Pierre Martin",
+    coordinates: { lat: 48.8424, lng: 2.2635 },
+    stats: {
+      totalSales: 49,
+      salesTarget: 50,
+      objectiveRate: 98,
+      totalMargin: 71050,
+      avgGPU: 1450,
+      financingRate: 75,
+      satisfaction: 86,
+      stockDays: 42
+    },
+    departments: {
+      vn: { sales: 26, target: 28, margin: 37700 },
+      vo: { sales: 16, target: 15, margin: 23200 },
+      vu: { sales: 7, target: 7, margin: 10150 }
+    },
+    trend: "stable",
+    alerts: [
+      { type: "warning", message: "Stock VN > 40 jours" }
+    ]
+  },
+  {
+    id: "dealership-versailles",
+    name: "Ford Versailles",
+    code: "FVS-003",
+    location: "Versailles",
+    address: "8 Rue des Chantiers, 78000 Versailles",
+    directorId: "dir-concession-3",
+    directorName: "Sophie Bernard",
+    coordinates: { lat: 48.8014, lng: 2.1301 },
+    stats: {
+      totalSales: 52,
+      salesTarget: 50,
+      objectiveRate: 104,
+      totalMargin: 78000,
+      avgGPU: 1500,
+      financingRate: 78,
+      satisfaction: 91,
+      stockDays: 38
+    },
+    departments: {
+      vn: { sales: 28, target: 26, margin: 42000 },
+      vo: { sales: 17, target: 17, margin: 25500 },
+      vu: { sales: 7, target: 7, margin: 10500 }
+    },
+    trend: "up",
+    alerts: []
+  },
+  {
+    id: "dealership-creteil",
+    name: "Ford Créteil",
+    code: "FCR-004",
+    location: "Créteil",
+    address: "Centre Commercial Créteil Soleil, 94000 Créteil",
+    directorId: "dir-concession-4",
+    directorName: "Lucas Petit",
+    coordinates: { lat: 48.7905, lng: 2.4595 },
+    stats: {
+      totalSales: 40,
+      salesTarget: 45,
+      objectiveRate: 89,
+      totalMargin: 56000,
+      avgGPU: 1400,
+      financingRate: 68,
+      satisfaction: 82,
+      stockDays: 52
+    },
+    departments: {
+      vn: { sales: 20, target: 24, margin: 28000 },
+      vo: { sales: 14, target: 15, margin: 19600 },
+      vu: { sales: 6, target: 6, margin: 8400 }
+    },
+    trend: "down",
+    alerts: [
+      { type: "critical", message: "Objectif VN à risque" },
+      { type: "warning", message: "Taux financement bas (68%)" },
+      { type: "warning", message: "Stock > 50 jours" }
+    ]
+  },
+  {
+    id: "dealership-saint-denis",
+    name: "Ford Saint-Denis",
+    code: "FSD-005",
+    location: "Saint-Denis",
+    address: "52 Boulevard Marcel Sembat, 93200 Saint-Denis",
+    directorId: "dir-concession-5",
+    directorName: "Emma Leroy",
+    coordinates: { lat: 48.9362, lng: 2.3574 },
+    stats: {
+      totalSales: 45,
+      salesTarget: 48,
+      objectiveRate: 94,
+      totalMargin: 63000,
+      avgGPU: 1400,
+      financingRate: 72,
+      satisfaction: 84,
+      stockDays: 44
+    },
+    departments: {
+      vn: { sales: 24, target: 26, margin: 33600 },
+      vo: { sales: 15, target: 15, margin: 21000 },
+      vu: { sales: 6, target: 7, margin: 8400 }
+    },
+    trend: "stable",
+    alerts: [
+      { type: "info", message: "Nouveau directeur depuis 3 mois" }
+    ]
+  },
+  {
+    id: "dealership-evry",
+    name: "Ford Évry",
+    code: "FEV-006",
+    location: "Évry",
+    address: "15 Avenue du Lac, 91000 Évry",
+    directorId: "dir-concession-6",
+    directorName: "Thomas Garcia",
+    coordinates: { lat: 48.6249, lng: 2.4295 },
+    stats: {
+      totalSales: 43,
+      salesTarget: 42,
+      objectiveRate: 102,
+      totalMargin: 64500,
+      avgGPU: 1500,
+      financingRate: 80,
+      satisfaction: 88,
+      stockDays: 36
+    },
+    departments: {
+      vn: { sales: 22, target: 22, margin: 33000 },
+      vo: { sales: 15, target: 14, margin: 22500 },
+      vu: { sales: 6, target: 6, margin: 9000 }
+    },
+    trend: "up",
+    alerts: []
+  }
+]
+
+// TODO: replace with API data
+const brandChallenges: BrandChallenge[] = [
+  {
+    id: "bc-1",
+    title: "Course au 100%",
+    description: "Première concession à atteindre 100% de l'objectif mensuel",
+    type: "volume",
+    targetValue: 100,
+    targetUnit: "%",
+    startDate: "2024-02-01",
+    endDate: "2024-02-29",
+    reward: {
+      type: "bonus",
+      value: "5000€",
+      description: "Bonus équipe direction"
+    },
+    participants: [
+      { dealershipId: "dealership-paris-est", dealershipName: "Ford Paris Est", currentValue: 112, progressRate: 112, isCompleted: true },
+      { dealershipId: "dealership-versailles", dealershipName: "Ford Versailles", currentValue: 104, progressRate: 104, isCompleted: true },
+      { dealershipId: "dealership-evry", dealershipName: "Ford Évry", currentValue: 102, progressRate: 102, isCompleted: true },
+      { dealershipId: "dealership-paris-ouest", dealershipName: "Ford Paris Ouest", currentValue: 98, progressRate: 98, isCompleted: false },
+      { dealershipId: "dealership-saint-denis", dealershipName: "Ford Saint-Denis", currentValue: 94, progressRate: 94, isCompleted: false },
+      { dealershipId: "dealership-creteil", dealershipName: "Ford Créteil", currentValue: 89, progressRate: 89, isCompleted: false }
+    ],
+    status: "active"
+  },
+  {
+    id: "bc-2",
+    title: "Électrique First",
+    description: "Atteindre 20% de ventes de véhicules électriques",
+    type: "electric",
+    targetValue: 20,
+    targetUnit: "%",
+    startDate: "2024-01-01",
+    endDate: "2024-03-31",
+    reward: {
+      type: "trophy",
+      value: "Trophée Green",
+      description: "Concession la plus verte du trimestre"
+    },
+    participants: [
+      { dealershipId: "dealership-paris-est", dealershipName: "Ford Paris Est", currentValue: 22, progressRate: 110, isCompleted: true },
+      { dealershipId: "dealership-paris-ouest", dealershipName: "Ford Paris Ouest", currentValue: 19, progressRate: 95, isCompleted: false },
+      { dealershipId: "dealership-versailles", dealershipName: "Ford Versailles", currentValue: 18, progressRate: 90, isCompleted: false },
+      { dealershipId: "dealership-evry", dealershipName: "Ford Évry", currentValue: 17, progressRate: 85, isCompleted: false },
+      { dealershipId: "dealership-saint-denis", dealershipName: "Ford Saint-Denis", currentValue: 15, progressRate: 75, isCompleted: false },
+      { dealershipId: "dealership-creteil", dealershipName: "Ford Créteil", currentValue: 12, progressRate: 60, isCompleted: false }
+    ],
+    status: "active"
+  },
+  {
+    id: "bc-3",
+    title: "Excellence Client",
+    description: "Maintenir un NPS supérieur à 90",
+    type: "satisfaction",
+    targetValue: 90,
+    targetUnit: "NPS",
+    startDate: "2024-02-01",
+    endDate: "2024-02-29",
+    reward: {
+      type: "recognition",
+      value: "Star Service",
+      description: "Badge Excellence Satisfaction"
+    },
+    participants: [
+      { dealershipId: "dealership-versailles", dealershipName: "Ford Versailles", currentValue: 91, progressRate: 101, isCompleted: true },
+      { dealershipId: "dealership-paris-est", dealershipName: "Ford Paris Est", currentValue: 89, progressRate: 99, isCompleted: false },
+      { dealershipId: "dealership-evry", dealershipName: "Ford Évry", currentValue: 88, progressRate: 98, isCompleted: false },
+      { dealershipId: "dealership-paris-ouest", dealershipName: "Ford Paris Ouest", currentValue: 86, progressRate: 96, isCompleted: false },
+      { dealershipId: "dealership-saint-denis", dealershipName: "Ford Saint-Denis", currentValue: 84, progressRate: 93, isCompleted: false },
+      { dealershipId: "dealership-creteil", dealershipName: "Ford Créteil", currentValue: 82, progressRate: 91, isCompleted: false }
+    ],
+    status: "active"
+  }
+]
+
+// ============================================
+// HELPERS
+// ============================================
+
+function getDealershipById(id: string): DealershipData | undefined {
+  return dealerships.find(d => d.id === id)
+}
+
+function getDealershipRanking(): DealershipData[] {
+  return [...dealerships].sort((a, b) => b.stats.objectiveRate - a.stats.objectiveRate)
+}
 
 // ============================================
 // COMPONENTS

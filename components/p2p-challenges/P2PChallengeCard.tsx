@@ -28,7 +28,7 @@ import {
   getTimeRemaining,
   formatScore
 } from "@/types/p2p-challenges"
-import { CURRENT_USER_ID, isChallenger, isChallenged, didUserWin } from "@/lib/mock-p2p-data"
+import { isChallenger, isChallenged, didUserWin } from "@/lib/p2p-utils"
 
 interface P2PChallengeCardProps {
   challenge: P2PChallenge
@@ -61,7 +61,7 @@ function getInitials(name: string) {
 
 export function P2PChallengeCard({
   challenge,
-  currentUserId = CURRENT_USER_ID,
+  currentUserId = "",
   onAccept,
   onDecline,
   onNegotiate,

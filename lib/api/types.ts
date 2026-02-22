@@ -20,6 +20,12 @@ export interface DbProfile {
   is_active: boolean
   created_at: string
   updated_at: string
+  settings: {
+    email_notifications?: boolean
+    defi_notifications?: boolean
+    vente_notifications?: boolean
+    badge_notifications?: boolean
+  } | null
 }
 
 // Résultat de getAuthenticatedUser()

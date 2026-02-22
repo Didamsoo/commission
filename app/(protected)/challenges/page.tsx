@@ -33,15 +33,11 @@ import {
   CreateChallengeDialog,
   ChallengeResponseDialog
 } from "@/components/p2p-challenges"
-import {
-  mockP2PChallenges,
-  getPendingChallengesForUser,
-  getActiveChallenges,
-  getNegotiatingChallenges,
-  getCompletedChallenges,
-  CURRENT_USER_ID
-} from "@/lib/mock-p2p-data"
-import { P2PChallenge, P2PStake } from "@/types/p2p-challenges"
+import { useDefisP2P } from "@/hooks/use-defis-p2p"
+import { useDefis } from "@/hooks/use-defis"
+import { useProfil } from "@/hooks/use-profil"
+import { useEquipe } from "@/hooks/use-equipe"
+import { P2PChallenge, P2PStake, P2PParticipant } from "@/types/p2p-challenges"
 
 type ChallengeStatus = "active" | "completed" | "upcoming"
 type ChallengeType = "sales_count" | "revenue_target" | "margin_target" | "financing_rate" | "specific_model"
@@ -356,17 +352,30 @@ export default function ChallengesPage() {
   const [selectedP2PChallenge, setSelectedP2PChallenge] = useState<P2PChallenge | null>(null)
   const [isResponseDialogOpen, setIsResponseDialogOpen] = useState(false)
 
+  const { data: profil } = useProfil()
+  const { data: p2pChallengesRaw } = useDefisP2P()
+  const { data: equipeData } = useEquipe()
+  const currentUserId = profil?.id || ""
+
+  // Map API data to P2PChallenge type
+  const allP2P = ((p2pChallengesRaw || []) as Array<Record<string, unknown>>).map(d => d as unknown as P2PChallenge)
+
   const activeChallenges = mockChallenges.filter(c => c.status === "active")
   const completedChallenges = mockChallenges.filter(c => c.status === "completed")
   const upcomingChallenges = mockChallenges.filter(c => c.status === "upcoming")
 
   const completedByUser = completedChallenges.filter(c => c.isCompleted)
 
-  // P2P Challenges
-  const pendingP2PChallenges = getPendingChallengesForUser()
-  const activeP2PChallenges = getActiveChallenges()
-  const negotiatingP2PChallenges = getNegotiatingChallenges()
-  const completedP2PChallenges = getCompletedChallenges()
+  // P2P Challenges from real API
+  const pendingP2PChallenges = allP2P.filter(c => c.challenged?.id === currentUserId && c.status === "pending")
+  const activeP2PChallenges = allP2P.filter(c => (c.challenger?.id === currentUserId || c.challenged?.id === currentUserId) && c.status === "active")
+  const negotiatingP2PChallenges = allP2P.filter(c => (c.challenger?.id === currentUserId || c.challenged?.id === currentUserId) && c.status === "negotiating")
+  const completedP2PChallenges = allP2P.filter(c => (c.challenger?.id === currentUserId || c.challenged?.id === currentUserId) && (c.status === "completed" || c.status === "declined"))
+
+  // Build opponents list from equipe for the create dialog
+  const opponents: P2PParticipant[] = (equipeData || [])
+    .filter(m => m.id !== currentUserId && m.role === "commercial")
+    .map(m => ({ id: m.id, name: m.full_name, avatar: m.avatar_url || "", currentScore: 0 }))
 
   const handleAcceptChallenge = () => {
     console.log("Challenge accepted:", selectedP2PChallenge?.id)
@@ -557,6 +566,7 @@ export default function ChallengesPage() {
                   <P2PChallengeCard
                     key={challenge.id}
                     challenge={challenge}
+                    currentUserId={currentUserId}
                     onAccept={() => openResponseDialog(challenge)}
                     onDecline={() => {
                       setSelectedP2PChallenge(challenge)
@@ -583,6 +593,7 @@ export default function ChallengesPage() {
                   <P2PChallengeCard
                     key={challenge.id}
                     challenge={challenge}
+                    currentUserId={currentUserId}
                     onViewDetails={() => openResponseDialog(challenge)}
                   />
                 ))}
@@ -604,6 +615,7 @@ export default function ChallengesPage() {
                   <P2PChallengeCard
                     key={challenge.id}
                     challenge={challenge}
+                    currentUserId={currentUserId}
                   />
                 ))}
               </div>
@@ -624,6 +636,7 @@ export default function ChallengesPage() {
                   <P2PChallengeCard
                     key={challenge.id}
                     challenge={challenge}
+                    currentUserId={currentUserId}
                   />
                 ))}
               </div>
@@ -658,6 +671,8 @@ export default function ChallengesPage() {
         isOpen={isCreateDialogOpen}
         onClose={() => setIsCreateDialogOpen(false)}
         onChallengeCreated={handleChallengeCreated}
+        currentUser={profil ? { id: profil.id, name: profil.full_name, avatar: profil.avatar_url || "" } : undefined}
+        opponents={opponents}
       />
 
       {selectedP2PChallenge && (

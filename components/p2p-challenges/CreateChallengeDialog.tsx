@@ -36,13 +36,15 @@ import {
   P2P_DURATION_OPTIONS,
   P2P_DEFAULT_STAKE
 } from "@/types/p2p-challenges"
-import { getAvailableOpponents, CURRENT_USER_ID, mockCommercials } from "@/lib/mock-p2p-data"
+import { createDefiP2P } from "@/hooks/use-defis-p2p"
 
 interface CreateChallengeDialogProps {
   isOpen: boolean
   onClose: () => void
   preselectedUser?: P2PParticipant
   onChallengeCreated?: (challenge: P2PChallenge) => void
+  currentUser?: { id: string; name: string; avatar: string }
+  opponents?: P2PParticipant[]
 }
 
 const STEPS = [
@@ -61,7 +63,9 @@ export function CreateChallengeDialog({
   isOpen,
   onClose,
   preselectedUser,
-  onChallengeCreated
+  onChallengeCreated,
+  currentUser,
+  opponents: opponentsProp = []
 }: CreateChallengeDialogProps) {
   const [currentStep, setCurrentStep] = useState(preselectedUser ? 1 : 0)
   const [selectedOpponent, setSelectedOpponent] = useState<P2PParticipant | null>(preselectedUser || null)
@@ -70,8 +74,7 @@ export function CreateChallengeDialog({
   const [stake, setStake] = useState<P2PStake>(P2P_DEFAULT_STAKE)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const opponents = getAvailableOpponents()
-  const currentUser = mockCommercials.find(c => c.id === CURRENT_USER_ID)
+  const opponents = opponentsProp
 
   const handleNext = () => {
     if (currentStep < STEPS.length - 1) {
@@ -90,35 +93,45 @@ export function CreateChallengeDialog({
 
     setIsSubmitting(true)
 
-    // Simuler un appel API
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    try {
+      const result = await createDefiP2P({
+        challenged_id: selectedOpponent.id,
+        metric: selectedMetric,
+        duration_days: selectedDuration,
+        challenger_stake: stake,
+        challenged_stake: stake,
+      })
 
-    const newChallenge: P2PChallenge = {
-      id: `p2p-${Date.now()}`,
-      challenger: {
-        id: currentUser.id,
-        name: currentUser.name,
-        avatar: currentUser.avatar || "",
-        currentScore: 0
-      },
-      challenged: {
-        id: selectedOpponent.id,
-        name: selectedOpponent.name,
-        avatar: selectedOpponent.avatar || "",
-        currentScore: 0
-      },
-      metric: selectedMetric,
-      durationDays: selectedDuration,
-      challengerStake: stake,
-      challengedStake: stake,
-      status: "pending",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      const newChallenge: P2PChallenge = {
+        id: (result.data as any)?.id || `p2p-${Date.now()}`,
+        challenger: {
+          id: currentUser.id,
+          name: currentUser.name,
+          avatar: currentUser.avatar || "",
+          currentScore: 0
+        },
+        challenged: {
+          id: selectedOpponent.id,
+          name: selectedOpponent.name,
+          avatar: selectedOpponent.avatar || "",
+          currentScore: 0
+        },
+        metric: selectedMetric,
+        durationDays: selectedDuration,
+        challengerStake: stake,
+        challengedStake: stake,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+
+      onChallengeCreated?.(newChallenge)
+      handleClose()
+    } catch {
+      // TODO: show error toast
+    } finally {
+      setIsSubmitting(false)
     }
-
-    onChallengeCreated?.(newChallenge)
-    setIsSubmitting(false)
-    handleClose()
   }
 
   const handleClose = () => {

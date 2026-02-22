@@ -23,7 +23,7 @@ import {
   NegotiationMessage,
   P2P_DURATION_OPTIONS
 } from "@/types/p2p-challenges"
-import { CURRENT_USER_ID } from "@/lib/mock-p2p-data"
+// CURRENT_USER_ID removed — passed via prop
 
 interface NegotiationPanelProps {
   challenge: P2PChallenge
@@ -51,7 +51,7 @@ function formatTime(timestamp: string) {
 
 export function NegotiationPanel({
   challenge,
-  currentUserId = CURRENT_USER_ID,
+  currentUserId = "",
   onSendCounterOffer,
   onAccept,
   onDecline

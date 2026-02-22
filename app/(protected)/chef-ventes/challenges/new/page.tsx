@@ -23,7 +23,8 @@ import {
   AlertCircle,
   User,
   CheckCircle,
-  Crown
+  Crown,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -56,10 +57,9 @@ import {
   formatChallengeDuration,
   formatChallengeTarget
 } from "@/types/direction-challenges"
-import {
-  teamMembers,
-  currentChefVentes
-} from "@/lib/mock-chef-ventes-data"
+import { useProfil } from "@/hooks/use-profil"
+import { useEquipe, type EquipeMember } from "@/hooks/use-equipe"
+import { createDefi } from "@/hooks/use-defis"
 
 // ============================================
 // ICONS MAPPING
@@ -229,12 +229,14 @@ function Step2Objective({
   data,
   onChange,
   errors,
-  preselectedUserId
+  preselectedUserId,
+  teamMembers
 }: {
   data: ChallengeFormData
   onChange: (updates: Partial<ChallengeFormData>) => void
   errors: Record<string, string>
   preselectedUserId?: string
+  teamMembers: { id: string; name: string; avatar: string; kpis: { sales: number; financingRate: number } }[]
 }) {
   const typeConfig = CHALLENGE_TYPE_CONFIG[data.type]
   const today = new Date().toISOString().split("T")[0]
@@ -654,7 +656,7 @@ function Step3Reward({
 // ============================================
 // STEP 4: CONFIRMATION
 // ============================================
-function Step4Confirmation({ data }: { data: ChallengeFormData }) {
+function Step4Confirmation({ data, teamMembers }: { data: ChallengeFormData; teamMembers: { id: string; name: string; avatar: string; kpis: { sales: number; financingRate: number } }[] }) {
   const typeConfig = CHALLENGE_TYPE_CONFIG[data.type]
   const rewardConfig = REWARD_TYPE_CONFIG[data.rewardType]
   const TypeIcon = CHALLENGE_TYPE_ICONS[data.type]
@@ -807,6 +809,16 @@ function NewTeamChallengePageContent() {
   const searchParams = useSearchParams()
   const preselectedUserId = searchParams.get("target") || undefined
 
+  const { data: profil } = useProfil()
+  const { data: equipeData, loading } = useEquipe()
+
+  const teamMembers = (equipeData || []).map(m => ({
+    id: m.user_id || m.id,
+    name: m.full_name,
+    avatar: m.avatar_url || "",
+    kpis: { sales: m.total_sales || 0, financingRate: m.financing_rate || 0 },
+  }))
+
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<ChallengeFormData>(() => {
     // If a user is preselected, start with them in the selection
@@ -871,19 +883,38 @@ function NewTeamChallengePageContent() {
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
+    try {
+      await createDefi({
+        title: formData.title,
+        description: formData.description,
+        type: formData.type,
+        target: formData.target,
+        target_unit: CHALLENGE_TYPE_CONFIG[formData.type].unitPlural,
+        target_model_name: formData.targetModelName,
+        start_date: formData.startDate,
+        end_date: formData.endDate,
+        reward_type: formData.rewardType,
+        reward_value: formData.rewardValue,
+        reward_description: formData.rewardDescription,
+        badge_name: formData.badgeName,
+        badge_icon: formData.badgeIcon,
+        all_participants: formData.allParticipants,
+        participant_ids: formData.participantIds,
+      })
+      router.push("/chef-ventes")
+    } catch (e) {
+      console.error("Failed to create challenge", e)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    // In real app, would call Firebase to create the challenge
-    console.log("Team challenge created:", {
-      ...formData,
-      createdBy: currentChefVentes.id,
-      creatorRole: "chef_ventes"
-    })
-
-    setIsSubmitting(false)
-    router.push("/chef-ventes")
+  if (loading && !equipeData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    )
   }
 
   return (
@@ -950,12 +981,13 @@ function NewTeamChallengePageContent() {
                 onChange={updateFormData}
                 errors={errors}
                 preselectedUserId={preselectedUserId}
+                teamMembers={teamMembers}
               />
             )}
             {currentStep === 3 && (
               <Step3Reward data={formData} onChange={updateFormData} errors={errors} />
             )}
-            {currentStep === 4 && <Step4Confirmation data={formData} />}
+            {currentStep === 4 && <Step4Confirmation data={formData} teamMembers={teamMembers} />}
           </CardContent>
 
           <Separator />

@@ -27,7 +27,8 @@ import {
   Gift,
   ChevronUp,
   BadgeCheck,
-  Activity
+  Activity,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -35,77 +36,48 @@ import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { format } from "date-fns"
+import { DateRange } from "react-day-picker"
+import { useDashboard } from "@/hooks/use-dashboard"
+import { useLeaderboard } from "@/hooks/use-leaderboard"
+import { useDefis } from "@/hooks/use-defis"
+import { useFichesMarge } from "@/hooks/use-fiches-marge"
+import { useProfil } from "@/hooks/use-profil"
+import { DateRangePicker } from "@/components/ui/date-range-picker"
 
-// ============================================
-// PREMIUM DASHBOARD - AutoPerf Pro
-// ============================================
+import { SalesTrendChart } from "@/components/charts/sales-trend-chart"
+import { MarginChart } from "@/components/charts/margin-chart"
 
-// Mock data - À remplacer par les données Firestore
-const mockStats = {
-  currentMonth: {
-    sales: 8,
-    salesTarget: 12,
-    commission: 3450,
-    margin: 12800,
-    financingRate: 75,
-    points: 850
-  },
-  previousMonth: {
-    sales: 6,
-    commission: 2800,
-    margin: 10500
-  },
-  streak: 5,
-  rank: 3,
-  totalSellers: 12
+// Types for API responses
+interface PerformanceHistoryItem {
+  period: string
+  label: string
+  sales: number
+  target: number
+  margin: number
+  financingRate: number
 }
 
-const mockActiveChallenges = [
-  {
-    id: "1",
-    title: "Sprint de Février",
-    description: "Vendez 15 véhicules ce mois-ci",
-    type: "sales_count",
-    progress: 8,
-    target: 15,
-    endDate: "2024-02-29",
-    reward: "500€ bonus",
-    icon: Trophy,
-    color: "from-amber-500 to-orange-500"
-  },
-  {
-    id: "2",
-    title: "Roi du Financement",
-    description: "Atteignez 80% de taux de financement",
-    type: "financing_rate",
-    progress: 75,
-    target: 80,
-    endDate: "2024-02-29",
-    reward: "Badge spécial",
-    icon: Target,
-    color: "from-blue-500 to-indigo-500"
+interface CommercialDashboardData {
+  kpis: {
+    totalSales: number
+    totalMargin: number
+    totalCommission: number
+    totalRevenue: number
+    financingRate: number
+    avgGPU: number
+    pendingApprovals: number
   }
-]
+  activeP2PChallenges: number
+  unreadNotifications: number
+  performanceHistory: PerformanceHistoryItem[]
+}
 
+// Static data for badges (no API yet)
 const mockRecentBadges = [
   { id: "1", name: "Semaine Parfaite", icon: "flame", color: "orange", earnedAt: "2024-02-15", rarity: "rare" },
   { id: "2", name: "5 Ventes", icon: "star", color: "blue", earnedAt: "2024-02-10", rarity: "common" },
   { id: "3", name: "Finance Master", icon: "zap", color: "purple", earnedAt: "2024-02-05", rarity: "epic" }
-]
-
-const mockLeaderboard = [
-  { rank: 1, name: "Marie Martin", commission: 5200, avatar: "", trend: "up", points: 3200 },
-  { rank: 2, name: "Pierre Durand", commission: 4800, avatar: "", trend: "same", points: 2900 },
-  { rank: 3, name: "Jean Dupont", commission: 3450, avatar: "", trend: "up", isCurrentUser: true, points: 2450 },
-  { rank: 4, name: "Sophie Bernard", commission: 3200, avatar: "", trend: "down", points: 2100 },
-  { rank: 5, name: "Lucas Petit", commission: 2900, avatar: "", trend: "up", points: 1950 }
-]
-
-const mockRecentSales = [
-  { id: "1", vehicle: "Ford Puma ST-Line", client: "M. Leroy", commission: 350, date: "Aujourd'hui", status: "approved", type: "VN" },
-  { id: "2", vehicle: "Ford Kuga Titanium", client: "Mme Moreau", commission: 420, date: "Hier", status: "pending", type: "VO" },
-  { id: "3", vehicle: "Ford Fiesta Active", client: "M. Simon", commission: 280, date: "Il y a 2 jours", status: "approved", type: "VP" },
-  { id: "4", vehicle: "Ford Explorer", client: "M. Dubois", commission: 650, date: "Il y a 3 jours", status: "approved", type: "VN" }
 ]
 
 // ============================================
@@ -178,9 +150,9 @@ function StatCard({
 // CHALLENGE CARD COMPONENT
 // ============================================
 
-function ChallengeCard({ challenge, delay = 0 }: { challenge: typeof mockActiveChallenges[0], delay?: number }) {
-  const progress = (challenge.progress / challenge.target) * 100
-  const daysLeft = Math.ceil((new Date(challenge.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
+function ChallengeCard({ challenge, delay = 0 }: { challenge: { id: string; title: string; description?: string; type?: string; progress: number; target: number; endDate?: string; reward?: string; icon: React.ElementType; color: string }, delay?: number }) {
+  const progress = challenge.target > 0 ? (challenge.progress / challenge.target) * 100 : 0
+  const daysLeft = challenge.endDate ? Math.ceil((new Date(challenge.endDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) : 0
 
   return (
     <Card 
@@ -242,14 +214,66 @@ function ChallengeCard({ challenge, delay = 0 }: { challenge: typeof mockActiveC
 // ============================================
 
 export default function DashboardPage() {
-  const [mounted, setMounted] = useState(false)
-  const salesProgress = (mockStats.currentMonth.sales / mockStats.currentMonth.salesTarget) * 100
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
 
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const dateRangeParams = dateRange?.from && dateRange?.to ? {
+    startDate: format(dateRange.from, 'yyyy-MM-dd'),
+    endDate: format(dateRange.to, 'yyyy-MM-dd'),
+  } : undefined
 
-  if (!mounted) return null
+  const { data: profil } = useProfil()
+  const { data: dashData, loading: dashLoading } = useDashboard<CommercialDashboardData>("commercial", undefined, dateRangeParams) as { data: CommercialDashboardData | null; loading: boolean; error: string | null }
+  const { data: leaderboardData, loading: lbLoading } = useLeaderboard(undefined, undefined, 5)
+  const { data: defisData } = useDefis("active")
+  const { data: recentFiches } = useFichesMarge({ limit: 4 })
+
+  const kpis = dashData?.kpis
+  const salesTarget = 12 // TODO: from payplan API
+  const totalSales = kpis?.totalSales || 0
+  const salesProgress = salesTarget > 0 ? (totalSales / salesTarget) * 100 : 0
+  const firstName = profil?.full_name?.split(" ")[0] || "Commercial"
+
+  const now = new Date()
+  const currentPeriod = `${now.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}`
+
+  if (dashLoading) {
+    return (
+      <div className="p-8 flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <p className="text-gray-500">Chargement du tableau de bord...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Build challenge cards from API data
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rawDefis = ((defisData || []) as any[])
+  const activeChallenges = rawDefis.slice(0, 2).map((d, i) => ({
+    id: String(d.id || i),
+    title: String(d.title || d.name || "Challenge"),
+    description: String(d.description || ""),
+    type: String(d.metric || "sales_count"),
+    progress: 0,
+    target: Number(d.target_value || 0),
+    endDate: d.end_date ? String(d.end_date) : undefined,
+    reward: String(d.reward || "Points"),
+    icon: i === 0 ? Trophy : Target,
+    color: i === 0 ? "from-amber-500 to-orange-500" : "from-blue-500 to-indigo-500"
+  }))
+
+  // Build recent sales from fiches API
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const recentSales = ((recentFiches || []) as any[]).map((f) => ({
+    id: String(f.id),
+    vehicle: String(f.vehicle_sold_name || "Véhicule"),
+    client: "",
+    commission: Number(f.seller_commission || 0),
+    date: f.date ? new Date(String(f.date)).toLocaleDateString("fr-FR") : "",
+    status: String(f.status || "draft"),
+    type: String(f.vehicle_type || "VN")
+  }))
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-8">
@@ -260,53 +284,33 @@ export default function DashboardPage() {
         <div>
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-3xl font-bold text-gray-900">
-              Bonjour, Jean !
+              Bonjour, {firstName} !
             </h1>
             <span className="text-3xl">👋</span>
           </div>
           <p className="text-gray-600">
-            Voici votre tableau de bord pour <span className="font-semibold text-gray-900">février 2024</span>
+            Voici votre tableau de bord pour <span className="font-semibold text-gray-900">{currentPeriod}</span>
           </p>
         </div>
-        <Link href="/calculator">
-          <Button 
-            size="lg"
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-300 group"
-          >
-            <Car className="w-5 h-5 mr-2" />
-            Nouvelle vente
-            <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-          </Button>
-        </Link>
+        <div className="flex items-center gap-3">
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
+          <Link href="/calculator">
+            <Button
+              size="lg"
+              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all duration-300 group"
+            >
+              <Car className="w-5 h-5 mr-2" />
+              Nouvelle vente
+              <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* ============================================
           STREAK BANNER
           ============================================ */}
-      {mockStats.streak >= 3 && (
-        <Card className="border-0 overflow-hidden animate-fade-in-up opacity-0-initial" style={{ animationFillMode: "forwards", animationDelay: "100ms" }}>
-          <div className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 p-1">
-            <div className="bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 rounded-lg p-5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-5">
-                  <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur flex items-center justify-center">
-                    <Flame className="w-8 h-8 text-white" />
-                  </div>
-                  <div className="text-white">
-                    <p className="font-bold text-2xl">Série de {mockStats.streak} jours ! 🔥</p>
-                    <p className="text-white/80">Continuez ainsi pour débloquer le badge "En Feu"</p>
-                  </div>
-                </div>
-                <div className="hidden sm:flex items-center gap-1">
-                  {[...Array(mockStats.streak)].map((_, i) => (
-                    <Flame key={i} className="w-6 h-6 text-yellow-300 animate-pulse" style={{ animationDelay: `${i * 100}ms` }} />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </Card>
-      )}
+      {/* TODO: streak data from API when available */}
 
       {/* ============================================
           STATS GRID
@@ -314,35 +318,31 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Ventes du mois"
-          value={mockStats.currentMonth.sales}
-          subtitle={`Objectif: ${mockStats.currentMonth.salesTarget}`}
+          value={totalSales}
+          subtitle={`Objectif: ${salesTarget}`}
           icon={Car}
-          trend="up"
-          trendValue="+33% vs mois dernier"
           color="blue"
           delay={200}
         />
         <StatCard
           title="Commission"
-          value={`${mockStats.currentMonth.commission.toLocaleString()}€`}
+          value={`${(kpis?.totalCommission || 0).toLocaleString()}€`}
           icon={Wallet}
-          trend="up"
-          trendValue="+23% vs mois dernier"
           color="green"
           delay={300}
         />
         <StatCard
           title="Taux financement"
-          value={`${mockStats.currentMonth.financingRate}%`}
+          value={`${kpis?.financingRate || 0}%`}
           subtitle="Sur ventes éligibles"
           icon={Percent}
           color="purple"
           delay={400}
         />
         <StatCard
-          title="Points du mois"
-          value={mockStats.currentMonth.points}
-          subtitle={`Classement: #${mockStats.rank}`}
+          title="Marge totale"
+          value={`${(kpis?.totalMargin || 0).toLocaleString()}€`}
+          subtitle={`GPU: ${kpis?.avgGPU || 0}€`}
           icon={Trophy}
           color="amber"
           delay={500}
@@ -358,7 +358,7 @@ export default function DashboardPage() {
             <div>
               <h3 className="font-bold text-lg text-gray-900">Progression vers l&apos;objectif mensuel</h3>
               <p className="text-sm text-gray-500 mt-1">
-                {mockStats.currentMonth.sales} / {mockStats.currentMonth.salesTarget} ventes réalisées
+                {totalSales} / {salesTarget} ventes réalisées
               </p>
             </div>
             <Badge 
@@ -377,7 +377,7 @@ export default function DashboardPage() {
               ) : (
                 <>
                   <Target className="w-4 h-4 mr-1.5" />
-                  {mockStats.currentMonth.salesTarget - mockStats.currentMonth.sales} restantes
+                  {salesTarget - totalSales} restantes
                 </>
               )}
             </Badge>
@@ -394,11 +394,43 @@ export default function DashboardPage() {
             <div className="flex justify-between mt-3 text-sm font-medium">
               <span className="text-gray-500">0 ventes</span>
               <span className="text-gray-900">{Math.round(salesProgress)}% complété</span>
-              <span className="text-gray-500">{mockStats.currentMonth.salesTarget} ventes</span>
+              <span className="text-gray-500">{salesTarget} ventes</span>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* ============================================
+          PERFORMANCE CHARTS
+          ============================================ */}
+      {dashData?.performanceHistory && dashData.performanceHistory.length > 0 && (
+        <div className="grid lg:grid-cols-2 gap-6 animate-fade-in-up opacity-0-initial" style={{ animationFillMode: "forwards", animationDelay: "650ms" }}>
+          <Card className="border-0 shadow-premium">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <BarChart3 className="w-5 h-5 text-blue-600" />
+                Tendance des ventes
+              </CardTitle>
+              <CardDescription>6 derniers mois</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SalesTrendChart data={dashData.performanceHistory} />
+            </CardContent>
+          </Card>
+          <Card className="border-0 shadow-premium">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Euro className="w-5 h-5 text-emerald-600" />
+                Évolution de la marge
+              </CardTitle>
+              <CardDescription>6 derniers mois</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <MarginChart data={dashData.performanceHistory} />
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* ============================================
           MAIN CONTENT GRID
@@ -419,9 +451,19 @@ export default function DashboardPage() {
             </Link>
           </div>
           <div className="grid sm:grid-cols-2 gap-6">
-            {mockActiveChallenges.map((challenge, index) => (
-              <ChallengeCard key={challenge.id} challenge={challenge} delay={700 + index * 100} />
-            ))}
+            {activeChallenges.length > 0 ? (
+              activeChallenges.map((challenge, index) => (
+                <ChallengeCard key={challenge.id} challenge={challenge} delay={700 + index * 100} />
+              ))
+            ) : (
+              <Card className="border-0 shadow-premium col-span-2">
+                <CardContent className="p-8 text-center">
+                  <Target className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 font-medium">Aucun challenge actif</p>
+                  <p className="text-sm text-gray-400 mt-1">Les challenges apparaîtront ici</p>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
 
@@ -442,59 +484,49 @@ export default function DashboardPage() {
           <Card className="border-0 shadow-premium overflow-hidden animate-fade-in-up opacity-0-initial" style={{ animationFillMode: "forwards", animationDelay: "900ms" }}>
             <CardContent className="p-0">
               <div className="divide-y divide-gray-100">
-                {mockLeaderboard.map((seller, index) => (
-                  <div
-                    key={seller.rank}
-                    className={`flex items-center gap-4 p-4 transition-colors ${
-                      seller.isCurrentUser ? "bg-blue-50/50" : "hover:bg-gray-50/50"
-                    }`}
-                  >
-                    {/* Rank */}
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
-                      seller.rank === 1
-                        ? "bg-gradient-to-br from-amber-400 to-amber-500 text-white shadow-lg"
-                        : seller.rank === 2
-                        ? "bg-gradient-to-br from-gray-300 to-gray-400 text-white"
-                        : seller.rank === 3
-                        ? "bg-gradient-to-br from-orange-400 to-orange-500 text-white"
-                        : "bg-gray-100 text-gray-500"
-                    }`}>
-                      {seller.rank <= 3 ? (
-                        <Medal className="w-5 h-5" />
-                      ) : (
-                        seller.rank
-                      )}
-                    </div>
-                    
-                    {/* Avatar */}
-                    <Avatar className="h-10 w-10">
-                      <AvatarFallback className={seller.isCurrentUser ? "bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-semibold" : "bg-gray-200 text-gray-600 font-semibold"}>
-                        {seller.name.split(" ").map(n => n[0]).join("")}
-                      </AvatarFallback>
-                    </Avatar>
-                    
-                    {/* Name */}
-                    <div className="flex-1 min-w-0">
-                      <p className={`font-semibold truncate ${seller.isCurrentUser ? "text-blue-700" : "text-gray-900"}`}>
-                        {seller.name}
-                        {seller.isCurrentUser && (
-                          <Badge className="ml-2 bg-blue-100 text-blue-700 text-xs">Vous</Badge>
-                        )}
-                      </p>
-                      <p className="text-xs text-gray-500">{seller.points.toLocaleString()} pts</p>
-                    </div>
-                    
-                    {/* Commission */}
-                    <div className="text-right">
-                      <p className="font-bold text-gray-900">{seller.commission.toLocaleString()}€</p>
-                      {seller.trend === "up" && (
-                        <span className="text-xs text-emerald-600 flex items-center justify-end gap-0.5 font-medium">
-                          <ChevronUp className="w-3 h-3" /> +2
-                        </span>
-                      )}
-                    </div>
+                {(leaderboardData || []).length === 0 ? (
+                  <div className="p-8 text-center text-gray-500">
+                    <Trophy className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                    <p className="font-medium">Aucune donnée</p>
                   </div>
-                ))}
+                ) : (leaderboardData || []).map((entry) => {
+                  const isCurrentUser = entry.user_id === profil?.id
+                  return (
+                    <div
+                      key={entry.rank}
+                      className={`flex items-center gap-4 p-4 transition-colors ${
+                        isCurrentUser ? "bg-blue-50/50" : "hover:bg-gray-50/50"
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm ${
+                        entry.rank === 1
+                          ? "bg-gradient-to-br from-amber-400 to-amber-500 text-white shadow-lg"
+                          : entry.rank === 2
+                          ? "bg-gradient-to-br from-gray-300 to-gray-400 text-white"
+                          : entry.rank === 3
+                          ? "bg-gradient-to-br from-orange-400 to-orange-500 text-white"
+                          : "bg-gray-100 text-gray-500"
+                      }`}>
+                        {entry.rank <= 3 ? <Medal className="w-5 h-5" /> : entry.rank}
+                      </div>
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback className={isCurrentUser ? "bg-gradient-to-br from-blue-600 to-indigo-600 text-white font-semibold" : "bg-gray-200 text-gray-600 font-semibold"}>
+                          {entry.full_name.split(" ").map(n => n[0]).join("")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-semibold truncate ${isCurrentUser ? "text-blue-700" : "text-gray-900"}`}>
+                          {entry.full_name}
+                          {isCurrentUser && <Badge className="ml-2 bg-blue-100 text-blue-700 text-xs">Vous</Badge>}
+                        </p>
+                        <p className="text-xs text-gray-500">{entry.total_sales} ventes</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-gray-900">{entry.total_commission.toLocaleString()}€</p>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </CardContent>
           </Card>
@@ -522,7 +554,12 @@ export default function DashboardPage() {
           <Card className="border-0 shadow-premium overflow-hidden animate-fade-in-up opacity-0-initial" style={{ animationFillMode: "forwards", animationDelay: "1000ms" }}>
             <CardContent className="p-0">
               <div className="divide-y divide-gray-100">
-                {mockRecentSales.map((sale) => (
+                {recentSales.length === 0 ? (
+                  <div className="p-8 text-center text-gray-500">
+                    <Car className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                    <p className="font-medium">Aucune vente récente</p>
+                  </div>
+                ) : recentSales.map((sale) => (
                   <div key={sale.id} className="flex items-center justify-between p-5 hover:bg-gray-50/50 transition-colors group">
                     <div className="flex items-center gap-4">
                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${

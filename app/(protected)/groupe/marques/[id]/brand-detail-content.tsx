@@ -34,12 +34,197 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  brands,
-  getBrandById,
-  groupChallenges,
-  groupPerformanceHistory
-} from "@/lib/mock-dir-plaque-data"
+// ============================================
+// INTERFACES
+// ============================================
+
+interface BrandData {
+  id: string
+  name: string
+  logo: string
+  color: string
+  directorId: string
+  directorName: string
+  dealershipCount: number
+  employeeCount: number
+  stats: {
+    totalSales: number
+    salesTarget: number
+    objectiveRate: number
+    totalRevenue: number
+    totalMargin: number
+    avgGPU: number
+    financingRate: number
+    satisfaction: number
+    marketShare: number
+  }
+  trend: "up" | "down" | "stable"
+  quarterlyGrowth: number
+}
+
+interface GroupChallenge {
+  id: string
+  title: string
+  description: string
+  type: string
+  period: "monthly" | "quarterly" | "yearly"
+  targetValue: number
+  targetUnit: string
+  startDate: string
+  endDate: string
+  reward: { type: string; value: string; description: string }
+  participants: Array<{
+    brandId: string
+    brandName: string
+    currentValue: number
+    progressRate: number
+    isCompleted: boolean
+  }>
+  status: "active" | "completed" | "upcoming"
+}
+
+interface GroupPerformanceHistory {
+  month: string
+  ford: { sales: number; margin: number }
+  nissan: { sales: number; margin: number }
+  suzuki: { sales: number; margin: number }
+  total: { sales: number; margin: number }
+}
+
+// ============================================
+// STATIC DATA
+// ============================================
+
+// TODO: replace with API data
+const brands: BrandData[] = [
+  {
+    id: "brand-ford",
+    name: "Ford",
+    logo: "\u{1F699}",
+    color: "from-blue-600 to-blue-700",
+    directorId: "dir-marque-1",
+    directorName: "Jean Legrand",
+    dealershipCount: 6,
+    employeeCount: 420,
+    stats: { totalSales: 287, salesTarget: 300, objectiveRate: 95.7, totalRevenue: 8610000, totalMargin: 430500, avgGPU: 1500, financingRate: 76, satisfaction: 86, marketShare: 4.2 },
+    trend: "up",
+    quarterlyGrowth: 8
+  },
+  {
+    id: "brand-nissan",
+    name: "Nissan",
+    logo: "\u{1F697}",
+    color: "from-red-600 to-red-700",
+    directorId: "dir-marque-2",
+    directorName: "Marie Dupont",
+    dealershipCount: 5,
+    employeeCount: 350,
+    stats: { totalSales: 312, salesTarget: 320, objectiveRate: 97.5, totalRevenue: 9360000, totalMargin: 468000, avgGPU: 1500, financingRate: 72, satisfaction: 84, marketShare: 3.8 },
+    trend: "stable",
+    quarterlyGrowth: 3
+  },
+  {
+    id: "brand-suzuki",
+    name: "Suzuki",
+    logo: "\u{1F690}",
+    color: "from-yellow-500 to-yellow-600",
+    directorId: "dir-marque-3",
+    directorName: "Thomas Petit",
+    dealershipCount: 4,
+    employeeCount: 280,
+    stats: { totalSales: 293, salesTarget: 320, objectiveRate: 91.6, totalRevenue: 8790000, totalMargin: 439500, avgGPU: 1500, financingRate: 74, satisfaction: 88, marketShare: 2.9 },
+    trend: "up",
+    quarterlyGrowth: 12
+  }
+]
+
+// TODO: replace with API data
+const groupChallenges: GroupChallenge[] = [
+  {
+    id: "gc-1",
+    title: "Meilleure marque Q1",
+    description: "Plus haut taux d'atteinte des objectifs du trimestre",
+    type: "volume",
+    period: "quarterly",
+    targetValue: 100,
+    targetUnit: "%",
+    startDate: "2024-01-01",
+    endDate: "2024-03-31",
+    reward: {
+      type: "trophy",
+      value: "Troph\u00e9e Excellence",
+      description: "Meilleure marque du groupe"
+    },
+    participants: [
+      { brandId: "brand-nissan", brandName: "Nissan", currentValue: 97.5, progressRate: 97.5, isCompleted: false },
+      { brandId: "brand-ford", brandName: "Ford", currentValue: 95.7, progressRate: 95.7, isCompleted: false },
+      { brandId: "brand-suzuki", brandName: "Suzuki", currentValue: 91.6, progressRate: 91.6, isCompleted: false }
+    ],
+    status: "active"
+  },
+  {
+    id: "gc-2",
+    title: "Challenge Rentabilit\u00e9",
+    description: "Atteindre une marge EBITDA de 3.2%",
+    type: "margin",
+    period: "quarterly",
+    targetValue: 3.2,
+    targetUnit: "%",
+    startDate: "2024-01-01",
+    endDate: "2024-03-31",
+    reward: {
+      type: "bonus",
+      value: "Bonus direction",
+      description: "Prime de performance"
+    },
+    participants: [
+      { brandId: "brand-ford", brandName: "Ford", currentValue: 3.1, progressRate: 97, isCompleted: false },
+      { brandId: "brand-nissan", brandName: "Nissan", currentValue: 3.0, progressRate: 94, isCompleted: false },
+      { brandId: "brand-suzuki", brandName: "Suzuki", currentValue: 2.8, progressRate: 88, isCompleted: false }
+    ],
+    status: "active"
+  },
+  {
+    id: "gc-3",
+    title: "Excellence Client",
+    description: "Toutes les marques au-dessus de 85 NPS",
+    type: "satisfaction",
+    period: "monthly",
+    targetValue: 85,
+    targetUnit: "NPS",
+    startDate: "2024-02-01",
+    endDate: "2024-02-29",
+    reward: {
+      type: "recognition",
+      value: "Star Service",
+      description: "Label Excellence Client"
+    },
+    participants: [
+      { brandId: "brand-suzuki", brandName: "Suzuki", currentValue: 88, progressRate: 103.5, isCompleted: true },
+      { brandId: "brand-ford", brandName: "Ford", currentValue: 86, progressRate: 101.2, isCompleted: true },
+      { brandId: "brand-nissan", brandName: "Nissan", currentValue: 84, progressRate: 98.8, isCompleted: false }
+    ],
+    status: "active"
+  }
+]
+
+// TODO: replace with API data
+const groupPerformanceHistory: GroupPerformanceHistory[] = [
+  { month: "Sep", ford: { sales: 265, margin: 397500 }, nissan: { sales: 280, margin: 420000 }, suzuki: { sales: 255, margin: 382500 }, total: { sales: 800, margin: 1200000 } },
+  { month: "Oct", ford: { sales: 278, margin: 417000 }, nissan: { sales: 295, margin: 442500 }, suzuki: { sales: 268, margin: 402000 }, total: { sales: 841, margin: 1261500 } },
+  { month: "Nov", ford: { sales: 290, margin: 435000 }, nissan: { sales: 305, margin: 457500 }, suzuki: { sales: 280, margin: 420000 }, total: { sales: 875, margin: 1312500 } },
+  { month: "D\u00e9c", ford: { sales: 312, margin: 468000 }, nissan: { sales: 328, margin: 492000 }, suzuki: { sales: 305, margin: 457500 }, total: { sales: 945, margin: 1417500 } },
+  { month: "Jan", ford: { sales: 275, margin: 412500 }, nissan: { sales: 298, margin: 447000 }, suzuki: { sales: 278, margin: 417000 }, total: { sales: 851, margin: 1276500 } },
+  { month: "F\u00e9v", ford: { sales: 287, margin: 430500 }, nissan: { sales: 312, margin: 468000 }, suzuki: { sales: 293, margin: 439500 }, total: { sales: 892, margin: 1338000 } }
+]
+
+// ============================================
+// HELPERS
+// ============================================
+
+function getBrandById(id: string): BrandData | undefined {
+  return brands.find(b => b.id === id)
+}
 
 // Mock dealerships data for this brand
 const mockBrandDealerships = [

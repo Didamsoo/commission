@@ -29,7 +29,8 @@ import {
   Settings,
   RefreshCw,
   Leaf,
-  ChevronRight
+  ChevronRight,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -37,19 +38,192 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  currentDirMarque,
-  dealerships,
-  brandKPIs,
-  brandChallenges,
-  constructorTargets,
-  stockTransfers,
-  networkAlerts,
-  performanceHistory,
-  getDealershipRanking,
-  getUnreadAlerts,
-  getCriticalAlerts
-} from "@/lib/mock-dir-marque-data"
+import { useProfil } from "@/hooks/use-profil"
+import { useDashboard } from "@/hooks/use-dashboard"
+import { useDefis } from "@/hooks/use-defis"
+import { useNotifications } from "@/hooks/use-notifications"
+import { SalesTrendChart } from "@/components/charts/sales-trend-chart"
+import { FinancingChart } from "@/components/charts/financing-chart"
+
+// ============================================
+// STATIC DATA (TODO: replace with API when available)
+// ============================================
+
+interface DealershipData {
+  id: string
+  name: string
+  code: string
+  location: string
+  address: string
+  directorId: string
+  directorName: string
+  directorAvatar?: string
+  coordinates: { lat: number; lng: number }
+  stats: {
+    totalSales: number
+    salesTarget: number
+    objectiveRate: number
+    totalMargin: number
+    avgGPU: number
+    financingRate: number
+    satisfaction: number
+    stockDays: number
+  }
+  departments: {
+    vn: { sales: number; target: number; margin: number }
+    vo: { sales: number; target: number; margin: number }
+    vu: { sales: number; target: number; margin: number }
+  }
+  trend: "up" | "down" | "stable"
+  alerts: Array<{ type: "warning" | "critical" | "info"; message: string }>
+}
+
+interface BrandKPIs {
+  volume: { current: number; target: number; objectiveRate: number; trend: number }
+  margin: { total: number; target: number; avgGPU: number; trend: number }
+  financing: { rate: number; target: number; trend: number }
+  satisfaction: { nps: number; target: number; trend: number }
+  stock: { avgDays: number; target: number; totalUnits: number }
+  constructorBonus: { estimated: number; volumeAchieved: boolean; financingAchieved: boolean; satisfactionAchieved: boolean }
+}
+
+interface ConstructorTarget {
+  category: string
+  description: string
+  target: number
+  current: number
+  unit: string
+  weight: number
+  status: "achieved" | "on_track" | "at_risk" | "missed"
+  bonus: number
+}
+
+interface BrandChallenge {
+  id: string
+  title: string
+  description: string
+  type: string
+  targetValue: number
+  targetUnit: string
+  startDate: string
+  endDate: string
+  reward: { type: string; value: string; description: string }
+  participants: Array<{
+    dealershipId: string
+    dealershipName: string
+    currentValue: number
+    progressRate: number
+    isCompleted: boolean
+  }>
+  status: "active" | "completed" | "upcoming"
+}
+
+interface NetworkAlert {
+  id: string
+  type: "critical" | "warning" | "info" | "success"
+  title: string
+  message: string
+  dealershipId?: string
+  dealershipName?: string
+  createdAt: string
+  isRead: boolean
+  actionUrl?: string
+  actionLabel?: string
+}
+
+interface PerformanceHistory {
+  month: string
+  volume: number
+  volumeTarget: number
+  margin: number
+  financingRate: number
+  satisfaction: number
+}
+
+// TODO: replace with API data
+const dealerships: DealershipData[] = [
+  {
+    id: "dealership-paris-est", name: "Ford Paris Est", code: "FPE-001", location: "Paris Est",
+    address: "125 Avenue de la République, 75011 Paris", directorId: "dir-concession-1", directorName: "Marie Dubois",
+    coordinates: { lat: 48.8634, lng: 2.3815 },
+    stats: { totalSales: 58, salesTarget: 52, objectiveRate: 112, totalMargin: 87000, avgGPU: 1500, financingRate: 82, satisfaction: 89, stockDays: 35 },
+    departments: { vn: { sales: 32, target: 28, margin: 48000 }, vo: { sales: 18, target: 16, margin: 27000 }, vu: { sales: 8, target: 8, margin: 12000 } },
+    trend: "up", alerts: []
+  },
+  {
+    id: "dealership-paris-ouest", name: "Ford Paris Ouest", code: "FPO-002", location: "Paris Ouest",
+    address: "45 Boulevard Exelmans, 75016 Paris", directorId: "dir-concession-2", directorName: "Pierre Martin",
+    coordinates: { lat: 48.8424, lng: 2.2635 },
+    stats: { totalSales: 49, salesTarget: 50, objectiveRate: 98, totalMargin: 71050, avgGPU: 1450, financingRate: 75, satisfaction: 86, stockDays: 42 },
+    departments: { vn: { sales: 26, target: 28, margin: 37700 }, vo: { sales: 16, target: 15, margin: 23200 }, vu: { sales: 7, target: 7, margin: 10150 } },
+    trend: "stable", alerts: [{ type: "warning", message: "Stock VN > 40 jours" }]
+  },
+  {
+    id: "dealership-versailles", name: "Ford Versailles", code: "FVS-003", location: "Versailles",
+    address: "8 Rue des Chantiers, 78000 Versailles", directorId: "dir-concession-3", directorName: "Sophie Bernard",
+    coordinates: { lat: 48.8014, lng: 2.1301 },
+    stats: { totalSales: 52, salesTarget: 50, objectiveRate: 104, totalMargin: 78000, avgGPU: 1500, financingRate: 78, satisfaction: 91, stockDays: 38 },
+    departments: { vn: { sales: 28, target: 26, margin: 42000 }, vo: { sales: 17, target: 17, margin: 25500 }, vu: { sales: 7, target: 7, margin: 10500 } },
+    trend: "up", alerts: []
+  },
+  {
+    id: "dealership-creteil", name: "Ford Créteil", code: "FCR-004", location: "Créteil",
+    address: "Centre Commercial Créteil Soleil, 94000 Créteil", directorId: "dir-concession-4", directorName: "Lucas Petit",
+    coordinates: { lat: 48.7905, lng: 2.4595 },
+    stats: { totalSales: 40, salesTarget: 45, objectiveRate: 89, totalMargin: 56000, avgGPU: 1400, financingRate: 68, satisfaction: 82, stockDays: 52 },
+    departments: { vn: { sales: 20, target: 24, margin: 28000 }, vo: { sales: 14, target: 15, margin: 19600 }, vu: { sales: 6, target: 6, margin: 8400 } },
+    trend: "down", alerts: [{ type: "critical", message: "Objectif VN à risque" }, { type: "warning", message: "Taux financement bas (68%)" }, { type: "warning", message: "Stock > 50 jours" }]
+  },
+  {
+    id: "dealership-saint-denis", name: "Ford Saint-Denis", code: "FSD-005", location: "Saint-Denis",
+    address: "52 Boulevard Marcel Sembat, 93200 Saint-Denis", directorId: "dir-concession-5", directorName: "Emma Leroy",
+    coordinates: { lat: 48.9362, lng: 2.3574 },
+    stats: { totalSales: 45, salesTarget: 48, objectiveRate: 94, totalMargin: 63000, avgGPU: 1400, financingRate: 72, satisfaction: 84, stockDays: 44 },
+    departments: { vn: { sales: 24, target: 26, margin: 33600 }, vo: { sales: 15, target: 15, margin: 21000 }, vu: { sales: 6, target: 7, margin: 8400 } },
+    trend: "stable", alerts: [{ type: "info", message: "Nouveau directeur depuis 3 mois" }]
+  },
+  {
+    id: "dealership-evry", name: "Ford Évry", code: "FEV-006", location: "Évry",
+    address: "15 Avenue du Lac, 91000 Évry", directorId: "dir-concession-6", directorName: "Thomas Garcia",
+    coordinates: { lat: 48.6249, lng: 2.4295 },
+    stats: { totalSales: 43, salesTarget: 42, objectiveRate: 102, totalMargin: 64500, avgGPU: 1500, financingRate: 80, satisfaction: 88, stockDays: 36 },
+    departments: { vn: { sales: 22, target: 22, margin: 33000 }, vo: { sales: 15, target: 14, margin: 22500 }, vu: { sales: 6, target: 6, margin: 9000 } },
+    trend: "up", alerts: []
+  }
+]
+
+// TODO: replace with API data
+const brandKPIs: BrandKPIs = {
+  volume: { current: 287, target: 300, objectiveRate: 95.7, trend: 8 },
+  margin: { total: 430500, target: 450000, avgGPU: 1500, trend: 5 },
+  financing: { rate: 76, target: 75, trend: 2 },
+  satisfaction: { nps: 86, target: 85, trend: 1 },
+  stock: { avgDays: 41, target: 45, totalUnits: 485 },
+  constructorBonus: { estimated: 125000, volumeAchieved: false, financingAchieved: true, satisfactionAchieved: true }
+}
+
+// TODO: replace with API data
+const constructorTargets: ConstructorTarget[] = [
+  { category: "Volume", description: "Objectif de ventes mensuelles", target: 300, current: 287, unit: "véhicules", weight: 40, status: "on_track", bonus: 50000 },
+  { category: "Financement", description: "Taux de pénétration financement", target: 75, current: 76, unit: "%", weight: 25, status: "achieved", bonus: 31250 },
+  { category: "Satisfaction", description: "Score NPS clients", target: 85, current: 86, unit: "NPS", weight: 20, status: "achieved", bonus: 25000 },
+  { category: "Électrique", description: "Part de véhicules électriques", target: 15, current: 17, unit: "%", weight: 10, status: "achieved", bonus: 12500 },
+  { category: "Formation", description: "Commerciaux certifiés", target: 100, current: 95, unit: "%", weight: 5, status: "on_track", bonus: 6250 }
+]
+
+// TODO: replace with API data
+const performanceHistory: PerformanceHistory[] = [
+  { month: "Sep 2023", volume: 265, volumeTarget: 280, margin: 397500, financingRate: 72, satisfaction: 83 },
+  { month: "Oct 2023", volume: 278, volumeTarget: 290, margin: 417000, financingRate: 74, satisfaction: 84 },
+  { month: "Nov 2023", volume: 290, volumeTarget: 295, margin: 435000, financingRate: 75, satisfaction: 85 },
+  { month: "Déc 2023", volume: 312, volumeTarget: 310, margin: 468000, financingRate: 77, satisfaction: 86 },
+  { month: "Jan 2024", volume: 275, volumeTarget: 290, margin: 412500, financingRate: 74, satisfaction: 85 },
+  { month: "Fév 2024", volume: 287, volumeTarget: 300, margin: 430500, financingRate: 76, satisfaction: 86 }
+]
+
+function getDealershipRanking(): DealershipData[] {
+  return [...dealerships].sort((a, b) => b.stats.objectiveRate - a.stats.objectiveRate)
+}
 
 // ============================================
 // COMPONENTS
@@ -110,7 +284,7 @@ function StatCard({
   )
 }
 
-function DealershipCard({ dealership, rank }: { dealership: typeof dealerships[0], rank: number }) {
+function DealershipCard({ dealership, rank }: { dealership: DealershipData, rank: number }) {
   const objectiveRate = dealership.stats.objectiveRate
 
   return (
@@ -208,7 +382,7 @@ function DealershipCard({ dealership, rank }: { dealership: typeof dealerships[0
   )
 }
 
-function ConstructorTargetCard({ target }: { target: typeof constructorTargets[0] }) {
+function ConstructorTargetCard({ target }: { target: ConstructorTarget }) {
   const progressRate = Math.round((target.current / target.target) * 100)
 
   return (
@@ -252,7 +426,7 @@ function ConstructorTargetCard({ target }: { target: typeof constructorTargets[0
   )
 }
 
-function AlertCard({ alert }: { alert: typeof networkAlerts[0] }) {
+function AlertCard({ alert }: { alert: NetworkAlert }) {
   return (
     <div className={`p-4 rounded-xl border ${
       alert.type === "critical" ? "bg-red-50 border-red-200" :
@@ -355,14 +529,61 @@ function PerformanceChart() {
 
 export default function DirecteurMarqueDashboard() {
   const [tab, setTab] = useState<"overview" | "challenges" | "constructor" | "alerts">("overview")
+  const { data: profil } = useProfil()
+  const { data: dashboardRaw } = useDashboard<Record<string, unknown>>("dir_marque")
+  const { data: defisData } = useDefis("active")
+  const { data: notifData } = useNotifications(false)
 
+  const perfHistory = (dashboardRaw as Record<string, unknown>)?.performanceHistory as { period: string; label: string; sales: number; target: number; margin: number; financingRate: number }[] | undefined
   const rankedDealerships = getDealershipRanking()
-  const unreadAlerts = getUnreadAlerts()
-  const criticalAlerts = getCriticalAlerts()
+
+  // Build alerts from notifications API
+  const allAlerts: NetworkAlert[] = (notifData || []).map((n: any) => ({
+    id: n.id || "",
+    type: n.type === "critical" ? "critical" : n.type === "warning" ? "warning" : n.type === "success" ? "success" : "info",
+    title: n.title || "",
+    message: n.message || n.body || "",
+    dealershipName: n.dealership_name,
+    dealershipId: n.dealership_id,
+    createdAt: n.created_at || "",
+    isRead: n.is_read || false,
+    actionUrl: n.action_url,
+    actionLabel: n.action_label
+  }))
+
+  const unreadAlerts = allAlerts.filter(a => !a.isRead)
+  const criticalAlerts = allAlerts.filter(a => a.type === "critical")
+
+  // Build challenges from defis API
+  const brandChallenges: BrandChallenge[] = ((defisData || []) as any[]).map(d => ({
+    id: d.id || "",
+    title: d.title || "",
+    description: d.description || "",
+    type: d.type || "volume",
+    targetValue: d.target || 0,
+    targetUnit: d.target_unit || "%",
+    startDate: d.start_date || "",
+    endDate: d.end_date || "",
+    reward: {
+      type: d.reward_type || "bonus",
+      value: d.reward_value != null ? `${d.reward_value}€` : "",
+      description: d.reward_description || ""
+    },
+    participants: (d.participants || []).map((p: any) => ({
+      dealershipId: p.dealership_id || p.id || "",
+      dealershipName: p.dealership_name || p.name || "",
+      currentValue: p.current_value || p.current_score || 0,
+      progressRate: p.progress_rate || 0,
+      isCompleted: p.is_completed || false
+    })),
+    status: d.status || "active"
+  }))
 
   const totalBonus = constructorTargets
     .filter(t => t.status === "achieved")
     .reduce((sum, t) => sum + t.bonus, 0)
+
+  const firstName = profil?.full_name?.split(" ")[0] || profil?.first_name || "Directeur"
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
@@ -378,7 +599,7 @@ export default function DirecteurMarqueDashboard() {
             <span className="text-gray-900 font-medium">Ford Île-de-France</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-            Bonjour, {currentDirMarque.fullName.split(" ")[0]} 👋
+            Bonjour, {firstName} 👋
           </h1>
           <p className="text-gray-500 mt-1">
             Gérez vos {dealerships.length} concessions Ford en Île-de-France
@@ -531,19 +752,49 @@ export default function DirecteurMarqueDashboard() {
             ))}
           </div>
 
-          {/* Performance Chart */}
-          <Card className="border-0 shadow-premium">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-indigo-600" />
-                Évolution du volume
-              </CardTitle>
-              <CardDescription>6 derniers mois - Toutes concessions confondues</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <PerformanceChart />
-            </CardContent>
-          </Card>
+          {/* Performance Charts */}
+          {perfHistory && perfHistory.length > 0 && (
+            <div className="grid lg:grid-cols-2 gap-6">
+              <Card className="border-0 shadow-premium">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <BarChart3 className="w-5 h-5 text-indigo-600" />
+                    Évolution du volume
+                  </CardTitle>
+                  <CardDescription>6 derniers mois - Toutes concessions</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <SalesTrendChart data={perfHistory} />
+                </CardContent>
+              </Card>
+              <Card className="border-0 shadow-premium">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Percent className="w-5 h-5 text-purple-600" />
+                    Taux de financement
+                  </CardTitle>
+                  <CardDescription>6 derniers mois</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <FinancingChart data={perfHistory} />
+                </CardContent>
+              </Card>
+            </div>
+          )}
+          {(!perfHistory || perfHistory.length === 0) && (
+            <Card className="border-0 shadow-premium">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-indigo-600" />
+                  Évolution du volume
+                </CardTitle>
+                <CardDescription>6 derniers mois - Toutes concessions confondues</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PerformanceChart />
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* CHALLENGES TAB */}
@@ -718,7 +969,7 @@ export default function DirecteurMarqueDashboard() {
             </Button>
           </div>
 
-          {networkAlerts.map(alert => (
+          {allAlerts.map(alert => (
             <AlertCard key={alert.id} alert={alert} />
           ))}
         </TabsContent>

@@ -27,7 +27,7 @@ import {
   P2P_METRIC_CONFIG,
   P2P_DURATION_OPTIONS
 } from "@/types/p2p-challenges"
-import { CURRENT_USER_ID } from "@/lib/mock-p2p-data"
+// CURRENT_USER_ID removed — no longer needed in this component
 
 interface ChallengeResponseDialogProps {
   challenge: P2PChallenge

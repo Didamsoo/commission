@@ -22,7 +22,8 @@ import {
   BadgeCheck,
   Calculator,
   TrendingUp,
-  Shield
+  Shield,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -47,6 +48,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { usePayplan } from "@/hooks/use-payplan"
 
 // ============================================
 // PAYPLAN PAGE PREMIUM - AutoPerf Pro
@@ -62,6 +64,7 @@ interface CommissionRule {
   category: "base" | "bonus" | "peripheral"
 }
 
+// TODO: replace with API data
 const mockPayplanConfig = {
   baseCommission: {
     VO: 15,
@@ -86,6 +89,7 @@ const mockPayplanConfig = {
   }
 }
 
+// TODO: replace with API data
 const commissionRules: CommissionRule[] = [
   { id: "1", name: "Commission base VO", type: "percentage", value: 15, condition: "Marge HT", active: true, category: "base" },
   { id: "2", name: "Commission base VN", type: "percentage", value: 12, condition: "Marge HT", active: true, category: "base" },
@@ -96,6 +100,7 @@ const commissionRules: CommissionRule[] = [
   { id: "7", name: "Bonus pénétration", type: "fixed", value: 100, condition: "Si taux > 65%", active: true, category: "bonus" }
 ]
 
+// TODO: replace with API data
 const vehicleModels = [
   { id: "puma", name: "Ford Puma", baseCommission: 200 },
   { id: "kuga", name: "Ford Kuga", baseCommission: 250 },
@@ -109,8 +114,18 @@ export default function PayplanPage() {
   const [activeTab, setActiveTab] = useState("general")
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [showNewRuleDialog, setShowNewRuleDialog] = useState(false)
+  // TODO: update rules from payplanData when API returns real data
   const [rules, setRules] = useState<CommissionRule[]>(commissionRules)
   const [hasChanges, setHasChanges] = useState(false)
+  const { data: payplanData, loading } = usePayplan()
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    )
+  }
 
   const toggleRule = (ruleId: string) => {
     setRules(rules.map(rule => 

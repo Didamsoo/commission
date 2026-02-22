@@ -35,7 +35,17 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select"
-import { dealerships } from "@/lib/mock-dir-marque-data"
+import { createDefi } from "@/hooks/use-defis"
+
+// TODO: replace with API data
+const dealerships = [
+  { id: "dealership-paris-est", name: "Ford Paris Est", location: "Paris Est", directorName: "Marie Dubois", stats: { objectiveRate: 112 } },
+  { id: "dealership-paris-ouest", name: "Ford Paris Ouest", location: "Paris Ouest", directorName: "Pierre Martin", stats: { objectiveRate: 98 } },
+  { id: "dealership-versailles", name: "Ford Versailles", location: "Versailles", directorName: "Sophie Bernard", stats: { objectiveRate: 104 } },
+  { id: "dealership-creteil", name: "Ford Créteil", location: "Créteil", directorName: "Lucas Petit", stats: { objectiveRate: 89 } },
+  { id: "dealership-saint-denis", name: "Ford Saint-Denis", location: "Saint-Denis", directorName: "Emma Leroy", stats: { objectiveRate: 94 } },
+  { id: "dealership-evry", name: "Ford Évry", location: "Évry", directorName: "Thomas Garcia", stats: { objectiveRate: 102 } },
+]
 
 // ============================================
 // TYPES
@@ -195,9 +205,26 @@ function NewBrandChallengePageContent() {
     }
   }
 
-  const handleSubmit = () => {
-    console.log("Challenge créé:", formData)
-    router.push("/marque")
+  const handleSubmit = async () => {
+    try {
+      await createDefi({
+        title: formData.title,
+        description: formData.description,
+        type: formData.type,
+        target: formData.targetValue,
+        target_unit: formData.targetUnit,
+        start_date: formData.startDate,
+        end_date: formData.endDate,
+        reward_type: formData.rewardType,
+        reward_value: formData.rewardValue,
+        reward_description: formData.rewardDescription,
+        participant_ids: formData.participantSelection === "all" ? [] : formData.selectedDealerships,
+        all_participants: formData.participantSelection === "all"
+      })
+      router.push("/marque")
+    } catch (err) {
+      console.error("Failed to create challenge:", err)
+    }
   }
 
   const selectedType = challengeTypes.find(t => t.value === formData.type)

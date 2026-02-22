@@ -30,10 +30,319 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select"
-import { dealerships, brandKPIs, performanceHistory, getDealershipRanking } from "@/lib/mock-dir-marque-data"
+// ============================================
+// TYPES
+// ============================================
+
+interface DealershipData {
+  id: string
+  name: string
+  code: string
+  location: string
+  address: string
+  directorId: string
+  directorName: string
+  directorAvatar?: string
+  coordinates: { lat: number; lng: number }
+  stats: {
+    totalSales: number
+    salesTarget: number
+    objectiveRate: number
+    totalMargin: number
+    avgGPU: number
+    financingRate: number
+    satisfaction: number
+    stockDays: number
+  }
+  departments: {
+    vn: { sales: number; target: number; margin: number }
+    vo: { sales: number; target: number; margin: number }
+    vu: { sales: number; target: number; margin: number }
+  }
+  trend: "up" | "down" | "stable"
+  alerts: Array<{
+    type: "warning" | "critical" | "info"
+    message: string
+  }>
+}
+
+interface BrandKPIs {
+  volume: {
+    current: number
+    target: number
+    objectiveRate: number
+    trend: number
+  }
+  margin: {
+    total: number
+    target: number
+    avgGPU: number
+    trend: number
+  }
+  financing: {
+    rate: number
+    target: number
+    trend: number
+  }
+  satisfaction: {
+    nps: number
+    target: number
+    trend: number
+  }
+  stock: {
+    avgDays: number
+    target: number
+    totalUnits: number
+  }
+  constructorBonus: {
+    estimated: number
+    volumeAchieved: boolean
+    financingAchieved: boolean
+    satisfactionAchieved: boolean
+  }
+}
+
+interface PerformanceHistory {
+  month: string
+  volume: number
+  volumeTarget: number
+  margin: number
+  financingRate: number
+  satisfaction: number
+}
 
 // ============================================
-// TYPES & CONSTANTS
+// STATIC DATA
+// TODO: replace with API data
+// ============================================
+
+const dealerships: DealershipData[] = [
+  {
+    id: "dealership-paris-est",
+    name: "Ford Paris Est",
+    code: "FPE-001",
+    location: "Paris Est",
+    address: "125 Avenue de la République, 75011 Paris",
+    directorId: "dir-concession-1",
+    directorName: "Marie Dubois",
+    coordinates: { lat: 48.8634, lng: 2.3815 },
+    stats: {
+      totalSales: 58,
+      salesTarget: 52,
+      objectiveRate: 112,
+      totalMargin: 87000,
+      avgGPU: 1500,
+      financingRate: 82,
+      satisfaction: 89,
+      stockDays: 35
+    },
+    departments: {
+      vn: { sales: 32, target: 28, margin: 48000 },
+      vo: { sales: 18, target: 16, margin: 27000 },
+      vu: { sales: 8, target: 8, margin: 12000 }
+    },
+    trend: "up",
+    alerts: []
+  },
+  {
+    id: "dealership-paris-ouest",
+    name: "Ford Paris Ouest",
+    code: "FPO-002",
+    location: "Paris Ouest",
+    address: "45 Boulevard Exelmans, 75016 Paris",
+    directorId: "dir-concession-2",
+    directorName: "Pierre Martin",
+    coordinates: { lat: 48.8424, lng: 2.2635 },
+    stats: {
+      totalSales: 49,
+      salesTarget: 50,
+      objectiveRate: 98,
+      totalMargin: 71050,
+      avgGPU: 1450,
+      financingRate: 75,
+      satisfaction: 86,
+      stockDays: 42
+    },
+    departments: {
+      vn: { sales: 26, target: 28, margin: 37700 },
+      vo: { sales: 16, target: 15, margin: 23200 },
+      vu: { sales: 7, target: 7, margin: 10150 }
+    },
+    trend: "stable",
+    alerts: [
+      { type: "warning", message: "Stock VN > 40 jours" }
+    ]
+  },
+  {
+    id: "dealership-versailles",
+    name: "Ford Versailles",
+    code: "FVS-003",
+    location: "Versailles",
+    address: "8 Rue des Chantiers, 78000 Versailles",
+    directorId: "dir-concession-3",
+    directorName: "Sophie Bernard",
+    coordinates: { lat: 48.8014, lng: 2.1301 },
+    stats: {
+      totalSales: 52,
+      salesTarget: 50,
+      objectiveRate: 104,
+      totalMargin: 78000,
+      avgGPU: 1500,
+      financingRate: 78,
+      satisfaction: 91,
+      stockDays: 38
+    },
+    departments: {
+      vn: { sales: 28, target: 26, margin: 42000 },
+      vo: { sales: 17, target: 17, margin: 25500 },
+      vu: { sales: 7, target: 7, margin: 10500 }
+    },
+    trend: "up",
+    alerts: []
+  },
+  {
+    id: "dealership-creteil",
+    name: "Ford Créteil",
+    code: "FCR-004",
+    location: "Créteil",
+    address: "Centre Commercial Créteil Soleil, 94000 Créteil",
+    directorId: "dir-concession-4",
+    directorName: "Lucas Petit",
+    coordinates: { lat: 48.7905, lng: 2.4595 },
+    stats: {
+      totalSales: 40,
+      salesTarget: 45,
+      objectiveRate: 89,
+      totalMargin: 56000,
+      avgGPU: 1400,
+      financingRate: 68,
+      satisfaction: 82,
+      stockDays: 52
+    },
+    departments: {
+      vn: { sales: 20, target: 24, margin: 28000 },
+      vo: { sales: 14, target: 15, margin: 19600 },
+      vu: { sales: 6, target: 6, margin: 8400 }
+    },
+    trend: "down",
+    alerts: [
+      { type: "critical", message: "Objectif VN à risque" },
+      { type: "warning", message: "Taux financement bas (68%)" },
+      { type: "warning", message: "Stock > 50 jours" }
+    ]
+  },
+  {
+    id: "dealership-saint-denis",
+    name: "Ford Saint-Denis",
+    code: "FSD-005",
+    location: "Saint-Denis",
+    address: "52 Boulevard Marcel Sembat, 93200 Saint-Denis",
+    directorId: "dir-concession-5",
+    directorName: "Emma Leroy",
+    coordinates: { lat: 48.9362, lng: 2.3574 },
+    stats: {
+      totalSales: 45,
+      salesTarget: 48,
+      objectiveRate: 94,
+      totalMargin: 63000,
+      avgGPU: 1400,
+      financingRate: 72,
+      satisfaction: 84,
+      stockDays: 44
+    },
+    departments: {
+      vn: { sales: 24, target: 26, margin: 33600 },
+      vo: { sales: 15, target: 15, margin: 21000 },
+      vu: { sales: 6, target: 7, margin: 8400 }
+    },
+    trend: "stable",
+    alerts: [
+      { type: "info", message: "Nouveau directeur depuis 3 mois" }
+    ]
+  },
+  {
+    id: "dealership-evry",
+    name: "Ford Évry",
+    code: "FEV-006",
+    location: "Évry",
+    address: "15 Avenue du Lac, 91000 Évry",
+    directorId: "dir-concession-6",
+    directorName: "Thomas Garcia",
+    coordinates: { lat: 48.6249, lng: 2.4295 },
+    stats: {
+      totalSales: 43,
+      salesTarget: 42,
+      objectiveRate: 102,
+      totalMargin: 64500,
+      avgGPU: 1500,
+      financingRate: 80,
+      satisfaction: 88,
+      stockDays: 36
+    },
+    departments: {
+      vn: { sales: 22, target: 22, margin: 33000 },
+      vo: { sales: 15, target: 14, margin: 22500 },
+      vu: { sales: 6, target: 6, margin: 9000 }
+    },
+    trend: "up",
+    alerts: []
+  }
+]
+
+// TODO: replace with API data
+const brandKPIs: BrandKPIs = {
+  volume: {
+    current: 287,
+    target: 300,
+    objectiveRate: 95.7,
+    trend: 8
+  },
+  margin: {
+    total: 430500,
+    target: 450000,
+    avgGPU: 1500,
+    trend: 5
+  },
+  financing: {
+    rate: 76,
+    target: 75,
+    trend: 2
+  },
+  satisfaction: {
+    nps: 86,
+    target: 85,
+    trend: 1
+  },
+  stock: {
+    avgDays: 41,
+    target: 45,
+    totalUnits: 485
+  },
+  constructorBonus: {
+    estimated: 125000,
+    volumeAchieved: false,
+    financingAchieved: true,
+    satisfactionAchieved: true
+  }
+}
+
+// TODO: replace with API data
+const performanceHistory: PerformanceHistory[] = [
+  { month: "Sep 2023", volume: 265, volumeTarget: 280, margin: 397500, financingRate: 72, satisfaction: 83 },
+  { month: "Oct 2023", volume: 278, volumeTarget: 290, margin: 417000, financingRate: 74, satisfaction: 84 },
+  { month: "Nov 2023", volume: 290, volumeTarget: 295, margin: 435000, financingRate: 75, satisfaction: 85 },
+  { month: "Déc 2023", volume: 312, volumeTarget: 310, margin: 468000, financingRate: 77, satisfaction: 86 },
+  { month: "Jan 2024", volume: 275, volumeTarget: 290, margin: 412500, financingRate: 74, satisfaction: 85 },
+  { month: "Fév 2024", volume: 287, volumeTarget: 300, margin: 430500, financingRate: 76, satisfaction: 86 }
+]
+
+// TODO: replace with API data
+function getDealershipRanking(): DealershipData[] {
+  return [...dealerships].sort((a, b) => b.stats.objectiveRate - a.stats.objectiveRate)
+}
+
+// ============================================
+// CONSTANTS
 // ============================================
 
 type MetricType = "objective" | "sales" | "margin" | "gpu" | "financing" | "satisfaction" | "stock"
@@ -43,7 +352,7 @@ const metrics: Array<{
   label: string
   unit: string
   icon: React.ElementType
-  getValue: (d: typeof dealerships[0]) => number
+  getValue: (d: DealershipData) => number
   getTarget?: () => number
   higherIsBetter: boolean
 }> = [

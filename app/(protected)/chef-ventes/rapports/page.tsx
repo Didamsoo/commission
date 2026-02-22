@@ -22,7 +22,8 @@ import {
   Printer,
   Share2,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -44,13 +45,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  teamMembers,
-  chefVentesKPIs,
-  performanceHistory,
-  otherTeams,
-  currentChefVentes
-} from "@/lib/mock-chef-ventes-data"
+import { SalesTrendChart } from "@/components/charts/sales-trend-chart"
+import { MarginChart } from "@/components/charts/margin-chart"
+import { FinancingChart } from "@/components/charts/financing-chart"
+import { format } from "date-fns"
+import { DateRange } from "react-day-picker"
+import { useProfil } from "@/hooks/use-profil"
+import { useDashboard } from "@/hooks/use-dashboard"
+import { useEquipe, type EquipeMember } from "@/hooks/use-equipe"
+import { useRapports } from "@/hooks/use-rapports"
+import { exportToExcel, exportToCSV, type ExportTeamMember } from "@/lib/excel/rapports"
+import { DateRangePicker } from "@/components/ui/date-range-picker"
 
 // ============================================
 // TYPES
@@ -112,59 +117,8 @@ function KPICard({
   )
 }
 
-function PerformanceChart({ data }: { data: typeof performanceHistory }) {
-  const maxSales = Math.max(...data.map(d => Math.max(d.sales, d.target)))
 
-  return (
-    <div className="space-y-4">
-      {/* Legend */}
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-indigo-500" />
-          <span className="text-sm text-gray-600">Ventes réalisées</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-gray-300" />
-          <span className="text-sm text-gray-600">Objectif</span>
-        </div>
-      </div>
-
-      {/* Chart */}
-      <div className="flex items-end gap-2 h-48">
-        {data.slice().reverse().map((month, index) => {
-          const salesHeight = (month.sales / maxSales) * 100
-          const targetHeight = (month.target / maxSales) * 100
-          const achieved = month.sales >= month.target
-
-          return (
-            <div key={month.period} className="flex-1 flex flex-col items-center gap-2">
-              <div className="relative w-full h-40 flex items-end justify-center gap-1">
-                {/* Target bar */}
-                <div
-                  className="w-5 bg-gray-200 rounded-t-sm transition-all duration-500"
-                  style={{ height: `${targetHeight}%` }}
-                />
-                {/* Sales bar */}
-                <div
-                  className={`w-5 rounded-t-sm transition-all duration-500 ${
-                    achieved ? "bg-gradient-to-t from-emerald-500 to-emerald-400" : "bg-gradient-to-t from-indigo-500 to-indigo-400"
-                  }`}
-                  style={{ height: `${salesHeight}%` }}
-                />
-              </div>
-              <div className="text-center">
-                <p className="text-xs font-medium text-gray-900">{month.sales}</p>
-                <p className="text-xs text-gray-500">{month.label}</p>
-              </div>
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  )
-}
-
-function TeamPerformanceTable() {
+function TeamPerformanceTable({ teamMembers }: { teamMembers: { id: string; name: string; kpis: { sales: number; salesTarget: number; margin: number; gpu: number; financingRate: number }; trend: "up" | "down" | "stable" }[] }) {
   const sortedMembers = [...teamMembers].sort((a, b) => b.kpis.sales - a.kpis.sales)
 
   return (
@@ -234,10 +188,10 @@ function TeamPerformanceTable() {
   )
 }
 
-function TeamComparisonCard() {
+function TeamComparisonCard({ chefVentesKPIs, otherTeams }: { chefVentesKPIs: { objectiveRate: number }; otherTeams: { type: string; name: string; rate: number; isCurrentTeam: boolean }[] }) {
   const allTeams = [
     { type: "VN", name: "Équipe VN", rate: chefVentesKPIs.objectiveRate, isCurrentTeam: true },
-    ...otherTeams.map(t => ({ type: t.type, name: `Équipe ${t.type}`, rate: t.objectiveRate, isCurrentTeam: false }))
+    ...otherTeams.map(t => ({ type: t.type, name: t.name, rate: t.rate, isCurrentTeam: t.isCurrentTeam }))
   ].sort((a, b) => b.rate - a.rate)
 
   return (
@@ -287,6 +241,53 @@ function TeamComparisonCard() {
 
 export default function RapportsPage() {
   const [period, setPeriod] = useState<Period>("month")
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
+
+  const dateRangeParams = dateRange?.from && dateRange?.to ? {
+    startDate: format(dateRange.from, 'yyyy-MM-dd'),
+    endDate: format(dateRange.to, 'yyyy-MM-dd'),
+  } : undefined
+
+  const { data: profil } = useProfil()
+  const { data: dashboardRaw, loading: dashLoading } = useDashboard<Record<string, unknown>>("chef_ventes", undefined, dateRangeParams)
+  const { data: equipeData, loading: equipeLoading } = useEquipe()
+
+  const teamMembers = (equipeData || []).map((m, i) => ({
+    id: m.user_id || m.id,
+    name: m.full_name,
+    kpis: { sales: m.total_sales || 0, salesTarget: m.sales_target || 10, margin: m.total_margin || 0, gpu: m.total_sales ? Math.round((m.total_margin || 0) / m.total_sales) : 0, financingRate: m.financing_rate || 0 },
+    trend: (m.trend || "stable") as "up" | "down" | "stable",
+  }))
+
+  const kpis = ((dashboardRaw as any)?.kpis || {}) as Record<string, number>
+  const chefVentesKPIs = {
+    teamSales: kpis.total_sales ?? teamMembers.reduce((s, m) => s + m.kpis.sales, 0),
+    teamSalesTarget: kpis.total_sales_target ?? teamMembers.reduce((s, m) => s + m.kpis.salesTarget, 0),
+    teamMargin: kpis.total_margin ?? teamMembers.reduce((s, m) => s + m.kpis.margin, 0),
+    teamGPU: 0,
+    teamFinancingRate: kpis.financing_rate ?? 0,
+    objectiveRate: 0,
+    membersAtObjective: teamMembers.filter(m => m.kpis.sales >= m.kpis.salesTarget).length,
+    teamSize: teamMembers.length,
+    constructorBonusEstimate: kpis.constructor_bonus_estimate ?? 0,
+  }
+  chefVentesKPIs.teamGPU = chefVentesKPIs.teamSales > 0 ? Math.round(chefVentesKPIs.teamMargin / chefVentesKPIs.teamSales) : 0
+  chefVentesKPIs.objectiveRate = chefVentesKPIs.teamSalesTarget > 0 ? Math.round((chefVentesKPIs.teamSales / chefVentesKPIs.teamSalesTarget) * 100) : 0
+
+  // TODO: replace with API data
+  const performanceHistory = [
+    { period: "2024-02", label: "Fév", sales: 45, target: 60, margin: 67500, financingRate: 78 },
+    { period: "2024-01", label: "Jan", sales: 52, target: 55, margin: 78000, financingRate: 76 },
+    { period: "2023-12", label: "Déc", sales: 68, target: 65, margin: 102000, financingRate: 82 },
+    { period: "2023-11", label: "Nov", sales: 48, target: 55, margin: 72000, financingRate: 74 },
+    { period: "2023-10", label: "Oct", sales: 55, target: 55, margin: 82500, financingRate: 77 },
+    { period: "2023-09", label: "Sep", sales: 50, target: 55, margin: 75000, financingRate: 75 },
+  ]
+  // TODO: replace with API data
+  const otherTeams = [
+    { type: "VO", name: "Équipe VO", rate: 80, isCurrentTeam: false },
+    { type: "VU", name: "Équipe VU", rate: 67, isCurrentTeam: false },
+  ]
 
   // Calculate previous period values (mock)
   const previousPeriodData = {
@@ -294,6 +295,48 @@ export default function RapportsPage() {
     margin: 78000,
     financingRate: 76,
     gpu: 1500
+  }
+
+  const buildExportMembers = (): ExportTeamMember[] => {
+    return [...teamMembers]
+      .sort((a, b) => b.kpis.sales - a.kpis.sales)
+      .map((m, i) => ({
+        rang: i + 1,
+        nom: m.name,
+        ventes: m.kpis.sales,
+        objectif: m.kpis.salesTarget,
+        taux: `${m.kpis.salesTarget > 0 ? Math.round((m.kpis.sales / m.kpis.salesTarget) * 100) : 0}%`,
+        marge: `${m.kpis.margin.toLocaleString("fr-FR")} \u20ac`,
+        gpu: `${m.kpis.gpu} \u20ac`,
+        financement: `${m.kpis.financingRate}%`,
+      }))
+  }
+
+  const handleExportExcel = () => {
+    exportToExcel({
+      title: "Rapport d'equipe",
+      period,
+      teamMembers: buildExportMembers(),
+      kpis: {
+        totalSales: chefVentesKPIs.teamSales,
+        totalMargin: chefVentesKPIs.teamMargin,
+        avgGPU: chefVentesKPIs.teamGPU,
+        financingRate: chefVentesKPIs.teamFinancingRate,
+        objectiveRate: chefVentesKPIs.objectiveRate,
+      },
+    })
+  }
+
+  const handleExportCSV = () => {
+    exportToCSV(buildExportMembers(), period)
+  }
+
+  if ((dashLoading || equipeLoading) && !equipeData && !dashboardRaw) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    )
   }
 
   return (
@@ -317,12 +360,12 @@ export default function RapportsPage() {
             Rapports d&apos;équipe
           </h1>
           <p className="text-gray-500 mt-1">
-            Analyse des performances de l&apos;équipe {currentChefVentes.teamType}
+            Analyse des performances de l&apos;équipe {profil?.role || ""}
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
+        <div className="flex flex-wrap items-center gap-3">
+          <Select value={period} onValueChange={(v) => { setPeriod(v as Period); setDateRange(undefined) }}>
             <SelectTrigger className="w-40">
               <Calendar className="w-4 h-4 mr-2" />
               <SelectValue />
@@ -335,6 +378,8 @@ export default function RapportsPage() {
             </SelectContent>
           </Select>
 
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
+
           <Link href="/chef-ventes">
             <Button variant="outline" className="gap-2">
               <ArrowLeft className="w-4 h-4" />
@@ -342,9 +387,9 @@ export default function RapportsPage() {
             </Button>
           </Link>
 
-          <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 gap-2">
+          <Button onClick={handleExportExcel} className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 gap-2">
             <Download className="w-4 h-4" />
-            Exporter PDF
+            Exporter Excel
           </Button>
         </div>
       </div>
@@ -399,14 +444,45 @@ export default function RapportsPage() {
             <CardDescription>Ventes vs objectifs sur les 6 derniers mois</CardDescription>
           </CardHeader>
           <CardContent>
-            <PerformanceChart data={performanceHistory} />
+            <SalesTrendChart data={performanceHistory} />
           </CardContent>
         </Card>
 
         {/* ============================================
             TEAM COMPARISON
             ============================================ */}
-        <TeamComparisonCard />
+        <TeamComparisonCard chefVentesKPIs={chefVentesKPIs} otherTeams={otherTeams} />
+      </div>
+
+      {/* ============================================
+          MARGIN & FINANCING CHARTS
+          ============================================ */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        <Card className="border-0 shadow-premium">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Euro className="w-5 h-5 text-emerald-600" />
+              Évolution de la marge
+            </CardTitle>
+            <CardDescription>Marge totale sur les 6 derniers mois</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <MarginChart data={performanceHistory} />
+          </CardContent>
+        </Card>
+
+        <Card className="border-0 shadow-premium">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Percent className="w-5 h-5 text-purple-600" />
+              Taux de financement
+            </CardTitle>
+            <CardDescription>Évolution du taux de financement</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FinancingChart data={performanceHistory} />
+          </CardContent>
+        </Card>
       </div>
 
       {/* ============================================
@@ -433,7 +509,7 @@ export default function RapportsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <TeamPerformanceTable />
+          <TeamPerformanceTable teamMembers={teamMembers} />
         </CardContent>
       </Card>
 
@@ -450,10 +526,10 @@ export default function RapportsPage() {
               <div>
                 <p className="text-sm text-gray-500">Meilleur commercial</p>
                 <p className="font-bold text-gray-900">
-                  {teamMembers.sort((a, b) => b.kpis.sales - a.kpis.sales)[0].name}
+                  {[...teamMembers].sort((a, b) => b.kpis.sales - a.kpis.sales)[0]?.name || "-"}
                 </p>
                 <p className="text-sm text-emerald-600">
-                  {teamMembers.sort((a, b) => b.kpis.sales - a.kpis.sales)[0].kpis.sales} ventes
+                  {[...teamMembers].sort((a, b) => b.kpis.sales - a.kpis.sales)[0]?.kpis.sales ?? 0} ventes
                 </p>
               </div>
             </div>
@@ -511,15 +587,15 @@ export default function RapportsPage() {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="gap-2" onClick={handleExportExcel}>
                 <Download className="w-4 h-4" />
                 Excel
               </Button>
-              <Button variant="outline" className="gap-2">
+              <Button variant="outline" className="gap-2" onClick={handleExportCSV}>
                 <Download className="w-4 h-4" />
                 CSV
               </Button>
-              <Button className="bg-gradient-to-r from-indigo-600 to-purple-600 gap-2">
+              <Button className="bg-gradient-to-r from-indigo-600 to-purple-600 gap-2" onClick={handleExportExcel}>
                 <Download className="w-4 h-4" />
                 PDF complet
               </Button>

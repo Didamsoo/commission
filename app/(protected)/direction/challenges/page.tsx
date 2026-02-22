@@ -25,7 +25,8 @@ import {
   Percent,
   Car,
   Award,
-  Star
+  Star,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -49,137 +50,7 @@ import {
   formatChallengeTarget,
   formatChallengeDuration
 } from "@/types/direction-challenges"
-
-// ============================================
-// MOCK DATA
-// ============================================
-const mockChallenges: DirectionChallenge[] = [
-  {
-    id: "1",
-    title: "Sprint de Février",
-    description: "Atteignez 15 ventes avant la fin du mois pour décrocher un bonus exceptionnel !",
-    type: "sales_count",
-    target: 15,
-    targetUnit: "ventes",
-    startDate: "2024-02-01",
-    endDate: "2024-02-29",
-    reward: {
-      type: "bonus",
-      value: 500,
-      description: "Bonus de 500€ ajouté à votre commission mensuelle"
-    },
-    participantIds: [],
-    allParticipants: true,
-    status: "active",
-    createdBy: "direction",
-    createdAt: "2024-01-28",
-    participants: [
-      { id: "1", name: "Marie Martin", currentScore: 12, isCompleted: false },
-      { id: "2", name: "Pierre Durand", currentScore: 11, isCompleted: false },
-      { id: "3", name: "Jean Dupont", currentScore: 8, isCompleted: false }
-    ],
-    topPerformers: []
-  },
-  {
-    id: "2",
-    title: "Roi du Financement",
-    description: "Maintenez un taux de financement supérieur à 80% sur toutes vos ventes.",
-    type: "financing_rate",
-    target: 80,
-    targetUnit: "%",
-    startDate: "2024-02-01",
-    endDate: "2024-02-29",
-    reward: {
-      type: "badge",
-      value: 200,
-      description: "Badge exclusif affiché sur votre profil",
-      badgeName: "Roi du Financement",
-      badgeIcon: "crown"
-    },
-    participantIds: [],
-    allParticipants: true,
-    status: "active",
-    createdBy: "direction",
-    createdAt: "2024-01-28",
-    participants: [
-      { id: "1", name: "Marie Martin", currentScore: 85, isCompleted: true, completedAt: "2024-02-15" },
-      { id: "2", name: "Pierre Durand", currentScore: 72, isCompleted: false }
-    ],
-    topPerformers: []
-  },
-  {
-    id: "3",
-    title: "Objectif Puma",
-    description: "Vendez 5 Ford Puma ce mois pour obtenir des points bonus !",
-    type: "specific_model",
-    target: 5,
-    targetUnit: "unités",
-    targetModelName: "Puma",
-    startDate: "2024-02-01",
-    endDate: "2024-02-29",
-    reward: {
-      type: "points",
-      value: 1000,
-      description: "1000 points bonus pour le classement"
-    },
-    participantIds: [],
-    allParticipants: true,
-    status: "active",
-    createdBy: "direction",
-    createdAt: "2024-01-28",
-    participants: [],
-    topPerformers: []
-  },
-  {
-    id: "4",
-    title: "Challenge Mars - Marge Maximale",
-    description: "Générez une marge totale de 5000€ pendant le mois de mars.",
-    type: "margin_target",
-    target: 5000,
-    targetUnit: "€",
-    startDate: "2024-03-01",
-    endDate: "2024-03-31",
-    reward: {
-      type: "bonus",
-      value: 750,
-      description: "Bonus de 750€"
-    },
-    participantIds: [],
-    allParticipants: true,
-    status: "upcoming",
-    createdBy: "direction",
-    createdAt: "2024-02-20",
-    participants: [],
-    topPerformers: []
-  },
-  {
-    id: "5",
-    title: "Rush de Janvier",
-    description: "Challenge de ventes du mois de janvier.",
-    type: "sales_count",
-    target: 12,
-    targetUnit: "ventes",
-    startDate: "2024-01-01",
-    endDate: "2024-01-31",
-    reward: {
-      type: "bonus",
-      value: 400,
-      description: "Bonus de 400€"
-    },
-    participantIds: [],
-    allParticipants: true,
-    status: "completed",
-    createdBy: "direction",
-    createdAt: "2023-12-28",
-    participants: [
-      { id: "1", name: "Marie Martin", currentScore: 14, isCompleted: true, completedAt: "2024-01-25" },
-      { id: "2", name: "Pierre Durand", currentScore: 12, isCompleted: true, completedAt: "2024-01-30" }
-    ],
-    topPerformers: [
-      { id: "1", name: "Marie Martin", currentScore: 14, isCompleted: true, completedAt: "2024-01-25" }
-    ]
-  }
-]
+import { useDefis } from "@/hooks/use-defis"
 
 // ============================================
 // ICONS MAPPING
@@ -389,19 +260,61 @@ function StatCard({
 export default function DirectionChallengesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState<DirectionChallengeStatus | "all">("all")
+  const { data: defisData, loading } = useDefis()
+
+  // Map API data to DirectionChallenge[] type
+  const challenges: DirectionChallenge[] = ((defisData || []) as any[]).map(d => ({
+    id: d.id || "",
+    title: d.title || "",
+    description: d.description || "",
+    type: d.type || "sales_count",
+    target: d.target || 0,
+    targetUnit: d.target_unit || "",
+    targetModelName: d.target_model_name,
+    startDate: d.start_date || "",
+    endDate: d.end_date || "",
+    reward: {
+      type: d.reward_type || "bonus",
+      value: d.reward_value || 0,
+      description: d.reward_description || "",
+      badgeName: d.badge_name,
+      badgeIcon: d.badge_icon
+    },
+    participantIds: d.participant_ids || [],
+    allParticipants: d.all_participants || false,
+    status: d.status || "active",
+    createdBy: d.created_by || "",
+    createdAt: d.created_at || "",
+    participants: (d.participants || []).map((p: any) => ({
+      id: p.id || "",
+      name: p.name || "",
+      currentScore: p.current_score || 0,
+      isCompleted: p.is_completed || false,
+      completedAt: p.completed_at
+    })),
+    topPerformers: d.top_performers || []
+  }))
 
   // Filter challenges
-  const filteredChallenges = mockChallenges.filter((challenge) => {
+  const filteredChallenges = challenges.filter((challenge) => {
     const matchesSearch = challenge.title.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesTab = activeTab === "all" || challenge.status === activeTab
     return matchesSearch && matchesTab
   })
 
   // Stats
-  const activeChallenges = mockChallenges.filter(c => c.status === "active").length
-  const upcomingChallenges = mockChallenges.filter(c => c.status === "upcoming").length
-  const completedChallenges = mockChallenges.filter(c => c.status === "completed").length
-  const totalParticipants = new Set(mockChallenges.flatMap(c => c.participants.map(p => p.id))).size || 12
+  const activeChallenges = challenges.filter(c => c.status === "active").length
+  const upcomingChallenges = challenges.filter(c => c.status === "upcoming").length
+  const completedChallenges = challenges.filter(c => c.status === "completed").length
+  const totalParticipants = new Set(challenges.flatMap(c => c.participants.map(p => p.id))).size || 12
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">

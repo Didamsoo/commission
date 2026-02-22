@@ -27,8 +27,10 @@ import {
   Filter,
   ChevronDown,
   CheckCircle2,
-  X
+  X,
+  Loader2
 } from "lucide-react"
+import { useEquipe, type EquipeMember } from "@/hooks/use-equipe"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -77,81 +79,6 @@ interface TeamMember {
   lastActive: string
 }
 
-const mockTeamMembers: TeamMember[] = [
-  {
-    id: "1",
-    name: "Marie Martin",
-    email: "marie.martin@ford.fr",
-    phone: "+33 6 12 34 56 78",
-    role: "commercial",
-    status: "active",
-    avatar: "",
-    stats: { sales: 12, target: 15, commission: 5200, margin: 18500, financingRate: 78 },
-    joinDate: "2023-03-15",
-    lastActive: "Il y a 10 min"
-  },
-  {
-    id: "2",
-    name: "Pierre Durand",
-    email: "pierre.durand@ford.fr",
-    phone: "+33 6 23 45 67 89",
-    role: "commercial",
-    status: "active",
-    avatar: "",
-    stats: { sales: 11, target: 12, commission: 4800, margin: 16200, financingRate: 72 },
-    joinDate: "2023-01-10",
-    lastActive: "Il y a 1h"
-  },
-  {
-    id: "3",
-    name: "Jean Dupont",
-    email: "jean.dupont@ford.fr",
-    phone: "+33 6 34 56 78 90",
-    role: "commercial",
-    status: "active",
-    avatar: "",
-    stats: { sales: 8, target: 10, commission: 3450, margin: 12400, financingRate: 65 },
-    joinDate: "2023-06-20",
-    lastActive: "En ligne"
-  },
-  {
-    id: "4",
-    name: "Sophie Bernard",
-    email: "sophie.bernard@ford.fr",
-    phone: "+33 6 45 67 89 01",
-    role: "commercial",
-    status: "active",
-    avatar: "",
-    stats: { sales: 7, target: 10, commission: 3200, margin: 11800, financingRate: 70 },
-    joinDate: "2023-09-05",
-    lastActive: "Il y a 2h"
-  },
-  {
-    id: "5",
-    name: "Lucas Petit",
-    email: "lucas.petit@ford.fr",
-    phone: "+33 6 56 78 90 12",
-    role: "commercial",
-    status: "inactive",
-    avatar: "",
-    stats: { sales: 7, target: 10, commission: 2900, margin: 10500, financingRate: 68 },
-    joinDate: "2023-11-12",
-    lastActive: "Il y a 3 jours"
-  },
-  {
-    id: "6",
-    name: "Thomas Leroy",
-    email: "thomas.leroy@ford.fr",
-    phone: "+33 6 67 89 01 23",
-    role: "direction",
-    status: "active",
-    avatar: "",
-    stats: { sales: 0, target: 0, commission: 0, margin: 0, financingRate: 0 },
-    joinDate: "2022-01-15",
-    lastActive: "En ligne"
-  }
-]
-
 const roleConfig = {
   commercial: { label: "Commercial", color: "bg-blue-100 text-blue-700 border-blue-200", icon: UserPlus },
   direction: { label: "Direction", color: "bg-purple-100 text-purple-700 border-purple-200", icon: Crown },
@@ -165,7 +92,19 @@ const statusConfig = {
 }
 
 export default function TeamManagementPage() {
-  const [members, setMembers] = useState<TeamMember[]>(mockTeamMembers)
+  const { data: equipeData, loading } = useEquipe()
+  const members: TeamMember[] = (equipeData || []).map(m => ({
+    id: m.user_id || m.id,
+    name: m.full_name,
+    email: m.email,
+    phone: m.phone || "",
+    role: (m.role === "chef_ventes" || m.role === "dir_concession") ? "direction" : m.role === "admin" ? "admin" : "commercial" as any,
+    status: m.is_active ? "active" : "inactive" as any,
+    avatar: m.avatar_url || "",
+    stats: { sales: m.total_sales || 0, target: m.sales_target || 10, commission: m.total_commission || 0, margin: m.total_margin || 0, financingRate: m.financing_rate || 0 },
+    joinDate: m.joined_at || "",
+    lastActive: "En ligne"
+  }))
   const [searchQuery, setSearchQuery] = useState("")
   const [filterRole, setFilterRole] = useState<string>("all")
   const [filterStatus, setFilterStatus] = useState<string>("all")
@@ -189,6 +128,14 @@ export default function TeamManagementPage() {
   const openMemberDetail = (member: TeamMember) => {
     setSelectedMember(member)
     setShowMemberDetail(true)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    )
   }
 
   return (

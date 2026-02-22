@@ -3,6 +3,7 @@
 import type React from "react"
 import type { Metadata, Viewport } from "next"
 import { Inter, Plus_Jakarta_Sans } from "next/font/google"
+import { Analytics } from "@vercel/analytics/next"
 import "./globals.css"
 
 // ============================================
@@ -50,13 +51,13 @@ export const metadata: Metadata = {
   applicationName: "AutoPerf Pro - Gestionnaire de Marges Automobile",
   generator: "Next.js",
   
-  metadataBase: new URL("https://feuilledemarge.netlify.app"),
+  metadataBase: new URL("https://autoperf.vercel.app"),
 
   // Open Graph (Facebook, LinkedIn, etc.)
   openGraph: {
     title: "AutoPerf Pro - Boostez les performances de vos commerciaux",
     description: "La plateforme tout-en-un pour calculer les marges, suivre les performances et motiver vos équipes avec la gamification.",
-    url: "https://feuilledemarge.netlify.app",
+    url: "https://autoperf.vercel.app",
     siteName: "AutoPerf Pro",
     type: "website",
     locale: "fr_FR",
@@ -158,6 +159,7 @@ export default function RootLayout({
       </head>
       <body className={`${inter.className} antialiased`}>
         {children}
+        <Analytics />
       </body>
     </html>
   )

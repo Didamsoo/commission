@@ -13,7 +13,8 @@ import {
   Euro,
   Car,
   Zap,
-  Flame
+  Flame,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -28,134 +29,30 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { ChallengeButton } from "@/components/p2p-challenges"
+import { useLeaderboard, type LeaderboardEntry } from "@/hooks/use-leaderboard"
+import { useProfil } from "@/hooks/use-profil"
 
 type Period = "day" | "week" | "month" | "quarter" | "year"
 type MetricType = "commission" | "sales" | "points"
 
-// Mock data
-const mockLeaderboardData = [
-  {
-    id: "user-2",
-    rank: 1,
-    previousRank: 2,
-    name: "Marie Martin",
-    avatar: "",
-    commission: 5200,
-    sales: 12,
-    points: 1850,
-    streak: 8,
-    badges: ["Vendeur du Mois", "Roi du Financement"]
-  },
-  {
-    id: "user-3",
-    rank: 2,
-    previousRank: 1,
-    name: "Pierre Durand",
-    avatar: "",
-    commission: 4800,
-    sales: 11,
-    points: 1720,
-    streak: 5,
-    badges: ["Semaine Parfaite"]
-  },
-  {
-    id: "user-1",
-    rank: 3,
-    previousRank: 4,
-    name: "Jean Dupont",
-    avatar: "",
-    commission: 3450,
-    sales: 8,
-    points: 1450,
-    streak: 5,
-    isCurrentUser: true,
-    badges: ["Premier Pas", "5 Ventes"]
-  },
-  {
-    id: "user-4",
-    rank: 4,
-    previousRank: 3,
-    name: "Sophie Bernard",
-    avatar: "",
-    commission: 3200,
-    sales: 7,
-    points: 1280,
-    streak: 3,
-    badges: []
-  },
-  {
-    id: "user-5",
-    rank: 5,
-    previousRank: 6,
-    name: "Lucas Petit",
-    avatar: "",
-    commission: 2900,
-    sales: 7,
-    points: 1150,
-    streak: 2,
-    badges: ["Champion Électrique"]
-  },
-  {
-    id: "user-6",
-    rank: 6,
-    previousRank: 5,
-    name: "Emma Leroy",
-    avatar: "",
-    commission: 2700,
-    sales: 6,
-    points: 980,
-    streak: 0,
-    badges: []
-  },
-  {
-    id: "user-7",
-    rank: 7,
-    previousRank: 7,
-    name: "Hugo Moreau",
-    avatar: "",
-    commission: 2400,
-    sales: 5,
-    points: 850,
-    streak: 1,
-    badges: []
-  },
-  {
-    id: "user-8",
-    rank: 8,
-    previousRank: 9,
-    name: "Léa Simon",
-    avatar: "",
-    commission: 2100,
-    sales: 5,
-    points: 720,
-    streak: 0,
-    badges: []
-  },
-  {
-    id: "user-9",
-    rank: 9,
-    previousRank: 8,
-    name: "Nathan Garcia",
-    avatar: "",
-    commission: 1800,
-    sales: 4,
-    points: 580,
-    streak: 0,
-    badges: []
-  },
-  {
-    id: "user-10",
-    rank: 10,
-    previousRank: 10,
-    name: "Chloé Martinez",
-    avatar: "",
-    commission: 1500,
-    sales: 3,
-    points: 420,
-    streak: 0,
-    badges: []
+// Period to API param mapping
+function periodToApiParam(period: Period): string | undefined {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, "0")
+  switch (period) {
+    case "month": return `${year}-${month}`
+    default: return undefined // TODO: handle other periods
   }
-]
+}
+
+function metricToApiParam(metric: MetricType): string {
+  switch (metric) {
+    case "commission": return "seller_commission"
+    case "sales": return "sales_count"
+    case "points": return "final_margin"
+  }
+}
 
 function getRankChange(current: number, previous: number) {
   if (current < previous) return { direction: "up" as const, value: previous - current }
@@ -192,22 +89,22 @@ function RankBadge({ rank }: { rank: number }) {
   )
 }
 
-function Podium() {
-  const top3 = mockLeaderboardData.slice(0, 3)
-  const [first, second, third] = top3
+function Podium({ entries, currentUserId }: { entries: LeaderboardEntry[]; currentUserId?: string }) {
+  if (entries.length < 3) return null
+  const [first, second, third] = entries
 
   return (
     <div className="flex items-end justify-center gap-4 py-8">
       {/* Second Place */}
       <div className="flex flex-col items-center">
         <Avatar className="w-16 h-16 border-4 border-gray-300 shadow-lg">
-          <AvatarImage src={second.avatar} />
+          <AvatarImage src={second.avatar_url || ""} />
           <AvatarFallback className="bg-gray-200 text-xl font-bold">
-            {second.name.split(" ").map(n => n[0]).join("")}
+            {second.full_name.split(" ").map(n => n[0]).join("")}
           </AvatarFallback>
         </Avatar>
-        <p className="font-semibold mt-2 text-gray-900">{second.name}</p>
-        <p className="text-sm text-gray-500">{second.commission.toLocaleString()}€</p>
+        <p className="font-semibold mt-2 text-gray-900">{second.full_name}</p>
+        <p className="text-sm text-gray-500">{second.total_commission.toLocaleString()}€</p>
         <div className="w-24 h-24 bg-gradient-to-t from-gray-300 to-gray-200 rounded-t-lg mt-4 flex items-center justify-center">
           <span className="text-3xl font-bold text-gray-600">2</span>
         </div>
@@ -217,17 +114,17 @@ function Podium() {
       <div className="flex flex-col items-center -mt-8">
         <div className="relative">
           <Avatar className="w-20 h-20 border-4 border-amber-400 shadow-lg">
-            <AvatarImage src={first.avatar} />
+            <AvatarImage src={first.avatar_url || ""} />
             <AvatarFallback className="bg-amber-100 text-2xl font-bold text-amber-700">
-              {first.name.split(" ").map(n => n[0]).join("")}
+              {first.full_name.split(" ").map(n => n[0]).join("")}
             </AvatarFallback>
           </Avatar>
           <div className="absolute -top-3 -right-1">
             <Crown className="w-8 h-8 text-amber-500 drop-shadow-lg" />
           </div>
         </div>
-        <p className="font-bold text-lg mt-2 text-gray-900">{first.name}</p>
-        <p className="text-sm text-amber-600 font-semibold">{first.commission.toLocaleString()}€</p>
+        <p className="font-bold text-lg mt-2 text-gray-900">{first.full_name}</p>
+        <p className="text-sm text-amber-600 font-semibold">{first.total_commission.toLocaleString()}€</p>
         <div className="w-28 h-32 bg-gradient-to-t from-amber-400 to-amber-300 rounded-t-lg mt-4 flex items-center justify-center">
           <span className="text-4xl font-bold text-white drop-shadow">1</span>
         </div>
@@ -236,16 +133,16 @@ function Podium() {
       {/* Third Place */}
       <div className="flex flex-col items-center">
         <Avatar className="w-16 h-16 border-4 border-orange-300 shadow-lg">
-          <AvatarImage src={third.avatar} />
-          <AvatarFallback className={`text-xl font-bold ${third.isCurrentUser ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"}`}>
-            {third.name.split(" ").map(n => n[0]).join("")}
+          <AvatarImage src={third.avatar_url || ""} />
+          <AvatarFallback className={`text-xl font-bold ${third.user_id === currentUserId ? "bg-blue-100 text-blue-700" : "bg-orange-100 text-orange-700"}`}>
+            {third.full_name.split(" ").map(n => n[0]).join("")}
           </AvatarFallback>
         </Avatar>
-        <p className={`font-semibold mt-2 ${third.isCurrentUser ? "text-blue-700" : "text-gray-900"}`}>
-          {third.name}
-          {third.isCurrentUser && <span className="text-xs text-blue-500 ml-1">(vous)</span>}
+        <p className={`font-semibold mt-2 ${third.user_id === currentUserId ? "text-blue-700" : "text-gray-900"}`}>
+          {third.full_name}
+          {third.user_id === currentUserId && <span className="text-xs text-blue-500 ml-1">(vous)</span>}
         </p>
-        <p className="text-sm text-gray-500">{third.commission.toLocaleString()}€</p>
+        <p className="text-sm text-gray-500">{third.total_commission.toLocaleString()}€</p>
         <div className="w-24 h-20 bg-gradient-to-t from-orange-400 to-orange-300 rounded-t-lg mt-4 flex items-center justify-center">
           <span className="text-3xl font-bold text-white">3</span>
         </div>
@@ -257,6 +154,13 @@ function Podium() {
 export default function LeaderboardPage() {
   const [period, setPeriod] = useState<Period>("month")
   const [metricType, setMetricType] = useState<MetricType>("commission")
+  const { data: profil } = useProfil()
+  const { data: leaderboardData, loading } = useLeaderboard(
+    periodToApiParam(period),
+    metricToApiParam(metricType)
+  )
+
+  const entries = leaderboardData || []
 
   const periodLabels: Record<Period, string> = {
     day: "Aujourd'hui",
@@ -266,20 +170,14 @@ export default function LeaderboardPage() {
     year: "Cette année"
   }
 
-  const metricLabels: Record<MetricType, string> = {
-    commission: "Commission",
-    sales: "Ventes",
-    points: "Points"
-  }
-
-  const getMetricValue = (seller: typeof mockLeaderboardData[0]) => {
+  const getMetricValue = (entry: LeaderboardEntry) => {
     switch (metricType) {
       case "commission":
-        return `${seller.commission.toLocaleString()}€`
+        return `${entry.total_commission.toLocaleString()}€`
       case "sales":
-        return `${seller.sales} ventes`
+        return `${entry.total_sales} ventes`
       case "points":
-        return `${seller.points.toLocaleString()} pts`
+        return `${entry.total_margin.toLocaleString()}€`
     }
   }
 
@@ -321,7 +219,13 @@ export default function LeaderboardPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Podium />
+          {loading ? (
+            <div className="py-12 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>
+          ) : entries.length >= 3 ? (
+            <Podium entries={entries} currentUserId={profil?.id} />
+          ) : (
+            <div className="py-12 text-center text-gray-500">Pas assez de données pour le podium</div>
+          )}
         </CardContent>
       </Card>
 
@@ -346,95 +250,56 @@ export default function LeaderboardPage() {
           <Card>
             <CardContent className="p-0">
               <div className="divide-y divide-gray-100">
-                {mockLeaderboardData.map((seller) => {
-                  const rankChange = getRankChange(seller.rank, seller.previousRank)
-
+                {loading ? (
+                  <div className="p-12 flex justify-center"><Loader2 className="w-8 h-8 animate-spin text-blue-500" /></div>
+                ) : entries.length === 0 ? (
+                  <div className="p-12 text-center text-gray-500">
+                    <Trophy className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="font-medium">Aucune donnée pour cette période</p>
+                  </div>
+                ) : entries.map((entry) => {
+                  const isCurrentUser = entry.user_id === profil?.id
                   return (
                     <div
-                      key={seller.rank}
+                      key={entry.rank}
                       className={`flex items-center gap-4 p-4 sm:p-5 transition-colors ${
-                        seller.isCurrentUser
+                        isCurrentUser
                           ? "bg-blue-50 border-l-4 border-l-blue-500"
                           : "hover:bg-gray-50"
                       }`}
                     >
-                      {/* Rank */}
-                      <RankBadge rank={seller.rank} />
-
-                      {/* Rank Change */}
+                      <RankBadge rank={entry.rank} />
                       <div className="w-8 flex justify-center">
-                        {rankChange.direction === "up" && (
-                          <div className="flex items-center text-emerald-600">
-                            <TrendingUp className="w-4 h-4" />
-                            <span className="text-xs font-medium">{rankChange.value}</span>
-                          </div>
-                        )}
-                        {rankChange.direction === "down" && (
-                          <div className="flex items-center text-red-500">
-                            <TrendingDown className="w-4 h-4" />
-                            <span className="text-xs font-medium">{rankChange.value}</span>
-                          </div>
-                        )}
-                        {rankChange.direction === "same" && (
-                          <Minus className="w-4 h-4 text-gray-400" />
-                        )}
+                        <Minus className="w-4 h-4 text-gray-400" />
                       </div>
-
-                      {/* Avatar & Name */}
                       <Avatar className="h-12 w-12">
-                        <AvatarImage src={seller.avatar} />
-                        <AvatarFallback className={seller.isCurrentUser ? "bg-blue-600 text-white" : "bg-gray-200"}>
-                          {seller.name.split(" ").map(n => n[0]).join("")}
+                        <AvatarImage src={entry.avatar_url || ""} />
+                        <AvatarFallback className={isCurrentUser ? "bg-blue-600 text-white" : "bg-gray-200"}>
+                          {entry.full_name.split(" ").map(n => n[0]).join("")}
                         </AvatarFallback>
                       </Avatar>
-
                       <div className="flex-1 min-w-0">
-                        <p className={`font-semibold ${seller.isCurrentUser ? "text-blue-700" : "text-gray-900"}`}>
-                          {seller.name}
-                          {seller.isCurrentUser && (
-                            <span className="text-xs text-blue-500 ml-2">(vous)</span>
-                          )}
+                        <p className={`font-semibold ${isCurrentUser ? "text-blue-700" : "text-gray-900"}`}>
+                          {entry.full_name}
+                          {isCurrentUser && <span className="text-xs text-blue-500 ml-2">(vous)</span>}
                         </p>
-                        <div className="flex items-center gap-2 mt-1">
-                          {seller.streak >= 3 && (
-                            <Badge variant="secondary" className="text-xs bg-orange-100 text-orange-700">
-                              <Flame className="w-3 h-3 mr-1" />
-                              {seller.streak}j
-                            </Badge>
-                          )}
-                          {seller.badges.slice(0, 2).map((badge, i) => (
-                            <Badge key={i} variant="outline" className="text-xs">
-                              {badge}
-                            </Badge>
-                          ))}
-                          {seller.badges.length > 2 && (
-                            <span className="text-xs text-gray-500">
-                              +{seller.badges.length - 2}
-                            </span>
-                          )}
-                        </div>
+                        <p className="text-xs text-gray-500 mt-1">{entry.total_sales} ventes</p>
                       </div>
-
-                      {/* Metric Value */}
                       <div className="text-right">
-                        <p className="text-lg font-bold text-gray-900">
-                          {getMetricValue(seller)}
-                        </p>
+                        <p className="text-lg font-bold text-gray-900">{getMetricValue(entry)}</p>
                         <p className="text-sm text-gray-500">
-                          {metricType === "commission" && `${seller.sales} ventes`}
-                          {metricType === "sales" && `${seller.commission.toLocaleString()}€`}
-                          {metricType === "points" && `${seller.sales} ventes`}
+                          {metricType === "commission" && `${entry.total_sales} ventes`}
+                          {metricType === "sales" && `${entry.total_commission.toLocaleString()}€`}
+                          {metricType === "points" && `${entry.total_sales} ventes`}
                         </p>
                       </div>
-
-                      {/* Challenge Button */}
-                      {!seller.isCurrentUser && (
+                      {!isCurrentUser && (
                         <div className="hidden sm:block">
                           <ChallengeButton
                             targetUser={{
-                              id: seller.id,
-                              name: seller.name,
-                              avatar: seller.avatar
+                              id: entry.user_id,
+                              name: entry.full_name,
+                              avatar: entry.avatar_url || ""
                             }}
                             variant="compact"
                           />
@@ -450,35 +315,41 @@ export default function LeaderboardPage() {
       </Tabs>
 
       {/* Your Position Highlight */}
-      <Card className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-0">
-        <CardContent className="p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-              <p className="text-blue-100 font-medium">Votre position</p>
-              <p className="text-3xl font-bold mt-1">
-                #{mockLeaderboardData.find(s => s.isCurrentUser)?.rank || "-"}
-                <span className="text-lg font-normal text-blue-200 ml-2">
-                  sur {mockLeaderboardData.length} commerciaux
-                </span>
-              </p>
-            </div>
-            <div className="flex items-center gap-6">
-              <div className="text-center">
-                <p className="text-2xl font-bold">3 450€</p>
-                <p className="text-sm text-blue-200">Commission</p>
+      {(() => {
+        const myEntry = entries.find(e => e.user_id === profil?.id)
+        if (!myEntry) return null
+        return (
+          <Card className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-0">
+            <CardContent className="p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <p className="text-blue-100 font-medium">Votre position</p>
+                  <p className="text-3xl font-bold mt-1">
+                    #{myEntry.rank}
+                    <span className="text-lg font-normal text-blue-200 ml-2">
+                      sur {entries.length} commerciaux
+                    </span>
+                  </p>
+                </div>
+                <div className="flex items-center gap-6">
+                  <div className="text-center">
+                    <p className="text-2xl font-bold">{myEntry.total_commission.toLocaleString()}€</p>
+                    <p className="text-sm text-blue-200">Commission</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold">{myEntry.total_sales}</p>
+                    <p className="text-sm text-blue-200">Ventes</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-2xl font-bold">{myEntry.total_margin.toLocaleString()}</p>
+                    <p className="text-sm text-blue-200">Marge</p>
+                  </div>
+                </div>
               </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold">8</p>
-                <p className="text-sm text-blue-200">Ventes</p>
-              </div>
-              <div className="text-center">
-                <p className="text-2xl font-bold">1 450</p>
-                <p className="text-sm text-blue-200">Points</p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        )
+      })()}
     </div>
   )
 }

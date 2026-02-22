@@ -1,13 +1,7 @@
-import { use } from "react"
-import { dealerships } from "@/lib/mock-dir-marque-data"
-import { ConcessionDetailContent } from "./concession-detail-content"
+"use client"
 
-// Generate static params for all dealerships
-export function generateStaticParams() {
-  return dealerships.map((dealership) => ({
-    id: dealership.id,
-  }))
-}
+import { use } from "react"
+import { ConcessionDetailContent } from "./concession-detail-content"
 
 export default function ConcessionDetailPage({
   params,

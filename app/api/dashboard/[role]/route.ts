@@ -4,6 +4,41 @@ import { unauthorized, forbidden, serverError } from '@/lib/api/errors'
 import { ROLE_LEVELS } from '@/lib/api/types'
 import type { UserRole } from '@/types/hierarchy'
 
+// Helper: build performance history grouped by month from fiches
+function buildPerformanceHistory(
+  fiches: { date?: string; final_margin?: number; selling_price_ht?: number; has_financing?: boolean }[]
+) {
+  const months: Record<string, { sales: number; margin: number; financingCount: number; revenue: number }> = {}
+
+  for (const f of fiches) {
+    if (!f.date) continue
+    const d = new Date(f.date)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    if (!months[key]) months[key] = { sales: 0, margin: 0, financingCount: 0, revenue: 0 }
+    months[key].sales += 1
+    months[key].margin += Number(f.final_margin) || 0
+    months[key].revenue += Number(f.selling_price_ht) || 0
+    if (f.has_financing) months[key].financingCount += 1
+  }
+
+  const MONTH_LABELS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc']
+
+  return Object.entries(months)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-6) // last 6 months
+    .map(([period, data]) => {
+      const [, m] = period.split('-')
+      return {
+        period,
+        label: MONTH_LABELS[parseInt(m, 10) - 1],
+        sales: data.sales,
+        target: 0, // Target will be enriched by the caller if available
+        margin: Math.round(data.margin),
+        financingRate: data.sales > 0 ? Math.round((data.financingCount / data.sales) * 100) : 0,
+      }
+    })
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ role: string }> }
@@ -22,9 +57,15 @@ export async function GET(
   if (userLevel < requestedLevel && auth.profile.role !== 'admin') return forbidden()
 
   const period = request.nextUrl.searchParams.get('period')
+  const startDate = request.nextUrl.searchParams.get('startDate')
+  const endDate = request.nextUrl.searchParams.get('endDate')
   let dateFrom: string | undefined
   let dateTo: string | undefined
-  if (period) {
+
+  if (startDate && endDate) {
+    dateFrom = startDate
+    dateTo = endDate
+  } else if (period) {
     const [year, month] = period.split('-')
     dateFrom = `${year}-${month}-01`
     const nextMonth = parseInt(month, 10) + 1
@@ -64,13 +105,23 @@ async function getCommercialDashboard(
   if (dateFrom) fichesQuery = fichesQuery.gte('date', dateFrom)
   if (dateTo) fichesQuery = fichesQuery.lt('date', dateTo)
 
-  const [fichesResult, defisP2PResult, notificationsResult] = await Promise.all([
+  // Fetch last 6 months of data for charts (independent of period filter)
+  const sixMonthsAgo = new Date()
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+  const historyQuery = nonNullAuth.supabase
+    .from('fiches_marge')
+    .select('date, final_margin, selling_price_ht, has_financing')
+    .eq('user_id', nonNullAuth.user.id)
+    .gte('date', sixMonthsAgo.toISOString().split('T')[0])
+
+  const [fichesResult, defisP2PResult, notificationsResult, historyResult] = await Promise.all([
     fichesQuery,
     nonNullAuth.supabase.from('defis_p2p').select('*', { count: 'exact' })
       .or(`challenger_id.eq.${nonNullAuth.user.id},challenged_id.eq.${nonNullAuth.user.id}`)
       .eq('status', 'active'),
     nonNullAuth.supabase.from('notifications').select('*', { count: 'exact' })
       .eq('user_id', nonNullAuth.user.id).eq('is_read', false),
+    historyQuery,
   ])
 
   const fiches = fichesResult.data || []
@@ -94,6 +145,7 @@ async function getCommercialDashboard(
       },
       activeP2PChallenges: defisP2PResult.count || 0,
       unreadNotifications: notificationsResult.count || 0,
+      performanceHistory: buildPerformanceHistory(historyResult.data || []),
     }
   })
 }
@@ -119,9 +171,17 @@ async function getChefVentesDashboard(
   if (dateFrom) fichesQuery = fichesQuery.gte('date', dateFrom)
   if (dateTo) fichesQuery = fichesQuery.lt('date', dateTo)
 
-  const [fichesResult, pendingResult] = await Promise.all([
+  const sixMonthsAgo = new Date()
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+  const historyQuery = nonNullAuth.supabase
+    .from('fiches_marge')
+    .select('date, final_margin, selling_price_ht, has_financing')
+    .gte('date', sixMonthsAgo.toISOString().split('T')[0])
+
+  const [fichesResult, pendingResult, historyResult] = await Promise.all([
     fichesQuery,
     nonNullAuth.supabase.from('approbations').select('*', { count: 'exact' }).eq('status', 'pending'),
+    historyQuery,
   ])
 
   const fiches = fichesResult.data || []
@@ -138,6 +198,7 @@ async function getChefVentesDashboard(
           : 0,
         pendingApprovals: pendingResult.count || 0,
       },
+      performanceHistory: buildPerformanceHistory(historyResult.data || []),
     }
   })
 }
@@ -158,10 +219,19 @@ async function getDirConcessionDashboard(
   if (dateFrom) fichesQuery = fichesQuery.gte('date', dateFrom)
   if (dateTo) fichesQuery = fichesQuery.lt('date', dateTo)
 
-  const [fichesResult, equipesResult, membersResult] = await Promise.all([
+  const sixMonthsAgo = new Date()
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+  let historyQuery = nonNullAuth.supabase
+    .from('fiches_marge')
+    .select('date, final_margin, selling_price_ht, has_financing, vehicle_type')
+    .gte('date', sixMonthsAgo.toISOString().split('T')[0])
+  if (concessionId) historyQuery = historyQuery.eq('concession_id', concessionId)
+
+  const [fichesResult, equipesResult, membersResult, historyResult] = await Promise.all([
     fichesQuery,
     nonNullAuth.supabase.from('equipes').select('*').eq('concession_id', concessionId || ''),
     nonNullAuth.supabase.from('profiles').select('id, role').eq('concession_id', concessionId || ''),
+    historyQuery,
   ])
 
   const fiches = fichesResult.data || []
@@ -175,6 +245,7 @@ async function getDirConcessionDashboard(
         teamCount: equipesResult.data?.length || 0,
         staffCount: membersResult.data?.length || 0,
       },
+      performanceHistory: buildPerformanceHistory(historyResult.data || []),
     }
   })
 }
@@ -202,7 +273,20 @@ async function getDirMarqueDashboard(
   if (dateFrom) fichesQuery = fichesQuery.gte('date', dateFrom)
   if (dateTo) fichesQuery = fichesQuery.lt('date', dateTo)
 
-  const { data: fiches } = await fichesQuery
+  const sixMonthsAgo = new Date()
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+  let historyQuery = nonNullAuth.supabase
+    .from('fiches_marge')
+    .select('date, final_margin, selling_price_ht, has_financing')
+    .gte('date', sixMonthsAgo.toISOString().split('T')[0])
+  if (concessionIds.length > 0) historyQuery = historyQuery.in('concession_id', concessionIds)
+
+  const [fichesResult, historyResult] = await Promise.all([
+    fichesQuery,
+    historyQuery,
+  ])
+
+  const fiches = fichesResult.data
 
   return NextResponse.json({
     data: {
@@ -213,6 +297,7 @@ async function getDirMarqueDashboard(
         totalRevenue: (fiches || []).reduce((sum, f) => sum + (Number(f.selling_price_ht) || 0), 0),
         sitesCount: concessionIds.length,
       },
+      performanceHistory: buildPerformanceHistory(historyResult.data || []),
     }
   })
 }
@@ -236,9 +321,22 @@ async function getDirPlaqueDashboard(
   if (dateFrom) fichesQuery = fichesQuery.gte('date', dateFrom)
   if (dateTo) fichesQuery = fichesQuery.lt('date', dateTo)
 
-  const { data: fiches, error } = await fichesQuery
+  const sixMonthsAgo = new Date()
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+  const historyQuery = nonNullAuth.supabase
+    .from('fiches_marge')
+    .select('date, final_margin, selling_price_ht, has_financing')
+    .gte('date', sixMonthsAgo.toISOString().split('T')[0])
 
-  if (error) return serverError(error.message)
+  const [fichesQueryResult, historyResult] = await Promise.all([
+    fichesQuery,
+    historyQuery,
+  ])
+
+  const fiches = fichesQueryResult.data
+  const fichesError = fichesQueryResult.error
+
+  if (fichesError) return serverError(fichesError.message)
 
   return NextResponse.json({
     data: {
@@ -251,6 +349,7 @@ async function getDirPlaqueDashboard(
         brandsCount: marquesResult.data?.length || 0,
         sitesCount: concessionsResult.data?.length || 0,
       },
+      performanceHistory: buildPerformanceHistory(historyResult.data || []),
     }
   })
 }

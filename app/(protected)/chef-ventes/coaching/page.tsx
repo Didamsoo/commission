@@ -27,7 +27,8 @@ import {
   Save,
   Award,
   TrendingUp,
-  TrendingDown
+  TrendingDown,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -54,17 +55,23 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import {
-  teamMembers,
-  coachingNotes,
-  currentChefVentes,
-  TeamMember
-} from "@/lib/mock-chef-ventes-data"
+import { useProfil } from "@/hooks/use-profil"
+import { useEquipe, type EquipeMember } from "@/hooks/use-equipe"
+import { useCoaching, createNote } from "@/hooks/use-coaching"
 import { CoachingNote } from "@/types/hierarchy"
 
 // ============================================
 // TYPES
 // ============================================
+
+interface TeamMember {
+  id: string
+  name: string
+  avatar?: string
+  email: string
+  kpis: { sales: number; salesTarget: number; financingRate: number }
+  trend: "up" | "down" | "stable"
+}
 
 type NoteType = "feedback" | "objective" | "action" | "meeting"
 type FilterType = "all" | NoteType
@@ -105,10 +112,11 @@ const NOTE_TYPE_CONFIG: Record<NoteType, {
 // COMPONENTS
 // ============================================
 
-function NoteCard({ note, onEdit, onDelete }: {
+function NoteCard({ note, onEdit, onDelete, teamMembers }: {
   note: CoachingNote
   onEdit: (note: CoachingNote) => void
   onDelete: (id: string) => void
+  teamMembers: TeamMember[]
 }) {
   const config = NOTE_TYPE_CONFIG[note.type]
   const Icon = config.icon
@@ -193,13 +201,15 @@ function NewNoteDialog({
   onClose,
   onSave,
   editNote,
-  preselectedUserId
+  preselectedUserId,
+  teamMembers
 }: {
   isOpen: boolean
   onClose: () => void
   onSave: (note: Omit<CoachingNote, "id" | "createdAt" | "managerId">) => void
   editNote?: CoachingNote
   preselectedUserId?: string
+  teamMembers: TeamMember[]
 }) {
   const [commercialId, setCommercialId] = useState(editNote?.commercialId || preselectedUserId || "")
   const [type, setType] = useState<NoteType>(editNote?.type || "feedback")
@@ -367,8 +377,8 @@ function NewNoteDialog({
   )
 }
 
-function CommercialSummaryCard({ member }: { member: TeamMember }) {
-  const memberNotes = coachingNotes.filter(n => n.commercialId === member.id)
+function CommercialSummaryCard({ member, notes }: { member: TeamMember; notes: CoachingNote[] }) {
+  const memberNotes = notes.filter(n => n.commercialId === member.id)
   const objectiveRate = Math.round((member.kpis.sales / member.kpis.salesTarget) * 100)
 
   return (
@@ -417,12 +427,26 @@ function CoachingPageContent() {
   const searchParams = useSearchParams()
   const preselectedUserId = searchParams.get("user") || undefined
 
+  const { data: profil } = useProfil()
+  const { data: equipeData, loading: equipeLoading } = useEquipe()
+  const { data: coachingData, loading: coachingLoading, refetch: refetchCoaching } = useCoaching()
+
+  const teamMembers: TeamMember[] = (equipeData || []).map(m => ({
+    id: m.user_id || m.id,
+    name: m.full_name,
+    avatar: m.avatar_url || "",
+    email: m.email || "",
+    kpis: { sales: m.total_sales || 0, salesTarget: m.sales_target || 10, financingRate: m.financing_rate || 0 },
+    trend: (m.trend as "up" | "down" | "stable") || "stable",
+  }))
+
+  const notes = ((coachingData || []) as CoachingNote[])
+
   const [searchQuery, setSearchQuery] = useState("")
   const [filterType, setFilterType] = useState<FilterType>("all")
   const [filterCommercial, setFilterCommercial] = useState<string>(preselectedUserId || "all")
   const [isNewNoteOpen, setIsNewNoteOpen] = useState(!!preselectedUserId)
   const [editingNote, setEditingNote] = useState<CoachingNote | undefined>()
-  const [notes, setNotes] = useState(coachingNotes)
 
   // Filter notes
   const filteredNotes = useMemo(() => {
@@ -453,29 +477,25 @@ function CoachingPageContent() {
     return result
   }, [notes, searchQuery, filterType, filterCommercial])
 
-  const handleSaveNote = (noteData: Omit<CoachingNote, "id" | "createdAt" | "managerId">) => {
-    if (editingNote) {
-      // Update existing note
-      setNotes(prev => prev.map(n =>
-        n.id === editingNote.id
-          ? { ...n, ...noteData }
-          : n
-      ))
-    } else {
-      // Add new note
-      const newNote: CoachingNote = {
-        ...noteData,
-        id: `note-${Date.now()}`,
-        managerId: currentChefVentes.id,
-        createdAt: new Date().toISOString()
-      }
-      setNotes(prev => [newNote, ...prev])
+  const handleSaveNote = async (noteData: Omit<CoachingNote, "id" | "createdAt" | "managerId">) => {
+    try {
+      await createNote({
+        commercial_id: noteData.commercialId,
+        commercial_name: noteData.commercialName,
+        type: noteData.type,
+        content: noteData.content,
+        is_private: noteData.isPrivate,
+      })
+      refetchCoaching()
+    } catch (e) {
+      console.error("Failed to save note", e)
     }
     setEditingNote(undefined)
   }
 
   const handleDeleteNote = (id: string) => {
-    setNotes(prev => prev.filter(n => n.id !== id))
+    // TODO: implement delete API call
+    console.warn("Delete not yet implemented for note", id)
   }
 
   const handleEditNote = (note: CoachingNote) => {
@@ -491,6 +511,18 @@ function CoachingPageContent() {
     })
     return grouped
   }, [notes])
+
+  // Loading state
+  if (equipeLoading || coachingLoading) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8 flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+          <p className="text-gray-500">Chargement des données...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
@@ -660,6 +692,7 @@ function CoachingPageContent() {
                   note={note}
                   onEdit={handleEditNote}
                   onDelete={handleDeleteNote}
+                  teamMembers={teamMembers}
                 />
               ))}
             </div>
@@ -699,6 +732,7 @@ function CoachingPageContent() {
         onSave={handleSaveNote}
         editNote={editingNote}
         preselectedUserId={filterCommercial !== "all" ? filterCommercial : preselectedUserId}
+        teamMembers={teamMembers}
       />
     </div>
   )

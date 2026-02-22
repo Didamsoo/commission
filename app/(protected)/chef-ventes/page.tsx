@@ -25,7 +25,8 @@ import {
   Minus,
   Eye,
   Zap,
-  Crown
+  Crown,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -33,19 +34,118 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  currentChefVentes,
-  teamMembers,
-  chefVentesKPIs,
-  teamChallenges,
-  managerAlerts,
-  performanceHistory,
-  otherTeams,
-  getTeamMembersAtObjective,
-  getTeamMembersBelowObjective,
-  getUnreadAlerts,
-  TeamMember
-} from "@/lib/mock-chef-ventes-data"
+import { format } from "date-fns"
+import { DateRange } from "react-day-picker"
+import { useProfil } from "@/hooks/use-profil"
+import { useDashboard } from "@/hooks/use-dashboard"
+import { useEquipe, type EquipeMember } from "@/hooks/use-equipe"
+import { useDefis } from "@/hooks/use-defis"
+import { useNotifications } from "@/hooks/use-notifications"
+import { DateRangePicker } from "@/components/ui/date-range-picker"
+import { SalesTrendChart } from "@/components/charts/sales-trend-chart"
+import { MarginChart } from "@/components/charts/margin-chart"
+
+// Local types matching API shapes
+interface TeamMember {
+  id: string
+  name: string
+  avatar?: string
+  email: string
+  role: string
+  kpis: {
+    sales: number
+    salesTarget: number
+    margin: number
+    gpu: number
+    financingRate: number
+    conversionRate: number
+    ranking: number
+    rankingTotal: number
+    points: number
+    streak: number
+  }
+  trend: "up" | "down" | "stable"
+  alerts: { id: string; type: string; severity: "critical" | "warning" | "info"; title: string; message: string; targetUserId?: string; targetUserName?: string; isRead: boolean; createdAt: string }[]
+}
+
+interface ChefVentesKPIs {
+  teamSales: number
+  teamSalesTarget: number
+  teamMargin: number
+  teamGPU: number
+  teamFinancingRate: number
+  objectiveRate: number
+  membersAtObjective: number
+  teamSize: number
+  constructorBonusEstimate: number
+}
+
+interface DefiData {
+  id: string
+  title: string
+  description: string
+  type: string
+  target: number
+  target_unit: string
+  start_date: string
+  end_date: string
+  status: string
+  reward_type: string
+  reward_value: number
+  reward_description: string
+  badge_name?: string
+  participants?: { id: string; name: string; avatar?: string; currentScore: number; targetScore: number; progressRate: number; isCompleted: boolean; ranking: number }[]
+}
+
+// Helper to build team members from equipe API data
+function buildTeamMembers(equipe: EquipeMember[]): TeamMember[] {
+  return equipe.map((m, i) => ({
+    id: m.user_id,
+    name: m.full_name,
+    avatar: m.avatar_url || "",
+    email: m.email || "",
+    role: m.role,
+    kpis: {
+      sales: m.total_sales || 0,
+      salesTarget: m.sales_target || 10,
+      margin: m.total_margin || 0,
+      gpu: (m.total_sales || 0) > 0 ? Math.round((m.total_margin || 0) / (m.total_sales || 1)) : 0,
+      financingRate: m.financing_rate || 0,
+      conversionRate: m.conversion_rate || 0,
+      ranking: i + 1,
+      rankingTotal: equipe.length,
+      points: m.total_points || 0,
+      streak: m.streak || 0,
+    },
+    trend: (m.trend as "up" | "down" | "stable") || "stable",
+    alerts: [],
+  }))
+}
+
+// Helper to build KPIs from dashboard data
+function buildKPIs(data: Record<string, unknown>, members: TeamMember[]): ChefVentesKPIs {
+  const kpis = (data?.kpis || {}) as Record<string, number>
+  const teamSize = members.length
+  const teamSales = kpis.total_sales ?? members.reduce((s, m) => s + m.kpis.sales, 0)
+  const teamSalesTarget = kpis.total_sales_target ?? members.reduce((s, m) => s + m.kpis.salesTarget, 0)
+  return {
+    teamSales,
+    teamSalesTarget: teamSalesTarget || 1,
+    teamMargin: kpis.total_margin ?? members.reduce((s, m) => s + m.kpis.margin, 0),
+    teamGPU: teamSales > 0 ? Math.round((kpis.total_margin ?? 0) / teamSales) : 0,
+    teamFinancingRate: kpis.financing_rate ?? 0,
+    objectiveRate: teamSalesTarget > 0 ? Math.round((teamSales / teamSalesTarget) * 100) : 0,
+    membersAtObjective: members.filter(m => m.kpis.sales >= m.kpis.salesTarget).length,
+    teamSize,
+    constructorBonusEstimate: kpis.constructor_bonus_estimate ?? 0,
+  }
+}
+
+// Static data (no API yet) — TODO: replace with API
+const otherTeams = [
+  { type: "VO", rate: 80, isCurrentTeam: false },
+  { type: "VU", rate: 67, isCurrentTeam: false },
+]
 
 // ============================================
 // COMPONENTS
@@ -182,7 +282,7 @@ function TeamMemberRow({ member, rank }: { member: TeamMember; rank: number }) {
   )
 }
 
-function AlertCard({ alert }: { alert: typeof managerAlerts[0] }) {
+function AlertCard({ alert }: { alert: { id: string; type: string; severity: "critical" | "warning" | "info"; title: string; message: string; targetUserId?: string; isRead: boolean; createdAt: string } }) {
   const severityStyles = {
     critical: "border-red-200 bg-red-50",
     warning: "border-amber-200 bg-amber-50",
@@ -223,10 +323,11 @@ function AlertCard({ alert }: { alert: typeof managerAlerts[0] }) {
   )
 }
 
-function ChallengeCard({ challenge }: { challenge: typeof teamChallenges[0] }) {
-  const progress = Math.round(
-    (challenge.participants.reduce((sum, p) => sum + p.currentScore, 0) / challenge.target) * 100
-  )
+function ChallengeCard({ challenge }: { challenge: DefiData }) {
+  const participants = challenge.participants || []
+  const progress = challenge.target > 0
+    ? Math.round((participants.reduce((sum: number, p) => sum + (p.currentScore || 0), 0) / challenge.target) * 100)
+    : 0
 
   return (
     <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-100">
@@ -236,9 +337,9 @@ function ChallengeCard({ challenge }: { challenge: typeof teamChallenges[0] }) {
           <p className="text-sm text-gray-500 mt-1">{challenge.description}</p>
         </div>
         <Badge className="bg-indigo-100 text-indigo-700">
-          {challenge.reward.type === "bonus" ? `${challenge.reward.value}€` :
-           challenge.reward.type === "points" ? `${challenge.reward.value} pts` :
-           challenge.reward.badgeName}
+          {challenge.reward_type === "bonus" ? `${challenge.reward_value}€` :
+           challenge.reward_type === "points" ? `${challenge.reward_value} pts` :
+           challenge.badge_name || "Badge"}
         </Badge>
       </div>
 
@@ -253,7 +354,7 @@ function ChallengeCard({ challenge }: { challenge: typeof teamChallenges[0] }) {
       <div className="flex items-center justify-between mt-3">
         <p className="text-xs text-gray-500">
           <Calendar className="w-3 h-3 inline mr-1" />
-          Fin le {new Date(challenge.endDate).toLocaleDateString("fr-FR")}
+          Fin le {new Date(challenge.end_date).toLocaleDateString("fr-FR")}
         </p>
         <Link href="/chef-ventes/challenges">
           <Button variant="ghost" size="sm" className="text-indigo-600 hover:text-indigo-700">
@@ -272,14 +373,41 @@ function ChallengeCard({ challenge }: { challenge: typeof teamChallenges[0] }) {
 
 export default function ChefVentesDashboard() {
   const [tab, setTab] = useState<"overview" | "alerts" | "challenges">("overview")
+  const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
 
-  const membersAtObjective = getTeamMembersAtObjective()
-  const membersBelowObjective = getTeamMembersBelowObjective()
-  const unreadAlerts = getUnreadAlerts()
-  const activeChallenges = teamChallenges.filter(c => c.status === "active")
+  const dateRangeParams = dateRange?.from && dateRange?.to ? {
+    startDate: format(dateRange.from, 'yyyy-MM-dd'),
+    endDate: format(dateRange.to, 'yyyy-MM-dd'),
+  } : undefined
+
+  const { data: profil } = useProfil()
+  const { data: dashboardRaw, loading: dashLoading } = useDashboard<Record<string, unknown>>("chef_ventes", undefined, dateRangeParams)
+  const { data: equipeData, loading: equipeLoading } = useEquipe()
+  const { data: defisData } = useDefis("active")
+  const { data: notifData } = useNotifications(false)
+
+  const loading = dashLoading || equipeLoading
+
+  const teamMembersList = buildTeamMembers(equipeData || [])
+  const chefVentesKPIs = buildKPIs(dashboardRaw || {}, teamMembersList)
+
+  const membersAtObjective = teamMembersList.filter(m => m.kpis.sales >= m.kpis.salesTarget)
+  const membersBelowObjective = teamMembersList.filter(m => m.kpis.sales < m.kpis.salesTarget)
+  const unreadAlerts = (notifData || []) as unknown as { id: string; type: string; severity: "critical" | "warning" | "info"; title: string; message: string; targetUserId?: string; isRead: boolean; createdAt: string }[]
+  const activeChallenges = ((defisData || []) as DefiData[]).filter(c => c.status === "active")
 
   const teamObjectiveRate = chefVentesKPIs.objectiveRate
-  const daysRemaining = 9 // Mock - jours restants dans le mois
+  const now = new Date()
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  const daysRemaining = Math.max(0, Math.ceil((endOfMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+
+  if (loading) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8 flex justify-center items-center min-h-[50vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
@@ -293,14 +421,15 @@ export default function ChefVentesDashboard() {
           </div>
           <div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-              Bonjour, {currentChefVentes.fullName.split(" ")[0]} !
+              Bonjour, {profil?.full_name?.split(" ")[0] || ""} !
             </h1>
             <p className="text-gray-500">
-              Chef des Ventes {currentChefVentes.teamType} • Ford Paris Est
+              Chef des Ventes • {profil?.role || ""}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <DateRangePicker value={dateRange} onChange={setDateRange} />
           <Link href="/chef-ventes/rapports">
             <Button variant="outline" className="gap-2">
               <BarChart3 className="w-4 h-4" />
@@ -457,7 +586,7 @@ export default function ChefVentesDashboard() {
             <div className="flex items-center gap-4">
               {[
                 { type: "VN", rate: teamObjectiveRate, isCurrentTeam: true },
-                ...otherTeams.map(t => ({ type: t.type, rate: t.objectiveRate, isCurrentTeam: false }))
+                ...otherTeams.map(t => ({ type: t.type, rate: t.rate, isCurrentTeam: false }))
               ].sort((a, b) => b.rate - a.rate).map((team, i) => (
                 <div
                   key={team.type}
@@ -478,6 +607,42 @@ export default function ChefVentesDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ============================================
+          PERFORMANCE CHARTS
+          ============================================ */}
+      {(() => {
+        const perfHistory = (dashboardRaw as Record<string, unknown>)?.performanceHistory as { period: string; label: string; sales: number; target: number; margin: number; financingRate: number }[] | undefined
+        if (!perfHistory || perfHistory.length === 0) return null
+        return (
+          <div className="grid lg:grid-cols-2 gap-6">
+            <Card className="border-0 shadow-premium">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-indigo-600" />
+                  Tendance des ventes équipe
+                </CardTitle>
+                <CardDescription>6 derniers mois</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <SalesTrendChart data={perfHistory} />
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-premium">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Euro className="w-5 h-5 text-emerald-600" />
+                  Évolution de la marge
+                </CardTitle>
+                <CardDescription>6 derniers mois</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <MarginChart data={perfHistory} />
+              </CardContent>
+            </Card>
+          </div>
+        )
+      })()}
 
       {/* ============================================
           TABS: ÉQUIPE / ALERTES / CHALLENGES
@@ -525,7 +690,7 @@ export default function ChefVentesDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {teamMembers
+                {teamMembersList
                   .sort((a, b) => a.kpis.ranking - b.kpis.ranking)
                   .map((member, index) => (
                     <TeamMemberRow key={member.id} member={member} rank={index + 1} />
@@ -549,7 +714,7 @@ export default function ChefVentesDashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {managerAlerts.map((alert) => (
+                {unreadAlerts.map((alert) => (
                   <AlertCard key={alert.id} alert={alert} />
                 ))}
               </div>
