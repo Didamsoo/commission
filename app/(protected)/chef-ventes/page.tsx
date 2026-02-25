@@ -141,11 +141,14 @@ function buildKPIs(data: Record<string, unknown>, members: TeamMember[]): ChefVe
   }
 }
 
-// Static data (no API yet) — TODO: replace with API
-const otherTeams = [
-  { type: "VO", rate: 80, isCurrentTeam: false },
-  { type: "VU", rate: 67, isCurrentTeam: false },
-]
+// siblingTeams extracted from dashboard API data
+interface SiblingTeam {
+  type: string
+  name: string
+  sales: number
+  target: number
+  rate: number
+}
 
 // ============================================
 // COMPONENTS
@@ -396,6 +399,9 @@ export default function ChefVentesDashboard() {
   const unreadAlerts = (notifData || []) as unknown as { id: string; type: string; severity: "critical" | "warning" | "info"; title: string; message: string; targetUserId?: string; isRead: boolean; createdAt: string }[]
   const activeChallenges = ((defisData || []) as DefiData[]).filter(c => c.status === "active")
 
+  // Extract siblingTeams from dashboard data
+  const siblingTeams: SiblingTeam[] = ((dashboardRaw as Record<string, unknown>)?.siblingTeams as SiblingTeam[]) || []
+
   const teamObjectiveRate = chefVentesKPIs.objectiveRate
   const now = new Date()
   const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
@@ -585,8 +591,8 @@ export default function ChefVentesDashboard() {
             <p className="text-sm font-medium text-gray-500 mb-3">Comparaison avec les autres équipes</p>
             <div className="flex items-center gap-4">
               {[
-                { type: "VN", rate: teamObjectiveRate, isCurrentTeam: true },
-                ...otherTeams.map(t => ({ type: t.type, rate: t.rate, isCurrentTeam: false }))
+                { type: "Mon équipe", rate: teamObjectiveRate, isCurrentTeam: true },
+                ...siblingTeams.map(t => ({ type: t.type, rate: t.rate, isCurrentTeam: false }))
               ].sort((a, b) => b.rate - a.rate).map((team, i) => (
                 <div
                   key={team.type}

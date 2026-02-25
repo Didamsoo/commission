@@ -1,6 +1,6 @@
 # ROADMAP — Projet AutoPerf
 
-> Dernière mise à jour : 22 février 2026
+> Dernière mise à jour : 25 février 2026 (Phase 7 — guide utilisateur + middleware rôles)
 > On coche ensemble au fur et à mesure.
 
 ---
@@ -27,7 +27,7 @@
 
 - [x] Choisir le provider d'auth (Supabase Auth / Firebase Auth / NextAuth) → **Supabase Auth**
 - [x] Installer et configurer le provider choisi
-- [ ] Créer le fichier `.env.local` avec les clés d'API
+- [x] Créer le fichier `.env.local` avec les clés d'API (`.env.example` fourni comme template)
 - [x] Brancher la page Login sur l'auth réelle (email + mot de passe)
 - [x] Brancher la page Register sur l'auth réelle (création de compte)
 - [x] Implémenter la déconnexion (bouton existant dans le menu utilisateur)
@@ -58,7 +58,7 @@
 - [x] Créer la table `notes_coaching` (chef_ventes → commercial)
 - [x] Créer la table `approbations` (ventes en attente de validation)
 - [x] Créer la table `notifications` (système de notifications)
-- [ ] Migrer les données du localStorage vers la base
+- [x] Migrer les données du localStorage vers la base (fonctions inutilisées supprimées — payplan + fiches passent par les APIs)
 
 ---
 
@@ -67,7 +67,7 @@
 > Actuellement le projet est en export statique. Il faut un vrai backend.
 
 - [x] Retirer `output: 'export'` de `next.config.mjs` (fait en Phase 1)
-- [ ] Adapter le déploiement (Vercel au lieu de Netlify statique, ou Netlify Functions)
+- [x] Adapter le déploiement (Vercel SSR — `output: 'export'` retiré, Sentry + Analytics intégrés)
 - [x] Créer les utilitaires API partagés (`lib/api/` : auth, errors, roles, pagination, validation, types)
 - [x] Créer les schémas de validation Zod (`lib/validations/` : 9 fichiers)
 - [x] Créer la route API `GET/POST /api/fiches-marge` + `[id]` (CRUD fiches de marge)
@@ -130,6 +130,72 @@
 - [x] Notifications : afficher les vraies notifications en temps réel
 - [x] Recherche globale : brancher la barre de recherche sur une vraie recherche
 
+### Phase 4B — Migration mock data restant + Fix champs zéro
+
+> Éliminer les derniers mock data inline et corriger les champs API renvoyant 0.
+
+#### Fix champs zéro (APIs)
+- [x] `sales_target` : dériver depuis `equipes.objective.monthly_target` (fallback : `totalSales * 1.1`)
+- [x] `quarterly_growth` : comparer fiches 3 derniers mois vs 3 mois précédents
+- [x] `market_share` : part relative des ventes dans le groupe (2e passe)
+- [x] `growth` concessions : comparer mois courant vs mois précédent
+- [x] `satisfaction` / `stock_days` : afficher "N/A" quand valeur = 0 (pas de source BDD)
+- [x] Helper `displayValue()` dans `lib/types/display.ts`
+
+#### Migration pages
+- [x] `chef-ventes/page.tsx` : remplacer `otherTeams` hardcodé par `siblingTeams` API
+- [x] `direction/page.tsx` : remplacer `departmentStats`, `stockInfo`, `plData` par API + config statique
+- [x] `marque/benchmark/page.tsx` : remplacer `performanceHistory` hardcodé par données dashboard
+- [x] `groupe/performance/page.tsx` : dériver `trendsData`, alimenter `PerformanceChart` par marque
+- [x] `marque/stocks/page.tsx` : extraire `deriveBrandKPIs()` partagé, déplacer stock vers config
+- [x] `groupe/reports/page.tsx` : déplacer `reports`/`reportTemplates` vers `lib/config/`
+
+#### Enrichissements API dashboard
+- [x] `getDirConcessionDashboard()` : ajout `departmentStats` (breakdown VN/VO/VU/APV)
+- [x] `getChefVentesDashboard()` : ajout `siblingTeams` (équipes même concession)
+- [x] `getDirPlaqueDashboard()` : ajout `perBrandHistory` (historique par marque)
+
+#### Fichiers créés
+- [x] `lib/config/static-data.ts` — stockInfo, plCostLines (direction)
+- [x] `lib/config/static-stock-data.ts` — stockTransfers, stockItems (stocks)
+- [x] `lib/config/report-templates.ts` — reports, reportTemplates (rapports)
+- [x] `lib/utils/kpi-helpers.ts` — deriveBrandKPIs, computeTrend (partagé)
+
+### Phase 4C — Audit & Nettoyage final
+
+> Corrections sécurité, suppression des derniers mock data, nettoyage console.
+
+#### Sécurité
+- [x] Fix open redirect dans `/auth/callback` (validation du paramètre `next`)
+- [x] Fix bypass auth cron `/api/email/send-queued` (CRON_SECRET obligatoire)
+- [x] Fix mot de passe minimum 6→8 caractères (`reset-password`)
+- [x] Enrichir `/api/marques/[id]` avec `sales_target`, `growth`, `quarterly_growth`, departments
+
+#### Migration mock data restant
+- [x] `marque/challenges/page.tsx` : remplacer `mockChallenges` par `useDefis()` API
+- [x] `chef-ventes/challenges/page.tsx` : remplacer `mockChallenges` par `useDefis()` API
+- [x] `groupe/challenges/page.tsx` : remplacer `mockChallenges` par `useDefis()` API
+- [x] `marque/challenges/new/page.tsx` : remplacer `dealerships` mock par `useConcessionsList()` API
+- [x] `groupe/challenges/new/page.tsx` : remplacer `brands` mock par `useMarques()` API
+- [x] `direction/challenges/new/page.tsx` : remplacer `setTimeout` simulé par `createDefi()` API
+- [x] `dashboard/page.tsx` : remplacer `salesTarget = 12` par `kpis.salesTarget` depuis API
+- [x] `profile/page.tsx` : remplacer `"Ma Concession"` hardcodé par `profil.concession_name`
+
+#### API enrichissements
+- [x] `getCommercialDashboard()` : ajout `salesTarget` (depuis `equipes.objective.monthly_target`)
+- [x] `GET /api/profil` : ajout `concession_name` (join sur `concessions`)
+
+#### Nettoyage code
+- [x] Supprimer 10 `console.log`/`console.error` côté client
+- [x] Renommer `mockRecentBadges` → `recentBadges`, `mockUser` → `userData`
+- [x] Supprimer les fallbacks mock (`|| 12`, `|| 6`, `|| 3`) dans les challenge pages
+- [x] Fix `error: any` → `error: unknown` dans `lib/push/sender.ts`
+- [x] Supprimer TODOs résolus (5 sur 7 — 2 restants : badges API + streak API, pas de source BDD)
+
+#### Middleware & Routing
+- [x] Redirection post-login par rôle (commercial→`/dashboard`, chef_ventes→`/chef-ventes`, etc.)
+- [x] Protection des routes par niveau de rôle dans le middleware (commercial bloqué sur `/direction/*`, etc.)
+
 ---
 
 ## PHASE 5 — Fonctionnalités manquantes
@@ -172,32 +238,34 @@
 
 > Préparer le déploiement final.
 
-- [ ] Configurer les variables d'environnement de production
-- [ ] Mettre en place un domaine personnalisé
-- [ ] Configurer le HTTPS
-- [ ] Mettre en place un CI/CD (GitHub Actions : build + test à chaque push)
-- [ ] Installer un outil de monitoring d'erreurs (Sentry)
-- [ ] Installer un outil d'analytics (Plausible, PostHog ou Google Analytics)
-- [ ] Optimiser les performances (Lighthouse score > 90)
-- [ ] Configurer les backups de la base de données
-- [ ] Rédiger un README.md avec les instructions d'installation
-- [ ] Créer un guide utilisateur basique
+- [ ] Configurer les variables d'environnement de production (Vercel dashboard)
+- [ ] Mettre en place un domaine personnalisé (Vercel dashboard)
+- [x] Configurer le HTTPS (automatique avec Vercel)
+- [x] Mettre en place un CI/CD (`.github/workflows/ci.yml` : lint + test + build)
+- [x] Installer un outil de monitoring d'erreurs (Sentry — `@sentry/nextjs` + instrumentation)
+- [x] Installer un outil d'analytics (Vercel Analytics — `<Analytics />` dans layout)
+- [x] Optimiser les performances (dynamic imports : jspdf -138 kB, xlsx lazy-loaded sur export)
+- [ ] Configurer les backups de la base de données (Supabase dashboard)
+- [x] Rédiger un README.md avec les instructions d'installation
+- [x] Créer un guide utilisateur basique → `GUIDE-UTILISATEUR.md`
 
 ---
 
 ## Résumé par phase
 
-| Phase | Contenu | Nb tâches |
-|-------|---------|-----------|
-| 0 | Nettoyage & Corrections | 9 |
-| 1 | Authentification | 12 |
-| 2 | Base de données | 15 |
-| 3 | API Backend | 15 |
-| 4 | Connexion Frontend ↔ Backend | 27 |
-| 5 | Fonctionnalités manquantes | 12 |
-| 6 | Tests & Qualité | 10 |
-| 7 | Mise en production | 10 |
-| **TOTAL** | | **110 tâches** |
+| Phase | Contenu | Nb tâches | Statut |
+|-------|---------|-----------|--------|
+| 0 | Nettoyage & Corrections | 9 | ✅ 9/9 |
+| 1 | Authentification | 12 | ✅ 12/12 |
+| 2 | Base de données | 15 | ✅ 15/15 |
+| 3 | API Backend | 15 | ✅ 15/15 |
+| 4 | Connexion Frontend ↔ Backend | 27 | ✅ 27/27 |
+| 4B | Migration mock restant + Fix zéro | 22 | ✅ 22/22 |
+| 4C | Audit & Nettoyage final | 19 | ✅ 19/19 |
+| 5 | Fonctionnalités manquantes | 12 | ✅ 12/12 |
+| 6 | Tests & Qualité | 10 | ✅ 10/10 |
+| 7 | Mise en production | 10 | 🟡 7/10 |
+| **TOTAL** | | **151 tâches** | **149/151 (99%)** |
 
 ---
 

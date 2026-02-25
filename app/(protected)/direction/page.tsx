@@ -117,15 +117,6 @@ interface PLLine {
   variancePercent: number
 }
 
-interface StockInfoType {
-  teamType: TeamType
-  totalVehicles: number
-  under30Days: number
-  between30And60Days: number
-  over60Days: number
-  avgDaysInStock: number
-}
-
 interface PendingSaleType {
   id: string
   vehicleType: "VN" | "VO" | "VU"
@@ -155,41 +146,8 @@ interface ChallengeType {
   participants: { id: string; name: string; avatar?: string; currentScore: number; progressRate: number; isCompleted: boolean }[]
 }
 
-// ============================================
-// STATIC DATA (TODO: replace with API when available)
-// ============================================
-
-const departmentStats: Record<string, TeamStats> = {
-  VN: { totalSales: 45, totalRevenue: 1800000, totalMargin: 67500, avgGPU: 1500, financingRate: 78, objectiveRate: 75, membersAtObjective: 3, stockRotation: 28, trend: "up" },
-  VO: { totalSales: 32, totalRevenue: 960000, totalMargin: 48000, avgGPU: 1500, financingRate: 65, objectiveRate: 80, membersAtObjective: 2, stockRotation: 35, trend: "stable" },
-  VU: { totalSales: 18, totalRevenue: 720000, totalMargin: 36000, avgGPU: 2000, financingRate: 85, objectiveRate: 90, membersAtObjective: 3, stockRotation: 22, trend: "up" },
-  APV: { totalSales: 0, totalRevenue: 370000, totalMargin: 33300, avgGPU: 0, financingRate: 0, objectiveRate: 85, membersAtObjective: 0, stockRotation: 0, trend: "up" },
-  ADMIN: { totalSales: 0, totalRevenue: 0, totalMargin: 0, avgGPU: 0, financingRate: 0, objectiveRate: 0, membersAtObjective: 0, stockRotation: 0, trend: "stable" }
-}
-
-const stockInfo: StockInfoType[] = [
-  { teamType: "VN" as TeamType, totalVehicles: 45, under30Days: 32, between30And60Days: 10, over60Days: 3, avgDaysInStock: 28 },
-  { teamType: "VO" as TeamType, totalVehicles: 38, under30Days: 18, between30And60Days: 8, over60Days: 12, avgDaysInStock: 35 },
-  { teamType: "VU" as TeamType, totalVehicles: 15, under30Days: 12, between30And60Days: 2, over60Days: 1, avgDaysInStock: 22 }
-]
-
-const plData: PLLine[] = [
-  { label: "CA Véhicules Neufs", category: "revenue", actual: 1800000, budget: 1700000, variance: 100000, variancePercent: 5.9 },
-  { label: "CA Véhicules Occasion", category: "revenue", actual: 960000, budget: 1000000, variance: -40000, variancePercent: -4.0 },
-  { label: "CA Véhicules Utilitaires", category: "revenue", actual: 720000, budget: 650000, variance: 70000, variancePercent: 10.8 },
-  { label: "CA Après-Vente", category: "revenue", actual: 370000, budget: 350000, variance: 20000, variancePercent: 5.7 },
-  { label: "Total Revenus", category: "revenue", actual: 3850000, budget: 3700000, variance: 150000, variancePercent: 4.1 },
-  { label: "Marge VN", category: "margin", actual: 67500, budget: 68000, variance: -500, variancePercent: -0.7 },
-  { label: "Marge VO", category: "margin", actual: 48000, budget: 50000, variance: -2000, variancePercent: -4.0 },
-  { label: "Marge VU", category: "margin", actual: 36000, budget: 32500, variance: 3500, variancePercent: 10.8 },
-  { label: "Marge APV", category: "margin", actual: 33300, budget: 31500, variance: 1800, variancePercent: 5.7 },
-  { label: "Total Marges", category: "margin", actual: 184800, budget: 182000, variance: 2800, variancePercent: 1.5 },
-  { label: "Frais de personnel", category: "cost", actual: -45000, budget: -46000, variance: 1000, variancePercent: 2.2 },
-  { label: "Loyers et charges", category: "cost", actual: -12000, budget: -12000, variance: 0, variancePercent: 0 },
-  { label: "Marketing", category: "cost", actual: -3500, budget: -4000, variance: 500, variancePercent: 12.5 },
-  { label: "Autres charges", category: "cost", actual: -5300, budget: -5000, variance: -300, variancePercent: -6.0 },
-  { label: "Résultat Net", category: "result", actual: 119000, budget: 115000, variance: 4000, variancePercent: 3.5 }
-]
+// Static data imported from config (stock/cost data not from API)
+import { stockInfo, plCostLines, type StockInfoType } from "@/lib/config/static-data"
 
 // ============================================
 // COMPONENTS
@@ -253,7 +211,7 @@ function StatCard({
   )
 }
 
-function DepartmentCard({ teamType, chefsVentes }: { teamType: TeamType; chefsVentes: ChefVentesInfo[] }) {
+function DepartmentCard({ teamType, chefsVentes, departmentStats }: { teamType: TeamType; chefsVentes: ChefVentesInfo[]; departmentStats: Record<string, TeamStats> }) {
   const stats = departmentStats[teamType]
   if (!stats) return null
   const config = TEAM_TYPE_CONFIG[teamType]
@@ -585,15 +543,95 @@ export default function DirectionDashboard() {
     }))
 
   // Build KPIs from dashboard data
-  const kpisRaw = (dashboardRaw as Record<string, unknown>)?.kpis as Record<string, unknown> | undefined
+  const dashData = (dashboardRaw || {}) as Record<string, unknown>
+  const kpisRaw = dashData.kpis as Record<string, unknown> | undefined
   const dirConcessionKPIs: DirConcessionKPIsType = {
-    totalSales: (kpisRaw?.total_sales as number) || 0,
-    totalRevenue: (kpisRaw?.total_revenue as number) || 0,
-    totalMargin: (kpisRaw?.total_margin as number) || 0,
+    totalSales: (kpisRaw?.totalSales as number) || 0,
+    totalRevenue: (kpisRaw?.totalRevenue as number) || 0,
+    totalMargin: (kpisRaw?.totalMargin as number) || 0,
     absorption: (kpisRaw?.absorption as number) || 82,
     satisfaction: (kpisRaw?.satisfaction as number) || 87,
     constructorBonus: (kpisRaw?.constructor_bonus as number) || 45000
   }
+
+  // DepartmentStats from API (replaces hardcoded mock)
+  const apiDeptStats = (dashData.departmentStats || {}) as Record<string, { totalSales: number; totalRevenue: number; totalMargin: number; avgGPU: number; financingRate: number }>
+
+  const departmentStats: Record<string, TeamStats> = {}
+  for (const dept of ["VN", "VO", "VU", "APV", "ADMIN"]) {
+    const api = apiDeptStats[dept]
+    if (api) {
+      const totalTarget = api.totalSales > 0 ? Math.round(api.totalSales * 1.1) : 0
+      const objectiveRate = totalTarget > 0 ? Math.round((api.totalSales / totalTarget) * 100) : 0
+      departmentStats[dept] = {
+        totalSales: api.totalSales,
+        totalRevenue: api.totalRevenue,
+        totalMargin: api.totalMargin,
+        avgGPU: api.avgGPU,
+        financingRate: api.financingRate,
+        objectiveRate,
+        membersAtObjective: 0,
+        stockRotation: 0,
+        trend: api.totalSales > 0 ? "up" : "stable",
+      }
+    } else {
+      departmentStats[dept] = {
+        totalSales: 0, totalRevenue: 0, totalMargin: 0, avgGPU: 0,
+        financingRate: 0, objectiveRate: 0, membersAtObjective: 0, stockRotation: 0, trend: "stable",
+      }
+    }
+  }
+
+  // Build hybrid P&L: revenue/margin from API departmentStats + costs from config
+  const buildPLData = (): PLLine[] => {
+    const vn = apiDeptStats["VN"] || { totalRevenue: 0, totalMargin: 0 }
+    const vo = apiDeptStats["VO"] || { totalRevenue: 0, totalMargin: 0 }
+    const vu = apiDeptStats["VU"] || { totalRevenue: 0, totalMargin: 0 }
+    const apv = apiDeptStats["APV"] || { totalRevenue: 0, totalMargin: 0 }
+
+    const totalRevenue = vn.totalRevenue + vo.totalRevenue + vu.totalRevenue + apv.totalRevenue
+    const totalMargin = vn.totalMargin + vo.totalMargin + vu.totalMargin + apv.totalMargin
+
+    const makeLine = (label: string, category: PLLine["category"], actual: number, budget: number): PLLine => {
+      const variance = actual - budget
+      const variancePercent = budget !== 0 ? Math.round((variance / Math.abs(budget)) * 1000) / 10 : 0
+      return { label, category, actual, budget, variance, variancePercent }
+    }
+
+    // Revenue lines (budget estimated at 95% of actual as placeholder)
+    const revBudgetFactor = 0.95
+    const lines: PLLine[] = [
+      makeLine("CA Véhicules Neufs", "revenue", vn.totalRevenue, Math.round(vn.totalRevenue * revBudgetFactor)),
+      makeLine("CA Véhicules Occasion", "revenue", vo.totalRevenue, Math.round(vo.totalRevenue * revBudgetFactor)),
+      makeLine("CA Véhicules Utilitaires", "revenue", vu.totalRevenue, Math.round(vu.totalRevenue * revBudgetFactor)),
+      makeLine("CA Après-Vente", "revenue", apv.totalRevenue, Math.round(apv.totalRevenue * revBudgetFactor)),
+      makeLine("Total Revenus", "revenue", totalRevenue, Math.round(totalRevenue * revBudgetFactor)),
+      makeLine("Marge VN", "margin", vn.totalMargin, Math.round(vn.totalMargin * revBudgetFactor)),
+      makeLine("Marge VO", "margin", vo.totalMargin, Math.round(vo.totalMargin * revBudgetFactor)),
+      makeLine("Marge VU", "margin", vu.totalMargin, Math.round(vu.totalMargin * revBudgetFactor)),
+      makeLine("Marge APV", "margin", apv.totalMargin, Math.round(apv.totalMargin * revBudgetFactor)),
+      makeLine("Total Marges", "margin", totalMargin, Math.round(totalMargin * revBudgetFactor)),
+    ]
+
+    // Cost lines from config
+    let totalCostActual = 0
+    let totalCostBudget = 0
+    for (const cost of plCostLines) {
+      const variance = cost.actual - cost.budget
+      const variancePercent = cost.budget !== 0 ? Math.round((variance / Math.abs(cost.budget)) * 1000) / 10 : 0
+      lines.push({ label: cost.label, category: "cost", actual: cost.actual, budget: cost.budget, variance, variancePercent })
+      totalCostActual += cost.actual
+      totalCostBudget += cost.budget
+    }
+
+    // Result line
+    const resultActual = totalMargin + totalCostActual
+    const resultBudget = Math.round(totalMargin * revBudgetFactor) + totalCostBudget
+    lines.push(makeLine("Résultat Net", "result", resultActual, resultBudget))
+
+    return lines
+  }
+  const plData = buildPLData()
 
   // Derive alerts from notifications
   const allAlerts: AlertType[] = ((notifData as unknown[]) || []).map((n: unknown) => {
@@ -799,10 +837,10 @@ export default function DirectionDashboard() {
           Performance par département
         </h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <DepartmentCard teamType="VN" chefsVentes={chefsVentes} />
-          <DepartmentCard teamType="VO" chefsVentes={chefsVentes} />
-          <DepartmentCard teamType="VU" chefsVentes={chefsVentes} />
-          <DepartmentCard teamType="APV" chefsVentes={chefsVentes} />
+          <DepartmentCard teamType="VN" chefsVentes={chefsVentes} departmentStats={departmentStats} />
+          <DepartmentCard teamType="VO" chefsVentes={chefsVentes} departmentStats={departmentStats} />
+          <DepartmentCard teamType="VU" chefsVentes={chefsVentes} departmentStats={departmentStats} />
+          <DepartmentCard teamType="APV" chefsVentes={chefsVentes} departmentStats={departmentStats} />
         </div>
       </div>
 

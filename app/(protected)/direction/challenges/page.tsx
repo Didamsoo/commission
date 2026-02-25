@@ -85,7 +85,7 @@ function DirectionChallengeCard({ challenge }: { challenge: DirectionChallenge }
   const TypeIcon = CHALLENGE_TYPE_ICONS[challenge.type]
   const StatusIcon = statusConfig.icon
 
-  const participantCount = challenge.participants.length || 12 // Mock count
+  const participantCount = challenge.participants.length
   const completedCount = challenge.participants.filter(p => p.isCompleted).length
   const avgProgress = challenge.status === "active"
     ? Math.round(challenge.participants.reduce((sum, p) => sum + (p.currentScore / challenge.target * 100), 0) / Math.max(participantCount, 1))
@@ -306,7 +306,7 @@ export default function DirectionChallengesPage() {
   const activeChallenges = challenges.filter(c => c.status === "active").length
   const upcomingChallenges = challenges.filter(c => c.status === "upcoming").length
   const completedChallenges = challenges.filter(c => c.status === "completed").length
-  const totalParticipants = new Set(challenges.flatMap(c => c.participants.map(p => p.id))).size || 12
+  const totalParticipants = new Set(challenges.flatMap(c => c.participants.map(p => p.id))).size
 
   if (loading) {
     return (

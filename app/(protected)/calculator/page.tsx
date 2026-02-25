@@ -42,7 +42,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
-import { generateFicheMargePDF } from "@/lib/pdf/fiche-marge"
+// PDF generation lazy-loaded on demand (jspdf is heavy)
 import { useProfil } from "@/hooks/use-profil"
 import { useFichesMarge, saveFicheMarge } from "@/hooks/use-fiches-marge"
 import { useDashboard } from "@/hooks/use-dashboard"
@@ -256,8 +256,9 @@ export default function CalculatorPage() {
     }
   }
 
-  const handleExportPDF = () => {
+  const handleExportPDF = async () => {
     if (!result) return
+    const { generateFicheMargePDF } = await import("@/lib/pdf/fiche-marge")
     generateFicheMargePDF({
       vehicleName: formData.vehicleName,
       vehicleNumber: formData.vehicleNumber,

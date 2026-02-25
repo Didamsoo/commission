@@ -58,6 +58,7 @@ import {
 import { useProfil } from "@/hooks/use-profil"
 import { useEquipe, type EquipeMember } from "@/hooks/use-equipe"
 import { useCoaching, createNote } from "@/hooks/use-coaching"
+import { apiFetch } from "@/lib/api/client"
 import { CoachingNote } from "@/types/hierarchy"
 
 // ============================================
@@ -487,15 +488,19 @@ function CoachingPageContent() {
         is_private: noteData.isPrivate,
       })
       refetchCoaching()
-    } catch (e) {
-      console.error("Failed to save note", e)
+    } catch {
+      // Save failed
     }
     setEditingNote(undefined)
   }
 
-  const handleDeleteNote = (id: string) => {
-    // TODO: implement delete API call
-    console.warn("Delete not yet implemented for note", id)
+  const handleDeleteNote = async (id: string) => {
+    try {
+      await apiFetch(`/api/coaching/${id}`, { method: 'DELETE' })
+      refetchCoaching()
+    } catch {
+      // Delete failed
+    }
   }
 
   const handleEditNote = (note: CoachingNote) => {

@@ -21,7 +21,8 @@ import {
   Euro,
   TrendingUp,
   Percent,
-  Car
+  Car,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -44,100 +45,7 @@ import {
   formatChallengeTarget,
   formatChallengeDuration
 } from "@/types/direction-challenges"
-
-// ============================================
-// MOCK DATA - Challenges inter-concessions
-// ============================================
-const mockChallenges: DirectionChallenge[] = [
-  {
-    id: "m-1",
-    title: "Course des Concessions - Fevrier",
-    description: "La concession avec le plus de ventes VN en fevrier remporte un bonus collectif.",
-    type: "sales_count",
-    target: 50,
-    targetUnit: "ventes",
-    startDate: "2024-02-01",
-    endDate: "2024-02-29",
-    reward: { type: "bonus", value: 2000, description: "Bonus collectif de 2000€ pour la concession gagnante" },
-    participantIds: [],
-    allParticipants: true,
-    status: "active",
-    createdBy: "dir_marque",
-    createdAt: "2024-01-28",
-    participants: [
-      { id: "d-1", name: "Ford Paris Est", currentScore: 42, isCompleted: false },
-      { id: "d-2", name: "Ford Versailles", currentScore: 38, isCompleted: false },
-      { id: "d-3", name: "Ford Evry", currentScore: 35, isCompleted: false }
-    ],
-    topPerformers: []
-  },
-  {
-    id: "m-2",
-    title: "Defi Financement Reseau",
-    description: "Atteindre un taux de financement moyen de 80% sur l'ensemble du reseau.",
-    type: "financing_rate",
-    target: 80,
-    targetUnit: "%",
-    startDate: "2024-02-01",
-    endDate: "2024-02-29",
-    reward: { type: "badge", value: 300, description: "Badge Reseau d'Or", badgeName: "Reseau d'Or", badgeIcon: "trophy" },
-    participantIds: [],
-    allParticipants: true,
-    status: "active",
-    createdBy: "dir_marque",
-    createdAt: "2024-01-30",
-    participants: [
-      { id: "d-1", name: "Ford Paris Est", currentScore: 85, isCompleted: true, completedAt: "2024-02-10" },
-      { id: "d-2", name: "Ford Versailles", currentScore: 76, isCompleted: false },
-      { id: "d-3", name: "Ford Evry", currentScore: 72, isCompleted: false }
-    ],
-    topPerformers: []
-  },
-  {
-    id: "m-3",
-    title: "Objectif Marge Q1",
-    description: "Chaque concession doit atteindre 150 000€ de marge cumulee au Q1.",
-    type: "margin_target",
-    target: 150000,
-    targetUnit: "\u20AC",
-    startDate: "2024-01-01",
-    endDate: "2024-03-31",
-    reward: { type: "bonus", value: 5000, description: "Bonus de 5000€ par concession ayant atteint l'objectif" },
-    participantIds: [],
-    allParticipants: true,
-    status: "active",
-    createdBy: "dir_marque",
-    createdAt: "2023-12-20",
-    participants: [
-      { id: "d-1", name: "Ford Paris Est", currentScore: 112000, isCompleted: false },
-      { id: "d-2", name: "Ford Versailles", currentScore: 98000, isCompleted: false }
-    ],
-    topPerformers: []
-  },
-  {
-    id: "m-4",
-    title: "Challenge Q4 2023",
-    description: "Defi ventes du dernier trimestre 2023.",
-    type: "sales_count",
-    target: 120,
-    targetUnit: "ventes",
-    startDate: "2023-10-01",
-    endDate: "2023-12-31",
-    reward: { type: "bonus", value: 3000, description: "Bonus collectif" },
-    participantIds: [],
-    allParticipants: true,
-    status: "completed",
-    createdBy: "dir_marque",
-    createdAt: "2023-09-25",
-    participants: [
-      { id: "d-1", name: "Ford Paris Est", currentScore: 132, isCompleted: true, completedAt: "2023-12-20" },
-      { id: "d-2", name: "Ford Versailles", currentScore: 125, isCompleted: true, completedAt: "2023-12-28" }
-    ],
-    topPerformers: [
-      { id: "d-1", name: "Ford Paris Est", currentScore: 132, isCompleted: true, completedAt: "2023-12-20" }
-    ]
-  }
-]
+import { useDefis } from "@/hooks/use-defis"
 
 // ============================================
 // ICONS
@@ -172,7 +80,7 @@ function ChallengeCard({ challenge }: { challenge: DirectionChallenge }) {
   const TypeIcon = CHALLENGE_TYPE_ICONS[challenge.type]
   const StatusIcon = statusConfig.icon
 
-  const participantCount = challenge.participants.length || 6
+  const participantCount = challenge.participants.length
   const completedCount = challenge.participants.filter(p => p.isCompleted).length
   const avgProgress = challenge.status === "active"
     ? Math.round(challenge.participants.reduce((sum, p) => sum + (p.currentScore / challenge.target * 100), 0) / Math.max(participantCount, 1))
@@ -302,15 +210,61 @@ function ChallengeCard({ challenge }: { challenge: DirectionChallenge }) {
 export default function MarqueChallengesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState<DirectionChallengeStatus | "all">("all")
+  const { data: defisData, loading } = useDefis()
 
-  const filteredChallenges = mockChallenges.filter((challenge) => {
+  // Map API data to DirectionChallenge[] type
+  const challenges: DirectionChallenge[] = ((defisData || []) as any[]).map(d => ({
+    id: d.id || "",
+    title: d.title || "",
+    description: d.description || "",
+    type: d.type || "sales_count",
+    target: d.target || 0,
+    targetUnit: d.target_unit || "",
+    targetModelName: d.target_model_name,
+    startDate: d.start_date || "",
+    endDate: d.end_date || "",
+    reward: {
+      type: d.reward_type || "bonus",
+      value: d.reward_value || 0,
+      description: d.reward_description || "",
+      badgeName: d.badge_name,
+      badgeIcon: d.badge_icon
+    },
+    participantIds: d.participant_ids || [],
+    allParticipants: d.all_participants || false,
+    status: d.status || "active",
+    createdBy: d.created_by || "",
+    createdAt: d.created_at || "",
+    participants: (d.defis_plateforme_participants || []).map((p: any) => ({
+      id: p.user_id || p.id || "",
+      name: p.name || "",
+      currentScore: p.current_score || 0,
+      isCompleted: p.is_completed || false,
+      completedAt: p.completed_at
+    })),
+    topPerformers: d.top_performers || []
+  }))
+
+  const filteredChallenges = challenges.filter((challenge) => {
     const matchesSearch = challenge.title.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesTab = activeTab === "all" || challenge.status === activeTab
     return matchesSearch && matchesTab
   })
 
-  const activeChallenges = mockChallenges.filter(c => c.status === "active").length
-  const completedChallenges = mockChallenges.filter(c => c.status === "completed").length
+  const activeChallenges = challenges.filter(c => c.status === "active").length
+  const completedChallenges = challenges.filter(c => c.status === "completed").length
+  const totalParticipants = new Set(challenges.flatMap(c => c.participants.map(p => p.id))).size
+  const successRate = challenges.length > 0
+    ? Math.round((challenges.filter(c => c.status === "completed").length / challenges.length) * 100)
+    : 0
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
@@ -366,7 +320,7 @@ export default function MarqueChallengesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Concessions</p>
-                <p className="text-2xl font-bold text-gray-900">6</p>
+                <p className="text-2xl font-bold text-gray-900">{totalParticipants}</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
                 <Building2 className="w-6 h-6 text-white" />
@@ -379,7 +333,7 @@ export default function MarqueChallengesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Taux reussite</p>
-                <p className="text-2xl font-bold text-gray-900">68%</p>
+                <p className="text-2xl font-bold text-gray-900">{successRate}%</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
                 <Target className="w-6 h-6 text-white" />

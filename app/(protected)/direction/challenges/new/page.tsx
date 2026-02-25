@@ -51,6 +51,7 @@ import {
   formatChallengeDuration,
   formatChallengeTarget
 } from "@/types/direction-challenges"
+import { createDefi } from "@/hooks/use-defis"
 
 // ============================================
 // ICONS MAPPING
@@ -756,15 +757,29 @@ export default function NewChallengePage() {
 
   const handleSubmit = async () => {
     setIsSubmitting(true)
-
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500))
-
-    // In real app, would call Firebase to create the challenge
-    console.log("Challenge created:", formData)
-
-    setIsSubmitting(false)
-    router.push("/challenges")
+    try {
+      await createDefi({
+        title: formData.title,
+        description: formData.description,
+        type: formData.type,
+        target_value: formData.target,
+        target_model_name: formData.targetModelName,
+        start_date: formData.startDate,
+        end_date: formData.endDate,
+        reward_type: formData.rewardType,
+        reward_value: formData.rewardValue,
+        reward_description: formData.rewardDescription,
+        badge_name: formData.badgeName,
+        badge_icon: formData.badgeIcon,
+        all_participants: formData.allParticipants,
+        participant_ids: formData.participantIds,
+      })
+      router.push("/direction/challenges")
+    } catch {
+      // Challenge creation failed
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (

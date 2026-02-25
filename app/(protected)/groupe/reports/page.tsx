@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import {
   FileText,
@@ -24,7 +24,8 @@ import {
   BarChart3,
   TrendingUp,
   Users,
-  Building
+  Building,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -38,237 +39,14 @@ import {
   SelectValue
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-// ---------------------------------------------------------------------------
-// Inline interfaces (previously imported from mock-dir-plaque-data)
-// ---------------------------------------------------------------------------
+import { useMarques } from "@/hooks/use-marques"
+import { useDashboard } from "@/hooks/use-dashboard"
+import { type BrandDisplayData, mapMarqueToBrand } from "@/lib/types/display"
 
-interface BrandData {
-  id: string
-  name: string
-  logo: string
-  color: string
-  directorId: string
-  directorName: string
-  dealershipCount: number
-  employeeCount: number
-  stats: {
-    totalSales: number
-    salesTarget: number
-    objectiveRate: number
-    totalRevenue: number
-    totalMargin: number
-    avgGPU: number
-    financingRate: number
-    satisfaction: number
-    marketShare: number
-  }
-  trend: "up" | "down" | "stable"
-  quarterlyGrowth: number
-}
+// Reports and templates imported from config
+import { reports, reportTemplates, type Report } from "@/lib/config/report-templates"
 
-interface GroupKPIs {
-  revenue: { current: number; target: number; growth: number }
-  ebitda: { current: number; margin: number; target: number }
-  volume: { current: number; target: number; objectiveRate: number }
-  marketShare: { current: number; evolution: number }
-  satisfaction: { nps: number; target: number }
-  workforce: { total: number; turnover: number }
-}
-
-// ---------------------------------------------------------------------------
-// Static data — TODO: replace with API data
-// ---------------------------------------------------------------------------
-
-const brands: BrandData[] = [
-  {
-    id: "brand-ford",
-    name: "Ford",
-    logo: "\u{1F699}",
-    color: "from-blue-600 to-blue-700",
-    directorId: "dir-marque-1",
-    directorName: "Jean Legrand",
-    dealershipCount: 6,
-    employeeCount: 420,
-    stats: {
-      totalSales: 287,
-      salesTarget: 300,
-      objectiveRate: 95.7,
-      totalRevenue: 8610000,
-      totalMargin: 430500,
-      avgGPU: 1500,
-      financingRate: 76,
-      satisfaction: 86,
-      marketShare: 4.2
-    },
-    trend: "up",
-    quarterlyGrowth: 8
-  },
-  {
-    id: "brand-nissan",
-    name: "Nissan",
-    logo: "\u{1F697}",
-    color: "from-red-600 to-red-700",
-    directorId: "dir-marque-2",
-    directorName: "Marie Dupont",
-    dealershipCount: 5,
-    employeeCount: 350,
-    stats: {
-      totalSales: 312,
-      salesTarget: 320,
-      objectiveRate: 97.5,
-      totalRevenue: 9360000,
-      totalMargin: 468000,
-      avgGPU: 1500,
-      financingRate: 72,
-      satisfaction: 84,
-      marketShare: 3.8
-    },
-    trend: "stable",
-    quarterlyGrowth: 3
-  },
-  {
-    id: "brand-suzuki",
-    name: "Suzuki",
-    logo: "\u{1F690}",
-    color: "from-yellow-500 to-yellow-600",
-    directorId: "dir-marque-3",
-    directorName: "Thomas Petit",
-    dealershipCount: 4,
-    employeeCount: 280,
-    stats: {
-      totalSales: 293,
-      salesTarget: 320,
-      objectiveRate: 91.6,
-      totalRevenue: 8790000,
-      totalMargin: 439500,
-      avgGPU: 1500,
-      financingRate: 74,
-      satisfaction: 88,
-      marketShare: 2.9
-    },
-    trend: "up",
-    quarterlyGrowth: 12
-  }
-]
-
-const groupKPIs: GroupKPIs = {
-  revenue: {
-    current: 485000000,
-    target: 500000000,
-    growth: 8
-  },
-  ebitda: {
-    current: 14550000,
-    margin: 3.0,
-    target: 15000000
-  },
-  volume: {
-    current: 892,
-    target: 940,
-    objectiveRate: 94.8
-  },
-  marketShare: {
-    current: 10.9,
-    evolution: 0.8
-  },
-  satisfaction: {
-    nps: 86,
-    target: 85
-  },
-  workforce: {
-    total: 1400,
-    turnover: 8.5
-  }
-}
-
-// ---------------------------------------------------------------------------
-
-// Mock reports data
-const reports = [
-  {
-    id: "r1",
-    title: "Rapport Board Q1 2024",
-    description: "Synthèse trimestrielle pour le conseil d'administration",
-    type: "board",
-    format: "pdf",
-    status: "ready",
-    createdAt: "2024-02-20T10:00:00Z",
-    size: "2.4 MB"
-  },
-  {
-    id: "r2",
-    title: "P&L Consolidé Février 2024",
-    description: "Compte de résultat mensuel toutes marques",
-    type: "financial",
-    format: "excel",
-    status: "ready",
-    createdAt: "2024-02-19T14:30:00Z",
-    size: "1.8 MB"
-  },
-  {
-    id: "r3",
-    title: "Performance Commerciale S07",
-    description: "Indicateurs hebdomadaires de vente",
-    type: "sales",
-    format: "pdf",
-    status: "ready",
-    createdAt: "2024-02-18T09:00:00Z",
-    size: "856 KB"
-  },
-  {
-    id: "r4",
-    title: "Benchmark Concurrents",
-    description: "Analyse comparative du marché régional",
-    type: "market",
-    format: "pptx",
-    status: "ready",
-    createdAt: "2024-02-15T16:00:00Z",
-    size: "5.2 MB"
-  },
-  {
-    id: "r5",
-    title: "Rapport RH - Effectifs",
-    description: "Synthèse des effectifs et turnover par marque",
-    type: "hr",
-    format: "excel",
-    status: "generating",
-    createdAt: "2024-02-20T11:30:00Z",
-    size: "-"
-  }
-]
-
-const reportTemplates = [
-  {
-    id: "t1",
-    title: "Rapport Board",
-    description: "Synthèse executive pour le CA",
-    icon: FilePieChart,
-    frequency: "Trimestriel"
-  },
-  {
-    id: "t2",
-    title: "P&L Mensuel",
-    description: "Compte de résultat consolidé",
-    icon: FileSpreadsheet,
-    frequency: "Mensuel"
-  },
-  {
-    id: "t3",
-    title: "Performance Ventes",
-    description: "KPIs commerciaux détaillés",
-    icon: FileBarChart,
-    frequency: "Hebdomadaire"
-  },
-  {
-    id: "t4",
-    title: "Analyse Marché",
-    description: "Parts de marché et tendances",
-    icon: BarChart3,
-    frequency: "Mensuel"
-  }
-]
-
-function ReportCard({ report }: { report: typeof reports[0] }) {
+function ReportCard({ report }: { report: Report }) {
   const getTypeColor = (type: string) => {
     switch (type) {
       case "board": return "bg-purple-100 text-purple-700"
@@ -380,7 +158,14 @@ function TemplateCard({ template }: { template: typeof reportTemplates[0] }) {
   )
 }
 
-function QuickStats() {
+interface QuickStatsProps {
+  brands: BrandDisplayData[]
+  totalVolume: number
+  objectiveRate: number
+  workforce: number
+}
+
+function QuickStats({ brands, totalVolume, objectiveRate, workforce }: QuickStatsProps) {
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <Card className="border-0 shadow-premium">
@@ -404,7 +189,7 @@ function QuickStats() {
               <TrendingUp className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{groupKPIs.volume.current}</p>
+              <p className="text-2xl font-bold text-gray-900">{totalVolume}</p>
               <p className="text-xs text-gray-500">Ventes ce mois</p>
             </div>
           </div>
@@ -418,7 +203,7 @@ function QuickStats() {
               <BarChart3 className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{groupKPIs.volume.objectiveRate}%</p>
+              <p className="text-2xl font-bold text-gray-900">{objectiveRate}%</p>
               <p className="text-xs text-gray-500">Taux objectif</p>
             </div>
           </div>
@@ -432,7 +217,7 @@ function QuickStats() {
               <Users className="w-5 h-5 text-white" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{groupKPIs.workforce.total}</p>
+              <p className="text-2xl font-bold text-gray-900">{workforce}</p>
               <p className="text-xs text-gray-500">Collaborateurs</p>
             </div>
           </div>
@@ -447,11 +232,54 @@ export default function GroupeReportsPage() {
   const [search, setSearch] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
 
+  // ---------------------------------------------------------------------------
+  // Dynamic data from API
+  // ---------------------------------------------------------------------------
+  const { data: marquesRaw, loading } = useMarques()
+  const { data: dashboardData } = useDashboard<Record<string, unknown>>("dir_plaque")
+
+  const brands: BrandDisplayData[] = useMemo(
+    () => (marquesRaw || []).map(mapMarqueToBrand),
+    [marquesRaw]
+  )
+
+  // Derive group-level stats from brands
+  const groupStats = useMemo(() => {
+    const totalVolume = brands.reduce((sum, b) => sum + b.stats.totalSales, 0)
+    const totalTarget = brands.reduce((sum, b) => sum + b.stats.salesTarget, 0)
+    const objectiveRate = totalTarget > 0
+      ? Math.round((totalVolume / totalTarget) * 1000) / 10
+      : 0
+    const workforce = brands.reduce((sum, b) => sum + b.employeeCount, 0)
+
+    // If the dashboard API returns overrides, prefer those
+    const db = dashboardData as Record<string, unknown> | null
+    const dbVolume = db?.volume as Record<string, unknown> | undefined
+    const dbWorkforce = db?.workforce as Record<string, unknown> | undefined
+
+    return {
+      totalVolume: (dbVolume?.current as number) ?? totalVolume,
+      objectiveRate: (dbVolume?.objectiveRate as number) ?? objectiveRate,
+      workforce: (dbWorkforce?.total as number) ?? workforce,
+    }
+  }, [brands, dashboardData])
+
+  // ---------------------------------------------------------------------------
+
   const filteredReports = reports.filter(r => {
     if (search && !r.title.toLowerCase().includes(search.toLowerCase())) return false
     if (typeFilter !== "all" && r.type !== typeFilter) return false
     return true
   })
+
+  // Loading guard
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
@@ -496,7 +324,12 @@ export default function GroupeReportsPage() {
       </div>
 
       {/* Quick Stats */}
-      <QuickStats />
+      <QuickStats
+        brands={brands}
+        totalVolume={groupStats.totalVolume}
+        objectiveRate={groupStats.objectiveRate}
+        workforce={groupStats.workforce}
+      />
 
       {/* Main Content */}
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>

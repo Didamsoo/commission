@@ -31,6 +31,7 @@ import {
   Loader2
 } from "lucide-react"
 import { useEquipe, type EquipeMember } from "@/hooks/use-equipe"
+import { apiFetch } from "@/lib/api/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -92,7 +93,7 @@ const statusConfig = {
 }
 
 export default function TeamManagementPage() {
-  const { data: equipeData, loading } = useEquipe()
+  const { data: equipeData, loading, refetch } = useEquipe()
   const members: TeamMember[] = (equipeData || []).map(m => ({
     id: m.user_id || m.id,
     name: m.full_name,
@@ -109,6 +110,10 @@ export default function TeamManagementPage() {
   const [filterRole, setFilterRole] = useState<string>("all")
   const [filterStatus, setFilterStatus] = useState<string>("all")
   const [showInviteDialog, setShowInviteDialog] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState("")
+  const [inviteRole, setInviteRole] = useState("commercial")
+  const [inviteMessage, setInviteMessage] = useState("")
+  const [inviteLoading, setInviteLoading] = useState(false)
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null)
   const [showMemberDetail, setShowMemberDetail] = useState(false)
 
@@ -128,6 +133,26 @@ export default function TeamManagementPage() {
   const openMemberDetail = (member: TeamMember) => {
     setSelectedMember(member)
     setShowMemberDetail(true)
+  }
+
+  const handleInvite = async () => {
+    if (!inviteEmail) return
+    setInviteLoading(true)
+    try {
+      await apiFetch('/api/equipe', {
+        method: 'POST',
+        body: JSON.stringify({ email: inviteEmail, role: inviteRole, message: inviteMessage }),
+      })
+      refetch()
+      setShowInviteDialog(false)
+      setInviteEmail("")
+      setInviteRole("commercial")
+      setInviteMessage("")
+    } catch {
+      // Invite failed
+    } finally {
+      setInviteLoading(false)
+    }
   }
 
   if (loading) {
@@ -404,11 +429,11 @@ export default function TeamManagementPage() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label>Adresse email</Label>
-              <Input placeholder="nom@concession.fr" type="email" />
+              <Input placeholder="nom@concession.fr" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} />
             </div>
             <div className="space-y-2">
               <Label>Rôle</Label>
-              <Select defaultValue="commercial">
+              <Select value={inviteRole} onValueChange={setInviteRole}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -421,9 +446,11 @@ export default function TeamManagementPage() {
             </div>
             <div className="space-y-2">
               <Label>Message personnalisé (optionnel)</Label>
-              <textarea 
+              <textarea
                 className="w-full min-h-[100px] px-3 py-2 border rounded-md text-sm"
                 placeholder="Bonjour, je vous invite à rejoindre notre équipe sur AutoPerf Pro..."
+                value={inviteMessage}
+                onChange={(e) => setInviteMessage(e.target.value)}
               />
             </div>
           </div>
@@ -431,8 +458,8 @@ export default function TeamManagementPage() {
             <Button variant="outline" onClick={() => setShowInviteDialog(false)}>
               Annuler
             </Button>
-            <Button className="bg-gradient-to-r from-blue-600 to-indigo-600">
-              <Mail className="w-4 h-4 mr-2" />
+            <Button className="bg-gradient-to-r from-blue-600 to-indigo-600" onClick={handleInvite} disabled={inviteLoading || !inviteEmail}>
+              {inviteLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
               Envoyer l&apos;invitation
             </Button>
           </DialogFooter>

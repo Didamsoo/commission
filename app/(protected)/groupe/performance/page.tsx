@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import {
   TrendingUp,
@@ -22,7 +22,8 @@ import {
   PieChart,
   Activity,
   Layers,
-  Globe
+  Globe,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -36,50 +37,14 @@ import {
   SelectValue
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useMarques } from "@/hooks/use-marques"
+import { useDashboard } from "@/hooks/use-dashboard"
+import { type BrandDisplayData, mapMarqueToBrand } from "@/lib/types/display"
+
 // ---------------------------------------------------------------------------
-// Inline interfaces (previously imported from mock-dir-plaque-data)
-// ---------------------------------------------------------------------------
 
-interface BrandData {
-  id: string
-  name: string
-  logo: string
-  color: string
-  directorId: string
-  directorName: string
-  dealershipCount: number
-  employeeCount: number
-  stats: {
-    totalSales: number
-    salesTarget: number
-    objectiveRate: number
-    totalRevenue: number
-    totalMargin: number
-    avgGPU: number
-    financingRate: number
-    satisfaction: number
-    marketShare: number
-  }
-  trend: "up" | "down" | "stable"
-  quarterlyGrowth: number
-}
-
-interface GroupKPIs {
-  revenue: { current: number; target: number; growth: number }
-  ebitda: { current: number; margin: number; target: number }
-  volume: { current: number; target: number; objectiveRate: number }
-  marketShare: { current: number; evolution: number }
-  satisfaction: { nps: number; target: number }
-  workforce: { total: number; turnover: number }
-}
-
-interface GroupPerformanceHistory {
-  month: string
-  ford: { sales: number; margin: number }
-  nissan: { sales: number; margin: number }
-  suzuki: { sales: number; margin: number }
-  total: { sales: number; margin: number }
-}
+type Period = "month" | "quarter" | "year"
+type Metric = "volume" | "revenue" | "margin" | "satisfaction"
 
 interface TrendData {
   category: string
@@ -89,173 +54,6 @@ interface TrendData {
   trend: "up" | "down" | "stable"
   insight: string
 }
-
-// ---------------------------------------------------------------------------
-// Static data — TODO: replace with API data
-// ---------------------------------------------------------------------------
-
-const brands: BrandData[] = [
-  {
-    id: "brand-ford",
-    name: "Ford",
-    logo: "\u{1F699}",
-    color: "from-blue-600 to-blue-700",
-    directorId: "dir-marque-1",
-    directorName: "Jean Legrand",
-    dealershipCount: 6,
-    employeeCount: 420,
-    stats: {
-      totalSales: 287,
-      salesTarget: 300,
-      objectiveRate: 95.7,
-      totalRevenue: 8610000,
-      totalMargin: 430500,
-      avgGPU: 1500,
-      financingRate: 76,
-      satisfaction: 86,
-      marketShare: 4.2
-    },
-    trend: "up",
-    quarterlyGrowth: 8
-  },
-  {
-    id: "brand-nissan",
-    name: "Nissan",
-    logo: "\u{1F697}",
-    color: "from-red-600 to-red-700",
-    directorId: "dir-marque-2",
-    directorName: "Marie Dupont",
-    dealershipCount: 5,
-    employeeCount: 350,
-    stats: {
-      totalSales: 312,
-      salesTarget: 320,
-      objectiveRate: 97.5,
-      totalRevenue: 9360000,
-      totalMargin: 468000,
-      avgGPU: 1500,
-      financingRate: 72,
-      satisfaction: 84,
-      marketShare: 3.8
-    },
-    trend: "stable",
-    quarterlyGrowth: 3
-  },
-  {
-    id: "brand-suzuki",
-    name: "Suzuki",
-    logo: "\u{1F690}",
-    color: "from-yellow-500 to-yellow-600",
-    directorId: "dir-marque-3",
-    directorName: "Thomas Petit",
-    dealershipCount: 4,
-    employeeCount: 280,
-    stats: {
-      totalSales: 293,
-      salesTarget: 320,
-      objectiveRate: 91.6,
-      totalRevenue: 8790000,
-      totalMargin: 439500,
-      avgGPU: 1500,
-      financingRate: 74,
-      satisfaction: 88,
-      marketShare: 2.9
-    },
-    trend: "up",
-    quarterlyGrowth: 12
-  }
-]
-
-const groupKPIs: GroupKPIs = {
-  revenue: {
-    current: 485000000,
-    target: 500000000,
-    growth: 8
-  },
-  ebitda: {
-    current: 14550000,
-    margin: 3.0,
-    target: 15000000
-  },
-  volume: {
-    current: 892,
-    target: 940,
-    objectiveRate: 94.8
-  },
-  marketShare: {
-    current: 10.9,
-    evolution: 0.8
-  },
-  satisfaction: {
-    nps: 86,
-    target: 85
-  },
-  workforce: {
-    total: 1400,
-    turnover: 8.5
-  }
-}
-
-const groupPerformanceHistory: GroupPerformanceHistory[] = [
-  { month: "Sep", ford: { sales: 265, margin: 397500 }, nissan: { sales: 280, margin: 420000 }, suzuki: { sales: 255, margin: 382500 }, total: { sales: 800, margin: 1200000 } },
-  { month: "Oct", ford: { sales: 278, margin: 417000 }, nissan: { sales: 295, margin: 442500 }, suzuki: { sales: 268, margin: 402000 }, total: { sales: 841, margin: 1261500 } },
-  { month: "Nov", ford: { sales: 290, margin: 435000 }, nissan: { sales: 305, margin: 457500 }, suzuki: { sales: 280, margin: 420000 }, total: { sales: 875, margin: 1312500 } },
-  { month: "D\u00e9c", ford: { sales: 312, margin: 468000 }, nissan: { sales: 328, margin: 492000 }, suzuki: { sales: 305, margin: 457500 }, total: { sales: 945, margin: 1417500 } },
-  { month: "Jan", ford: { sales: 275, margin: 412500 }, nissan: { sales: 298, margin: 447000 }, suzuki: { sales: 278, margin: 417000 }, total: { sales: 851, margin: 1276500 } },
-  { month: "F\u00e9v", ford: { sales: 287, margin: 430500 }, nissan: { sales: 312, margin: 468000 }, suzuki: { sales: 293, margin: 439500 }, total: { sales: 892, margin: 1338000 } }
-]
-
-const trendsData: TrendData[] = [
-  {
-    category: "\u00c9lectrique",
-    currentValue: 22,
-    previousValue: 17,
-    unit: "%",
-    trend: "up",
-    insight: "+5 pts vs N-1 - Forte progression sur tous les segments"
-  },
-  {
-    category: "VO",
-    currentValue: 3.2,
-    previousValue: 2.9,
-    unit: "% marge",
-    trend: "up",
-    insight: "Marges en hausse gr\u00e2ce \u00e0 la tension du march\u00e9"
-  },
-  {
-    category: "Atelier",
-    currentValue: 82,
-    previousValue: 78,
-    unit: "% absorption",
-    trend: "up",
-    insight: "Bonne performance APV, objectif 85%"
-  },
-  {
-    category: "Financement",
-    currentValue: 74,
-    previousValue: 72,
-    unit: "%",
-    trend: "up",
-    insight: "+2 pts - Effort commercial r\u00e9compens\u00e9"
-  },
-  {
-    category: "Stock VN",
-    currentValue: 52,
-    previousValue: 45,
-    unit: "jours",
-    trend: "down",
-    insight: "Attention: augmentation du stock, actions requises"
-  }
-]
-
-function getBrandRanking(): BrandData[] {
-  return [...brands].sort((a, b) => b.stats.objectiveRate - a.stats.objectiveRate)
-}
-
-// ---------------------------------------------------------------------------
-
-type Period = "month" | "quarter" | "year"
-type Metric = "volume" | "revenue" | "margin" | "satisfaction"
 
 function MetricCard({
   title,
@@ -296,8 +94,16 @@ function MetricCard({
   )
 }
 
-function ComparisonChart({ metric }: { metric: Metric }) {
-  const getMetricValue = (brand: BrandData) => {
+function ComparisonChart({
+  metric,
+  brands,
+  getBrandRanking,
+}: {
+  metric: Metric
+  brands: BrandDisplayData[]
+  getBrandRanking: () => BrandDisplayData[]
+}) {
+  const getMetricValue = (brand: BrandDisplayData) => {
     switch (metric) {
       case "volume": return brand.stats.totalSales
       case "revenue": return brand.stats.totalRevenue / 1000000
@@ -309,10 +115,18 @@ function ComparisonChart({ metric }: { metric: Metric }) {
   const getMetricLabel = () => {
     switch (metric) {
       case "volume": return "ventes"
-      case "revenue": return "M€"
-      case "margin": return "k€"
+      case "revenue": return "M\u20ac"
+      case "margin": return "k\u20ac"
       case "satisfaction": return "NPS"
     }
+  }
+
+  if (brands.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-32 text-gray-400 text-sm">
+        Aucune donn\u00e9e disponible
+      </div>
+    )
   }
 
   const maxValue = Math.max(...brands.map(getMetricValue))
@@ -321,7 +135,7 @@ function ComparisonChart({ metric }: { metric: Metric }) {
     <div className="space-y-4">
       {getBrandRanking().map((brand, index) => {
         const value = getMetricValue(brand)
-        const percentage = (value / maxValue) * 100
+        const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0
 
         return (
           <div key={brand.id} className="space-y-2">
@@ -359,61 +173,92 @@ function ComparisonChart({ metric }: { metric: Metric }) {
   )
 }
 
-function PerformanceChart() {
-  const maxTotal = Math.max(...groupPerformanceHistory.map(h => h.total.sales))
+interface PerBrandHistoryEntry {
+  period: string
+  label: string
+  sales: number
+  target: number
+  margin: number
+  financingRate: number
+}
+
+function PerformanceChart({ brands, perBrandHistory }: { brands: BrandDisplayData[]; perBrandHistory: Record<string, PerBrandHistoryEntry[]> }) {
+  if (brands.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64 text-gray-400 text-sm">
+        Donn\u00e9es historiques non disponibles
+      </div>
+    )
+  }
+
+  // Collect all months across brands
+  const allMonths = new Set<string>()
+  for (const entries of Object.values(perBrandHistory)) {
+    for (const e of entries) allMonths.add(e.label)
+  }
+  const months = Array.from(allMonths).slice(-6)
+
+  if (months.length === 0) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-6 flex-wrap">
+          {brands.map((brand) => (
+            <div key={brand.id} className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full bg-gradient-to-br ${brand.color}`} />
+              <span className="text-sm text-gray-600">{brand.name}</span>
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center justify-center h-52 text-gray-400 text-sm">
+          Pas encore de donn\u00e9es historiques
+        </div>
+      </div>
+    )
+  }
+
+  // Find max sales value for scale
+  let maxSales = 0
+  for (const entries of Object.values(perBrandHistory)) {
+    for (const e of entries) {
+      if (e.sales > maxSales) maxSales = e.sales
+    }
+  }
+
+  const BAR_COLORS = ["bg-blue-500", "bg-emerald-500", "bg-amber-500", "bg-purple-500", "bg-red-500"]
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-6 flex-wrap">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-blue-500" />
-          <span className="text-sm text-gray-600">Ford</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-red-500" />
-          <span className="text-sm text-gray-600">Nissan</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-yellow-500" />
-          <span className="text-sm text-gray-600">Suzuki</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-indigo-500" />
-          <span className="text-sm text-gray-600">Total</span>
-        </div>
+        {brands.map((brand, i) => (
+          <div key={brand.id} className="flex items-center gap-2">
+            <div className={`w-3 h-3 rounded-full ${BAR_COLORS[i % BAR_COLORS.length]}`} />
+            <span className="text-sm text-gray-600">{brand.name}</span>
+          </div>
+        ))}
       </div>
 
-      <div className="flex items-end gap-4 h-64">
-        {groupPerformanceHistory.map((month) => {
-          const fordHeight = (month.ford.sales / maxTotal) * 100
-          const nissanHeight = (month.nissan.sales / maxTotal) * 100
-          const suzukiHeight = (month.suzuki.sales / maxTotal) * 100
-          const totalHeight = (month.total.sales / maxTotal) * 100
-
-          return (
-            <div key={month.month} className="flex-1 flex flex-col items-center gap-2">
-              <div className="text-xs font-semibold text-indigo-600">{month.total.sales}</div>
-              <div className="relative w-full h-52 flex items-end justify-center gap-1">
-                <div
-                  className="w-4 bg-blue-500 rounded-t transition-all hover:bg-blue-600"
-                  style={{ height: `${fordHeight}%` }}
-                  title={`Ford: ${month.ford.sales}`}
-                />
-                <div
-                  className="w-4 bg-red-500 rounded-t transition-all hover:bg-red-600"
-                  style={{ height: `${nissanHeight}%` }}
-                  title={`Nissan: ${month.nissan.sales}`}
-                />
-                <div
-                  className="w-4 bg-yellow-500 rounded-t transition-all hover:bg-yellow-600"
-                  style={{ height: `${suzukiHeight}%` }}
-                  title={`Suzuki: ${month.suzuki.sales}`}
-                />
-              </div>
-              <span className="text-sm font-medium text-gray-600">{month.month}</span>
+      <div className="flex items-end gap-2 h-52">
+        {months.map((month) => (
+          <div key={month} className="flex-1 flex flex-col items-center gap-1">
+            <div className="flex items-end gap-0.5 h-44 w-full justify-center">
+              {brands.map((brand, i) => {
+                const history = perBrandHistory[brand.id] || []
+                const entry = history.find(e => e.label === month)
+                const sales = entry?.sales || 0
+                const height = maxSales > 0 ? (sales / maxSales) * 100 : 0
+                return (
+                  <div
+                    key={brand.id}
+                    className={`${BAR_COLORS[i % BAR_COLORS.length]} rounded-t min-w-[8px] max-w-[16px] flex-1`}
+                    style={{ height: `${height}%` }}
+                    title={`${brand.name}: ${sales} ventes`}
+                  />
+                )
+              })}
             </div>
-          )
-        })}
+            <span className="text-xs text-gray-500">{month}</span>
+          </div>
+        ))}
       </div>
     </div>
   )
@@ -441,8 +286,8 @@ function TrendIndicator({ trend }: { trend: TrendData }) {
       </div>
       <p className="text-sm text-gray-600">{trend.insight}</p>
       <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
-        <span>Précédent: {trend.previousValue}{trend.unit}</span>
-        <span>•</span>
+        <span>Pr\u00e9c\u00e9dent: {trend.previousValue}{trend.unit}</span>
+        <span>&bull;</span>
         <span className={trend.trend === "up" ? "text-emerald-600" : trend.trend === "down" ? "text-red-600" : ""}>
           {trend.trend === "up" ? "+" : trend.trend === "down" ? "" : ""}
           {((trend.currentValue - trend.previousValue) / trend.previousValue * 100).toFixed(1)}%
@@ -456,11 +301,122 @@ export default function GroupePerformancePage() {
   const [period, setPeriod] = useState<Period>("month")
   const [metric, setMetric] = useState<Metric>("volume")
 
+  // --- Data from API ---
+  const { data: marquesRaw, loading: marquesLoading } = useMarques()
+  const { data: dashboardData, loading: dashboardLoading } = useDashboard<Record<string, unknown>>("dir_plaque")
+
+  const loading = marquesLoading || dashboardLoading
+
+  const brands: BrandDisplayData[] = useMemo(
+    () => (marquesRaw || []).map(mapMarqueToBrand),
+    [marquesRaw]
+  )
+
+  // Derive trends from dashboard performanceHistory
+  const perfHistory = ((dashboardData as Record<string, unknown>)?.performanceHistory || []) as
+    { period: string; label: string; sales: number; target: number; margin: number; financingRate: number }[]
+
+  const trendsData: TrendData[] = useMemo(() => {
+    if (perfHistory.length < 2) return []
+    const last = perfHistory[perfHistory.length - 1]
+    const prev = perfHistory[perfHistory.length - 2]
+
+    const trends: TrendData[] = []
+    if (last && prev) {
+      const volumeChange = prev.sales > 0 ? ((last.sales - prev.sales) / prev.sales) * 100 : 0
+      trends.push({
+        category: "Volume de ventes",
+        currentValue: last.sales,
+        previousValue: prev.sales,
+        unit: " ventes",
+        trend: volumeChange > 2 ? "up" : volumeChange < -2 ? "down" : "stable",
+        insight: volumeChange > 0
+          ? `Hausse de ${Math.abs(volumeChange).toFixed(1)}% par rapport au mois précédent`
+          : `Baisse de ${Math.abs(volumeChange).toFixed(1)}% par rapport au mois précédent`
+      })
+
+      const marginChange = prev.margin > 0 ? ((last.margin - prev.margin) / prev.margin) * 100 : 0
+      trends.push({
+        category: "Marge totale",
+        currentValue: Math.round(last.margin / 1000),
+        previousValue: Math.round(prev.margin / 1000),
+        unit: "k€",
+        trend: marginChange > 2 ? "up" : marginChange < -2 ? "down" : "stable",
+        insight: marginChange > 0
+          ? `Progression de la marge de ${Math.abs(marginChange).toFixed(1)}%`
+          : `Recul de la marge de ${Math.abs(marginChange).toFixed(1)}%`
+      })
+
+      const financingDiff = last.financingRate - prev.financingRate
+      trends.push({
+        category: "Taux de financement",
+        currentValue: last.financingRate,
+        previousValue: prev.financingRate,
+        unit: "%",
+        trend: financingDiff > 1 ? "up" : financingDiff < -1 ? "down" : "stable",
+        insight: financingDiff > 0
+          ? `Amélioration de ${financingDiff} points`
+          : `Recul de ${Math.abs(financingDiff)} points`
+      })
+    }
+    return trends
+  }, [perfHistory])
+
+  // Derive group KPIs from brands aggregate data
+  const groupKPIs = useMemo(() => {
+    const totalSales = brands.reduce((s, b) => s + b.stats.totalSales, 0)
+    const totalTarget = brands.reduce((s, b) => s + b.stats.salesTarget, 0)
+    const totalRevenue = brands.reduce((s, b) => s + b.stats.totalRevenue, 0)
+    const totalMargin = brands.reduce((s, b) => s + b.stats.totalMargin, 0)
+    const avgSatisfaction = brands.length > 0
+      ? Math.round(brands.reduce((s, b) => s + b.stats.satisfaction, 0) / brands.length)
+      : 0
+    const totalEmployees = brands.reduce((s, b) => s + b.employeeCount, 0)
+    const objectiveRate = totalTarget > 0
+      ? Math.round((totalSales / totalTarget) * 1000) / 10
+      : 0
+    const marginRate = totalRevenue > 0
+      ? Math.round((totalMargin / totalRevenue) * 1000) / 10
+      : 0
+
+    // Use dashboard data for growth/evolution if available
+    const db = (dashboardData || {}) as Record<string, unknown>
+    const revenueGrowth = typeof db.revenueGrowth === "number" ? db.revenueGrowth : 0
+    const marketShareCurrent = typeof db.marketShare === "number" ? db.marketShare : 0
+    const marketShareEvolution = typeof db.marketShareEvolution === "number" ? db.marketShareEvolution : 0
+    const turnover = typeof db.turnover === "number" ? db.turnover : 0
+
+    return {
+      revenue: { current: totalRevenue, target: totalTarget * 30000, growth: revenueGrowth },
+      ebitda: { current: totalMargin, margin: marginRate, target: totalMargin * 1.1 },
+      volume: { current: totalSales, target: totalTarget, objectiveRate },
+      marketShare: { current: marketShareCurrent, evolution: marketShareEvolution },
+      satisfaction: { nps: avgSatisfaction, target: 85 },
+      workforce: { total: totalEmployees, turnover },
+    }
+  }, [brands, dashboardData])
+
+  function getBrandRanking(): BrandDisplayData[] {
+    return [...brands].sort((a, b) => b.stats.objectiveRate - a.stats.objectiveRate)
+  }
+
   // Calculate performance indicators
   const objectiveRate = groupKPIs.volume.objectiveRate
   const revenueGrowth = groupKPIs.revenue.growth
   const marginRate = groupKPIs.ebitda.margin
   const npsScore = groupKPIs.satisfaction.nps
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+          <p className="text-sm text-gray-500">Chargement des donn\u00e9es de performance...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
@@ -482,7 +438,7 @@ export default function GroupePerformancePage() {
             Analyse de Performance
           </h1>
           <p className="text-gray-500 mt-1">
-            Vue consolidée des indicateurs clés du groupe
+            Vue consolid\u00e9e des indicateurs cl\u00e9s du groupe
           </p>
         </div>
 
@@ -495,7 +451,7 @@ export default function GroupePerformancePage() {
             <SelectContent>
               <SelectItem value="month">Ce mois</SelectItem>
               <SelectItem value="quarter">Ce trimestre</SelectItem>
-              <SelectItem value="year">Cette année</SelectItem>
+              <SelectItem value="year">Cette ann\u00e9e</SelectItem>
             </SelectContent>
           </Select>
           <Button variant="outline" className="gap-2">
@@ -516,14 +472,16 @@ export default function GroupePerformancePage() {
         <MetricCard
           title="Taux d'objectif"
           value={`${objectiveRate}%`}
-          change={2.3}
+          change={trendsData.find(t => t.category === "Volume de ventes")
+            ? Math.round(((trendsData[0]?.currentValue ?? 0) - (trendsData[0]?.previousValue ?? 0)) / Math.max(trendsData[0]?.previousValue ?? 1, 1) * 100)
+            : 0}
           target="100%"
           icon={Target}
           color="from-blue-500 to-blue-600"
         />
         <MetricCard
           title="Croissance CA"
-          value={`+${revenueGrowth}%`}
+          value={revenueGrowth > 0 ? `+${revenueGrowth}%` : `${revenueGrowth}%`}
           change={revenueGrowth}
           target="+10%"
           icon={TrendingUp}
@@ -532,15 +490,17 @@ export default function GroupePerformancePage() {
         <MetricCard
           title="Marge EBITDA"
           value={`${marginRate}%`}
-          change={0.5}
+          change={trendsData.find(t => t.category === "Marge totale")
+            ? Math.round(((trendsData[1]?.currentValue ?? 0) - (trendsData[1]?.previousValue ?? 0)) / Math.max(trendsData[1]?.previousValue ?? 1, 1) * 100)
+            : 0}
           target="3.5%"
           icon={Euro}
           color="from-purple-500 to-purple-600"
         />
         <MetricCard
           title="Score NPS"
-          value={npsScore.toString()}
-          change={3}
+          value={npsScore > 0 ? npsScore.toString() : "N/A"}
+          change={0}
           target="85"
           icon={Star}
           color="from-amber-500 to-orange-500"
@@ -556,14 +516,14 @@ export default function GroupePerformancePage() {
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <BarChart3 className="w-5 h-5 text-indigo-600" />
-                  Évolution mensuelle
+                  \u00c9volution mensuelle
                 </CardTitle>
                 <CardDescription>Performance par marque sur 6 mois</CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <PerformanceChart />
+            <PerformanceChart brands={brands} perBrandHistory={((dashboardData as Record<string, unknown>)?.perBrandHistory || {}) as Record<string, PerBrandHistoryEntry[]>} />
           </CardContent>
         </Card>
 
@@ -589,109 +549,117 @@ export default function GroupePerformancePage() {
             </div>
           </CardHeader>
           <CardContent>
-            <ComparisonChart metric={metric} />
+            <ComparisonChart metric={metric} brands={brands} getBrandRanking={getBrandRanking} />
           </CardContent>
         </Card>
       </div>
 
       {/* Trends */}
-      <Card className="border-0 shadow-premium">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Layers className="w-5 h-5 text-indigo-600" />
-            Tendances clés
-          </CardTitle>
-          <CardDescription>Évolutions et insights stratégiques</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {trendsData.map((trend) => (
-              <TrendIndicator key={trend.category} trend={trend} />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      {trendsData.length > 0 && (
+        <Card className="border-0 shadow-premium">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Layers className="w-5 h-5 text-indigo-600" />
+              Tendances cl\u00e9s
+            </CardTitle>
+            <CardDescription>\u00c9volutions et insights strat\u00e9giques</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {trendsData.map((trend) => (
+                <TrendIndicator key={trend.category} trend={trend} />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Brand Performance Summary */}
       <Card className="border-0 shadow-premium">
         <CardHeader>
-          <CardTitle>Synthèse par marque</CardTitle>
-          <CardDescription>Comparatif des indicateurs clés</CardDescription>
+          <CardTitle>Synth\u00e8se par marque</CardTitle>
+          <CardDescription>Comparatif des indicateurs cl\u00e9s</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-600">Marque</th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-600">Volume</th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-600">CA</th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-600">Marge</th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-600">GPU</th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-600">Financ.</th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-600">NPS</th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-600">Obj.</th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-600">Trend</th>
-                </tr>
-              </thead>
-              <tbody>
-                {getBrandRanking().map((brand, index) => (
-                  <tr key={brand.id} className="border-b last:border-0 hover:bg-gray-50">
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-3">
-                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                          index === 0 ? "bg-amber-500 text-white" :
-                          index === 1 ? "bg-gray-400 text-white" :
-                          "bg-orange-500 text-white"
-                        }`}>
-                          {index + 1}
-                        </span>
-                        <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${brand.color} flex items-center justify-center`}>
-                          {brand.logo}
-                        </div>
-                        <span className="font-medium">{brand.name}</span>
-                      </div>
-                    </td>
-                    <td className="py-3 px-4 text-right font-medium">{brand.stats.totalSales}</td>
-                    <td className="py-3 px-4 text-right">{(brand.stats.totalRevenue / 1000000).toFixed(1)}M€</td>
-                    <td className="py-3 px-4 text-right text-emerald-600 font-medium">{(brand.stats.totalMargin / 1000).toFixed(0)}k€</td>
-                    <td className="py-3 px-4 text-right">{brand.stats.avgGPU}€</td>
-                    <td className="py-3 px-4 text-right">
-                      <span className={brand.stats.financingRate >= 75 ? "text-emerald-600" : "text-amber-600"}>
-                        {brand.stats.financingRate}%
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <span className={brand.stats.satisfaction >= 85 ? "text-emerald-600" : "text-amber-600"}>
-                        {brand.stats.satisfaction}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <Badge className={`${
-                        brand.stats.objectiveRate >= 100 ? "bg-emerald-100 text-emerald-700" :
-                        brand.stats.objectiveRate >= 95 ? "bg-blue-100 text-blue-700" :
-                        "bg-amber-100 text-amber-700"
-                      }`}>
-                        {brand.stats.objectiveRate}%
-                      </Badge>
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <div className={`inline-flex items-center gap-1 ${
-                        brand.trend === "up" ? "text-emerald-600" :
-                        brand.trend === "down" ? "text-red-600" :
-                        "text-gray-500"
-                      }`}>
-                        {brand.trend === "up" ? <TrendingUp className="w-4 h-4" /> :
-                         brand.trend === "down" ? <TrendingDown className="w-4 h-4" /> :
-                         <Minus className="w-4 h-4" />}
-                        {brand.quarterlyGrowth > 0 ? "+" : ""}{brand.quarterlyGrowth}%
-                      </div>
-                    </td>
+          {brands.length === 0 ? (
+            <div className="flex items-center justify-center h-32 text-gray-400 text-sm">
+              Aucune marque disponible
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-600">Marque</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-600">Volume</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-600">CA</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-600">Marge</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-600">GPU</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-600">Financ.</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-600">NPS</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-600">Obj.</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-600">Trend</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {getBrandRanking().map((brand, index) => (
+                    <tr key={brand.id} className="border-b last:border-0 hover:bg-gray-50">
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-3">
+                          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                            index === 0 ? "bg-amber-500 text-white" :
+                            index === 1 ? "bg-gray-400 text-white" :
+                            "bg-orange-500 text-white"
+                          }`}>
+                            {index + 1}
+                          </span>
+                          <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${brand.color} flex items-center justify-center`}>
+                            {brand.logo}
+                          </div>
+                          <span className="font-medium">{brand.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-right font-medium">{brand.stats.totalSales}</td>
+                      <td className="py-3 px-4 text-right">{(brand.stats.totalRevenue / 1000000).toFixed(1)}M\u20ac</td>
+                      <td className="py-3 px-4 text-right text-emerald-600 font-medium">{(brand.stats.totalMargin / 1000).toFixed(0)}k\u20ac</td>
+                      <td className="py-3 px-4 text-right">{brand.stats.avgGPU}\u20ac</td>
+                      <td className="py-3 px-4 text-right">
+                        <span className={brand.stats.financingRate >= 75 ? "text-emerald-600" : "text-amber-600"}>
+                          {brand.stats.financingRate}%
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <span className={brand.stats.satisfaction >= 85 ? "text-emerald-600" : "text-amber-600"}>
+                          {brand.stats.satisfaction}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <Badge className={`${
+                          brand.stats.objectiveRate >= 100 ? "bg-emerald-100 text-emerald-700" :
+                          brand.stats.objectiveRate >= 95 ? "bg-blue-100 text-blue-700" :
+                          "bg-amber-100 text-amber-700"
+                        }`}>
+                          {brand.stats.objectiveRate}%
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <div className={`inline-flex items-center gap-1 ${
+                          brand.trend === "up" ? "text-emerald-600" :
+                          brand.trend === "down" ? "text-red-600" :
+                          "text-gray-500"
+                        }`}>
+                          {brand.trend === "up" ? <TrendingUp className="w-4 h-4" /> :
+                           brand.trend === "down" ? <TrendingDown className="w-4 h-4" /> :
+                           <Minus className="w-4 h-4" />}
+                          {brand.quarterlyGrowth > 0 ? "+" : ""}{brand.quarterlyGrowth}%
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -18,7 +18,8 @@ import {
   RefreshCw,
   ArrowRight,
   Calendar,
-  MapPin
+  MapPin,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -33,380 +34,10 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select"
-// ============================================
-// TYPES
-// ============================================
-
-interface DealershipData {
-  id: string
-  name: string
-  code: string
-  location: string
-  address: string
-  directorId: string
-  directorName: string
-  directorAvatar?: string
-  coordinates: { lat: number; lng: number }
-  stats: {
-    totalSales: number
-    salesTarget: number
-    objectiveRate: number
-    totalMargin: number
-    avgGPU: number
-    financingRate: number
-    satisfaction: number
-    stockDays: number
-  }
-  departments: {
-    vn: { sales: number; target: number; margin: number }
-    vo: { sales: number; target: number; margin: number }
-    vu: { sales: number; target: number; margin: number }
-  }
-  trend: "up" | "down" | "stable"
-  alerts: Array<{
-    type: "warning" | "critical" | "info"
-    message: string
-  }>
-}
-
-interface StockTransfer {
-  id: string
-  vehicleModel: string
-  vehicleVin: string
-  fromDealership: string
-  fromDealershipName: string
-  toDealership: string
-  toDealershipName: string
-  requestedBy: string
-  requestedAt: string
-  status: "pending" | "approved" | "in_transit" | "completed" | "rejected"
-  reason: string
-}
-
-interface BrandKPIs {
-  volume: {
-    current: number
-    target: number
-    objectiveRate: number
-    trend: number
-  }
-  margin: {
-    total: number
-    target: number
-    avgGPU: number
-    trend: number
-  }
-  financing: {
-    rate: number
-    target: number
-    trend: number
-  }
-  satisfaction: {
-    nps: number
-    target: number
-    trend: number
-  }
-  stock: {
-    avgDays: number
-    target: number
-    totalUnits: number
-  }
-  constructorBonus: {
-    estimated: number
-    volumeAchieved: boolean
-    financingAchieved: boolean
-    satisfactionAchieved: boolean
-  }
-}
-
-// ============================================
-// STATIC DATA
-// TODO: replace with API data
-// ============================================
-
-const dealerships: DealershipData[] = [
-  {
-    id: "dealership-paris-est",
-    name: "Ford Paris Est",
-    code: "FPE-001",
-    location: "Paris Est",
-    address: "125 Avenue de la République, 75011 Paris",
-    directorId: "dir-concession-1",
-    directorName: "Marie Dubois",
-    coordinates: { lat: 48.8634, lng: 2.3815 },
-    stats: {
-      totalSales: 58,
-      salesTarget: 52,
-      objectiveRate: 112,
-      totalMargin: 87000,
-      avgGPU: 1500,
-      financingRate: 82,
-      satisfaction: 89,
-      stockDays: 35
-    },
-    departments: {
-      vn: { sales: 32, target: 28, margin: 48000 },
-      vo: { sales: 18, target: 16, margin: 27000 },
-      vu: { sales: 8, target: 8, margin: 12000 }
-    },
-    trend: "up",
-    alerts: []
-  },
-  {
-    id: "dealership-paris-ouest",
-    name: "Ford Paris Ouest",
-    code: "FPO-002",
-    location: "Paris Ouest",
-    address: "45 Boulevard Exelmans, 75016 Paris",
-    directorId: "dir-concession-2",
-    directorName: "Pierre Martin",
-    coordinates: { lat: 48.8424, lng: 2.2635 },
-    stats: {
-      totalSales: 49,
-      salesTarget: 50,
-      objectiveRate: 98,
-      totalMargin: 71050,
-      avgGPU: 1450,
-      financingRate: 75,
-      satisfaction: 86,
-      stockDays: 42
-    },
-    departments: {
-      vn: { sales: 26, target: 28, margin: 37700 },
-      vo: { sales: 16, target: 15, margin: 23200 },
-      vu: { sales: 7, target: 7, margin: 10150 }
-    },
-    trend: "stable",
-    alerts: [
-      { type: "warning", message: "Stock VN > 40 jours" }
-    ]
-  },
-  {
-    id: "dealership-versailles",
-    name: "Ford Versailles",
-    code: "FVS-003",
-    location: "Versailles",
-    address: "8 Rue des Chantiers, 78000 Versailles",
-    directorId: "dir-concession-3",
-    directorName: "Sophie Bernard",
-    coordinates: { lat: 48.8014, lng: 2.1301 },
-    stats: {
-      totalSales: 52,
-      salesTarget: 50,
-      objectiveRate: 104,
-      totalMargin: 78000,
-      avgGPU: 1500,
-      financingRate: 78,
-      satisfaction: 91,
-      stockDays: 38
-    },
-    departments: {
-      vn: { sales: 28, target: 26, margin: 42000 },
-      vo: { sales: 17, target: 17, margin: 25500 },
-      vu: { sales: 7, target: 7, margin: 10500 }
-    },
-    trend: "up",
-    alerts: []
-  },
-  {
-    id: "dealership-creteil",
-    name: "Ford Créteil",
-    code: "FCR-004",
-    location: "Créteil",
-    address: "Centre Commercial Créteil Soleil, 94000 Créteil",
-    directorId: "dir-concession-4",
-    directorName: "Lucas Petit",
-    coordinates: { lat: 48.7905, lng: 2.4595 },
-    stats: {
-      totalSales: 40,
-      salesTarget: 45,
-      objectiveRate: 89,
-      totalMargin: 56000,
-      avgGPU: 1400,
-      financingRate: 68,
-      satisfaction: 82,
-      stockDays: 52
-    },
-    departments: {
-      vn: { sales: 20, target: 24, margin: 28000 },
-      vo: { sales: 14, target: 15, margin: 19600 },
-      vu: { sales: 6, target: 6, margin: 8400 }
-    },
-    trend: "down",
-    alerts: [
-      { type: "critical", message: "Objectif VN à risque" },
-      { type: "warning", message: "Taux financement bas (68%)" },
-      { type: "warning", message: "Stock > 50 jours" }
-    ]
-  },
-  {
-    id: "dealership-saint-denis",
-    name: "Ford Saint-Denis",
-    code: "FSD-005",
-    location: "Saint-Denis",
-    address: "52 Boulevard Marcel Sembat, 93200 Saint-Denis",
-    directorId: "dir-concession-5",
-    directorName: "Emma Leroy",
-    coordinates: { lat: 48.9362, lng: 2.3574 },
-    stats: {
-      totalSales: 45,
-      salesTarget: 48,
-      objectiveRate: 94,
-      totalMargin: 63000,
-      avgGPU: 1400,
-      financingRate: 72,
-      satisfaction: 84,
-      stockDays: 44
-    },
-    departments: {
-      vn: { sales: 24, target: 26, margin: 33600 },
-      vo: { sales: 15, target: 15, margin: 21000 },
-      vu: { sales: 6, target: 7, margin: 8400 }
-    },
-    trend: "stable",
-    alerts: [
-      { type: "info", message: "Nouveau directeur depuis 3 mois" }
-    ]
-  },
-  {
-    id: "dealership-evry",
-    name: "Ford Évry",
-    code: "FEV-006",
-    location: "Évry",
-    address: "15 Avenue du Lac, 91000 Évry",
-    directorId: "dir-concession-6",
-    directorName: "Thomas Garcia",
-    coordinates: { lat: 48.6249, lng: 2.4295 },
-    stats: {
-      totalSales: 43,
-      salesTarget: 42,
-      objectiveRate: 102,
-      totalMargin: 64500,
-      avgGPU: 1500,
-      financingRate: 80,
-      satisfaction: 88,
-      stockDays: 36
-    },
-    departments: {
-      vn: { sales: 22, target: 22, margin: 33000 },
-      vo: { sales: 15, target: 14, margin: 22500 },
-      vu: { sales: 6, target: 6, margin: 9000 }
-    },
-    trend: "up",
-    alerts: []
-  }
-]
-
-// TODO: replace with API data
-const stockTransfers: StockTransfer[] = [
-  {
-    id: "st-1",
-    vehicleModel: "Ford Puma ST-Line",
-    vehicleVin: "WF0XXXGCDXLA12345",
-    fromDealership: "dealership-creteil",
-    fromDealershipName: "Ford Créteil",
-    toDealership: "dealership-paris-est",
-    toDealershipName: "Ford Paris Est",
-    requestedBy: "Marie Dubois",
-    requestedAt: "2024-02-19T14:30:00Z",
-    status: "pending",
-    reason: "Client en attente à Paris Est, stock disponible à Créteil"
-  },
-  {
-    id: "st-2",
-    vehicleModel: "Ford Mustang Mach-E",
-    vehicleVin: "3FMTK3SU1NMA98765",
-    fromDealership: "dealership-versailles",
-    fromDealershipName: "Ford Versailles",
-    toDealership: "dealership-saint-denis",
-    toDealershipName: "Ford Saint-Denis",
-    requestedBy: "Emma Leroy",
-    requestedAt: "2024-02-18T09:15:00Z",
-    status: "in_transit",
-    reason: "Demande client urgent"
-  },
-  {
-    id: "st-3",
-    vehicleModel: "Ford Kuga PHEV",
-    vehicleVin: "WF0XXXGCDXLA67890",
-    fromDealership: "dealership-paris-ouest",
-    fromDealershipName: "Ford Paris Ouest",
-    toDealership: "dealership-evry",
-    toDealershipName: "Ford Évry",
-    requestedBy: "Thomas Garcia",
-    requestedAt: "2024-02-17T11:00:00Z",
-    status: "completed",
-    reason: "Rééquilibrage stock"
-  }
-]
-
-// TODO: replace with API data
-const brandKPIs: BrandKPIs = {
-  volume: {
-    current: 287,
-    target: 300,
-    objectiveRate: 95.7,
-    trend: 8
-  },
-  margin: {
-    total: 430500,
-    target: 450000,
-    avgGPU: 1500,
-    trend: 5
-  },
-  financing: {
-    rate: 76,
-    target: 75,
-    trend: 2
-  },
-  satisfaction: {
-    nps: 86,
-    target: 85,
-    trend: 1
-  },
-  stock: {
-    avgDays: 41,
-    target: 45,
-    totalUnits: 485
-  },
-  constructorBonus: {
-    estimated: 125000,
-    volumeAchieved: false,
-    financingAchieved: true,
-    satisfactionAchieved: true
-  }
-}
-
-// ============================================
-// MOCK STOCK DATA
-// ============================================
-
-interface StockItem {
-  id: string
-  model: string
-  variant: string
-  vin: string
-  dealershipId: string
-  dealershipName: string
-  category: "VN" | "VO" | "VU"
-  daysInStock: number
-  price: number
-  status: "available" | "reserved" | "in_transit"
-  arrivalDate: string
-}
-
-const stockItems: StockItem[] = [
-  { id: "s1", model: "Ford Puma", variant: "ST-Line 1.0 EcoBoost", vin: "WF0XXX...12345", dealershipId: "dealership-paris-est", dealershipName: "Ford Paris Est", category: "VN", daysInStock: 15, price: 32500, status: "available", arrivalDate: "2024-02-05" },
-  { id: "s2", model: "Ford Kuga", variant: "PHEV Titanium", vin: "WF0XXX...23456", dealershipId: "dealership-paris-est", dealershipName: "Ford Paris Est", category: "VN", daysInStock: 45, price: 45900, status: "available", arrivalDate: "2024-01-05" },
-  { id: "s3", model: "Ford Mustang Mach-E", variant: "Extended Range AWD", vin: "3FMTK3...34567", dealershipId: "dealership-versailles", dealershipName: "Ford Versailles", category: "VN", daysInStock: 8, price: 68500, status: "reserved", arrivalDate: "2024-02-12" },
-  { id: "s4", model: "Ford Focus", variant: "Active 1.0 EcoBoost", vin: "WF0XXX...45678", dealershipId: "dealership-creteil", dealershipName: "Ford Créteil", category: "VN", daysInStock: 62, price: 29900, status: "available", arrivalDate: "2023-12-20" },
-  { id: "s5", model: "Ford Fiesta", variant: "ST-Line X", vin: "WF0XXX...56789", dealershipId: "dealership-creteil", dealershipName: "Ford Créteil", category: "VO", daysInStock: 28, price: 18500, status: "available", arrivalDate: "2024-01-23" },
-  { id: "s6", model: "Ford Transit Custom", variant: "Limited L2H1", vin: "WF0XXX...67890", dealershipId: "dealership-saint-denis", dealershipName: "Ford Saint-Denis", category: "VU", daysInStock: 35, price: 42000, status: "available", arrivalDate: "2024-01-15" },
-  { id: "s7", model: "Ford Ranger", variant: "Wildtrak 2.0 EcoBlue", vin: "WF0XXX...78901", dealershipId: "dealership-evry", dealershipName: "Ford Évry", category: "VU", daysInStock: 12, price: 52500, status: "reserved", arrivalDate: "2024-02-08" },
-  { id: "s8", model: "Ford Explorer", variant: "PHEV ST-Line", vin: "WF0XXX...89012", dealershipId: "dealership-paris-ouest", dealershipName: "Ford Paris Ouest", category: "VN", daysInStock: 55, price: 72000, status: "available", arrivalDate: "2023-12-27" },
-  { id: "s9", model: "Ford Bronco Sport", variant: "Big Bend", vin: "3FMCR9...90123", dealershipId: "dealership-versailles", dealershipName: "Ford Versailles", category: "VN", daysInStock: 22, price: 38900, status: "available", arrivalDate: "2024-01-28" },
-  { id: "s10", model: "Ford Tourneo Connect", variant: "Titanium", vin: "WF0XXX...01234", dealershipId: "dealership-paris-est", dealershipName: "Ford Paris Est", category: "VU", daysInStock: 18, price: 35500, status: "in_transit", arrivalDate: "2024-02-02" }
-]
+import { useConcessionsList } from "@/hooks/use-concessions-list"
+import { type DealershipDisplayData, mapConcessionToDealership } from "@/lib/types/display"
+import { deriveBrandKPIs, type BrandKPIs } from "@/lib/utils/kpi-helpers"
+import { stockTransfers, stockItems, type StockTransfer, type StockItem } from "@/lib/config/static-stock-data"
 
 // ============================================
 // COMPONENTS
@@ -543,6 +174,13 @@ function TransferCard({ transfer }: { transfer: StockTransfer }) {
 // ============================================
 
 export default function StocksPage() {
+  const { data: concessionsRaw, loading } = useConcessionsList()
+  const dealerships: DealershipDisplayData[] = useMemo(
+    () => (concessionsRaw || []).map(mapConcessionToDealership),
+    [concessionsRaw]
+  )
+  const brandKPIs: BrandKPIs = useMemo(() => deriveBrandKPIs(dealerships), [dealerships])
+
   const [tab, setTab] = useState<"overview" | "inventory" | "transfers">("overview")
   const [searchQuery, setSearchQuery] = useState("")
   const [filterCategory, setFilterCategory] = useState<"all" | "VN" | "VO" | "VU">("all")
@@ -570,9 +208,17 @@ export default function StocksPage() {
         stockItems.filter(s => s.dealershipId === d.id).length || 0
       )
     }))
-  }, [])
+  }, [dealerships])
 
   const pendingTransfers = stockTransfers.filter(t => t.status === "pending")
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">

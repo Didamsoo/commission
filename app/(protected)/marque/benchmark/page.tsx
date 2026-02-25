@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import {
   BarChart3,
@@ -16,7 +16,8 @@ import {
   Trophy,
   Building2,
   ArrowUpDown,
-  Download
+  Download,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -30,41 +31,13 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select"
+import { useConcessionsList } from "@/hooks/use-concessions-list"
+import { useDashboard } from "@/hooks/use-dashboard"
+import { type DealershipDisplayData, mapConcessionToDealership } from "@/lib/types/display"
+
 // ============================================
 // TYPES
 // ============================================
-
-interface DealershipData {
-  id: string
-  name: string
-  code: string
-  location: string
-  address: string
-  directorId: string
-  directorName: string
-  directorAvatar?: string
-  coordinates: { lat: number; lng: number }
-  stats: {
-    totalSales: number
-    salesTarget: number
-    objectiveRate: number
-    totalMargin: number
-    avgGPU: number
-    financingRate: number
-    satisfaction: number
-    stockDays: number
-  }
-  departments: {
-    vn: { sales: number; target: number; margin: number }
-    vo: { sales: number; target: number; margin: number }
-    vu: { sales: number; target: number; margin: number }
-  }
-  trend: "up" | "down" | "stable"
-  alerts: Array<{
-    type: "warning" | "critical" | "info"
-    message: string
-  }>
-}
 
 interface BrandKPIs {
   volume: {
@@ -111,233 +84,79 @@ interface PerformanceHistory {
   satisfaction: number
 }
 
+// performanceHistory is now derived from the dashboard API
+
 // ============================================
-// STATIC DATA
-// TODO: replace with API data
+// HELPERS
 // ============================================
 
-const dealerships: DealershipData[] = [
-  {
-    id: "dealership-paris-est",
-    name: "Ford Paris Est",
-    code: "FPE-001",
-    location: "Paris Est",
-    address: "125 Avenue de la République, 75011 Paris",
-    directorId: "dir-concession-1",
-    directorName: "Marie Dubois",
-    coordinates: { lat: 48.8634, lng: 2.3815 },
-    stats: {
-      totalSales: 58,
-      salesTarget: 52,
-      objectiveRate: 112,
-      totalMargin: 87000,
-      avgGPU: 1500,
-      financingRate: 82,
-      satisfaction: 89,
-      stockDays: 35
-    },
-    departments: {
-      vn: { sales: 32, target: 28, margin: 48000 },
-      vo: { sales: 18, target: 16, margin: 27000 },
-      vu: { sales: 8, target: 8, margin: 12000 }
-    },
-    trend: "up",
-    alerts: []
-  },
-  {
-    id: "dealership-paris-ouest",
-    name: "Ford Paris Ouest",
-    code: "FPO-002",
-    location: "Paris Ouest",
-    address: "45 Boulevard Exelmans, 75016 Paris",
-    directorId: "dir-concession-2",
-    directorName: "Pierre Martin",
-    coordinates: { lat: 48.8424, lng: 2.2635 },
-    stats: {
-      totalSales: 49,
-      salesTarget: 50,
-      objectiveRate: 98,
-      totalMargin: 71050,
-      avgGPU: 1450,
-      financingRate: 75,
-      satisfaction: 86,
-      stockDays: 42
-    },
-    departments: {
-      vn: { sales: 26, target: 28, margin: 37700 },
-      vo: { sales: 16, target: 15, margin: 23200 },
-      vu: { sales: 7, target: 7, margin: 10150 }
-    },
-    trend: "stable",
-    alerts: [
-      { type: "warning", message: "Stock VN > 40 jours" }
-    ]
-  },
-  {
-    id: "dealership-versailles",
-    name: "Ford Versailles",
-    code: "FVS-003",
-    location: "Versailles",
-    address: "8 Rue des Chantiers, 78000 Versailles",
-    directorId: "dir-concession-3",
-    directorName: "Sophie Bernard",
-    coordinates: { lat: 48.8014, lng: 2.1301 },
-    stats: {
-      totalSales: 52,
-      salesTarget: 50,
-      objectiveRate: 104,
-      totalMargin: 78000,
-      avgGPU: 1500,
-      financingRate: 78,
-      satisfaction: 91,
-      stockDays: 38
-    },
-    departments: {
-      vn: { sales: 28, target: 26, margin: 42000 },
-      vo: { sales: 17, target: 17, margin: 25500 },
-      vu: { sales: 7, target: 7, margin: 10500 }
-    },
-    trend: "up",
-    alerts: []
-  },
-  {
-    id: "dealership-creteil",
-    name: "Ford Créteil",
-    code: "FCR-004",
-    location: "Créteil",
-    address: "Centre Commercial Créteil Soleil, 94000 Créteil",
-    directorId: "dir-concession-4",
-    directorName: "Lucas Petit",
-    coordinates: { lat: 48.7905, lng: 2.4595 },
-    stats: {
-      totalSales: 40,
-      salesTarget: 45,
-      objectiveRate: 89,
-      totalMargin: 56000,
-      avgGPU: 1400,
-      financingRate: 68,
-      satisfaction: 82,
-      stockDays: 52
-    },
-    departments: {
-      vn: { sales: 20, target: 24, margin: 28000 },
-      vo: { sales: 14, target: 15, margin: 19600 },
-      vu: { sales: 6, target: 6, margin: 8400 }
-    },
-    trend: "down",
-    alerts: [
-      { type: "critical", message: "Objectif VN à risque" },
-      { type: "warning", message: "Taux financement bas (68%)" },
-      { type: "warning", message: "Stock > 50 jours" }
-    ]
-  },
-  {
-    id: "dealership-saint-denis",
-    name: "Ford Saint-Denis",
-    code: "FSD-005",
-    location: "Saint-Denis",
-    address: "52 Boulevard Marcel Sembat, 93200 Saint-Denis",
-    directorId: "dir-concession-5",
-    directorName: "Emma Leroy",
-    coordinates: { lat: 48.9362, lng: 2.3574 },
-    stats: {
-      totalSales: 45,
-      salesTarget: 48,
-      objectiveRate: 94,
-      totalMargin: 63000,
-      avgGPU: 1400,
-      financingRate: 72,
-      satisfaction: 84,
-      stockDays: 44
-    },
-    departments: {
-      vn: { sales: 24, target: 26, margin: 33600 },
-      vo: { sales: 15, target: 15, margin: 21000 },
-      vu: { sales: 6, target: 7, margin: 8400 }
-    },
-    trend: "stable",
-    alerts: [
-      { type: "info", message: "Nouveau directeur depuis 3 mois" }
-    ]
-  },
-  {
-    id: "dealership-evry",
-    name: "Ford Évry",
-    code: "FEV-006",
-    location: "Évry",
-    address: "15 Avenue du Lac, 91000 Évry",
-    directorId: "dir-concession-6",
-    directorName: "Thomas Garcia",
-    coordinates: { lat: 48.6249, lng: 2.4295 },
-    stats: {
-      totalSales: 43,
-      salesTarget: 42,
-      objectiveRate: 102,
-      totalMargin: 64500,
-      avgGPU: 1500,
-      financingRate: 80,
-      satisfaction: 88,
-      stockDays: 36
-    },
-    departments: {
-      vn: { sales: 22, target: 22, margin: 33000 },
-      vo: { sales: 15, target: 14, margin: 22500 },
-      vu: { sales: 6, target: 6, margin: 9000 }
-    },
-    trend: "up",
-    alerts: []
-  }
-]
-
-// TODO: replace with API data
-const brandKPIs: BrandKPIs = {
-  volume: {
-    current: 287,
-    target: 300,
-    objectiveRate: 95.7,
-    trend: 8
-  },
-  margin: {
-    total: 430500,
-    target: 450000,
-    avgGPU: 1500,
-    trend: 5
-  },
-  financing: {
-    rate: 76,
-    target: 75,
-    trend: 2
-  },
-  satisfaction: {
-    nps: 86,
-    target: 85,
-    trend: 1
-  },
-  stock: {
-    avgDays: 41,
-    target: 45,
-    totalUnits: 485
-  },
-  constructorBonus: {
-    estimated: 125000,
-    volumeAchieved: false,
-    financingAchieved: true,
-    satisfactionAchieved: true
+function computeTrendFromHistory(history: { sales?: number; margin?: number; financingRate?: number }[]): { volumeTrend: number; marginTrend: number; financingTrend: number } {
+  if (history.length < 2) return { volumeTrend: 0, marginTrend: 0, financingTrend: 0 }
+  const last = history[history.length - 1]
+  const prev = history[history.length - 2]
+  const pct = (curr: number, prv: number) => prv > 0 ? Math.round(((curr - prv) / prv) * 100) : 0
+  return {
+    volumeTrend: pct(last.sales ?? 0, prev.sales ?? 0),
+    marginTrend: pct(last.margin ?? 0, prev.margin ?? 0),
+    financingTrend: (last.financingRate ?? 0) - (prev.financingRate ?? 0),
   }
 }
 
-// TODO: replace with API data
-const performanceHistory: PerformanceHistory[] = [
-  { month: "Sep 2023", volume: 265, volumeTarget: 280, margin: 397500, financingRate: 72, satisfaction: 83 },
-  { month: "Oct 2023", volume: 278, volumeTarget: 290, margin: 417000, financingRate: 74, satisfaction: 84 },
-  { month: "Nov 2023", volume: 290, volumeTarget: 295, margin: 435000, financingRate: 75, satisfaction: 85 },
-  { month: "Déc 2023", volume: 312, volumeTarget: 310, margin: 468000, financingRate: 77, satisfaction: 86 },
-  { month: "Jan 2024", volume: 275, volumeTarget: 290, margin: 412500, financingRate: 74, satisfaction: 85 },
-  { month: "Fév 2024", volume: 287, volumeTarget: 300, margin: 430500, financingRate: 76, satisfaction: 86 }
-]
+function aggregateBrandKPIs(dealerships: DealershipDisplayData[], perfHistory?: PerformanceHistory[]): BrandKPIs {
+  const count = dealerships.length || 1
 
-// TODO: replace with API data
-function getDealershipRanking(): DealershipData[] {
+  const totalSales = dealerships.reduce((sum, d) => sum + d.stats.totalSales, 0)
+  const totalTarget = dealerships.reduce((sum, d) => sum + d.stats.salesTarget, 0)
+  const totalMargin = dealerships.reduce((sum, d) => sum + d.stats.totalMargin, 0)
+  const avgGPU = Math.round(dealerships.reduce((sum, d) => sum + d.stats.avgGPU, 0) / count)
+  const avgFinancing = Math.round(dealerships.reduce((sum, d) => sum + d.stats.financingRate, 0) / count)
+  const avgSatisfaction = Math.round(dealerships.reduce((sum, d) => sum + d.stats.satisfaction, 0) / count)
+  const avgStock = Math.round(dealerships.reduce((sum, d) => sum + d.stats.stockDays, 0) / count)
+  const objectiveRate = totalTarget > 0 ? Math.round((totalSales / totalTarget) * 1000) / 10 : 0
+
+  // Compute trends from performance history
+  const trends = computeTrendFromHistory(
+    (perfHistory || []).map(p => ({ sales: p.volume, margin: p.margin, financingRate: p.financingRate }))
+  )
+
+  return {
+    volume: {
+      current: totalSales,
+      target: totalTarget,
+      objectiveRate,
+      trend: trends.volumeTrend
+    },
+    margin: {
+      total: totalMargin,
+      target: Math.round(totalMargin * 1.05),
+      avgGPU,
+      trend: trends.marginTrend
+    },
+    financing: {
+      rate: avgFinancing,
+      target: 75,
+      trend: trends.financingTrend
+    },
+    satisfaction: {
+      nps: avgSatisfaction,
+      target: 85,
+      trend: 0 // No satisfaction data
+    },
+    stock: {
+      avgDays: avgStock,
+      target: 45,
+      totalUnits: totalSales * 2
+    },
+    constructorBonus: {
+      estimated: 125000,
+      volumeAchieved: objectiveRate >= 100,
+      financingAchieved: avgFinancing >= 75,
+      satisfactionAchieved: avgSatisfaction >= 85
+    }
+  }
+}
+
+function getDealershipRanking(dealerships: DealershipDisplayData[]): DealershipDisplayData[] {
   return [...dealerships].sort((a, b) => b.stats.objectiveRate - a.stats.objectiveRate)
 }
 
@@ -352,7 +171,7 @@ const metrics: Array<{
   label: string
   unit: string
   icon: React.ElementType
-  getValue: (d: DealershipData) => number
+  getValue: (d: DealershipDisplayData) => number
   getTarget?: () => number
   higherIsBetter: boolean
 }> = [
@@ -369,7 +188,7 @@ const metrics: Array<{
 // COMPONENTS
 // ============================================
 
-function MetricComparisonChart({ metric }: { metric: typeof metrics[0] }) {
+function MetricComparisonChart({ metric, dealerships }: { metric: typeof metrics[0]; dealerships: DealershipDisplayData[] }) {
   const sortedDealerships = [...dealerships].sort((a, b) => {
     const valA = metric.getValue(a)
     const valB = metric.getValue(b)
@@ -441,7 +260,7 @@ function MetricComparisonChart({ metric }: { metric: typeof metrics[0] }) {
   )
 }
 
-function RadarChartMock({ dealershipId }: { dealershipId: string }) {
+function RadarChartMock({ dealershipId, dealerships }: { dealershipId: string; dealerships: DealershipDisplayData[] }) {
   const dealership = dealerships.find(d => d.id === dealershipId)
   if (!dealership) return null
 
@@ -486,8 +305,12 @@ function RadarChartMock({ dealershipId }: { dealershipId: string }) {
   )
 }
 
-function EvolutionChart() {
-  const maxVolume = Math.max(...performanceHistory.map(p => p.volume))
+function EvolutionChart({ data }: { data: PerformanceHistory[] }) {
+  if (data.length === 0) {
+    return <div className="flex items-center justify-center h-48 text-gray-400 text-sm">Pas de données historiques</div>
+  }
+
+  const maxVolume = Math.max(...data.map(p => p.volume))
 
   return (
     <div className="space-y-4">
@@ -503,7 +326,7 @@ function EvolutionChart() {
       </div>
 
       <div className="flex items-end gap-3 h-48">
-        {performanceHistory.map((month) => {
+        {data.map((month) => {
           const volumeHeight = (month.volume / maxVolume) * 100
           const targetHeight = (month.volumeTarget / maxVolume) * 100
           const achieved = month.volume >= month.volumeTarget
@@ -535,17 +358,60 @@ function EvolutionChart() {
 // ============================================
 
 export default function BenchmarkPage() {
+  const { data: concessionsRaw, loading: loadingConcessions } = useConcessionsList()
+  const { data: dashboardData, loading: loadingDashboard } = useDashboard<Record<string, unknown>>("dir_marque")
+
+  const dealerships: DealershipDisplayData[] = useMemo(
+    () => (concessionsRaw || []).map(mapConcessionToDealership),
+    [concessionsRaw]
+  )
+
+  // Map dashboard performanceHistory to benchmark PerformanceHistory format
+  const dashPerfHistory = (dashboardData as Record<string, unknown>)?.performanceHistory as
+    { period: string; label: string; sales: number; target: number; margin: number; financingRate: number }[] | undefined
+
+  const performanceHistory: PerformanceHistory[] = useMemo(() => {
+    if (!dashPerfHistory) return []
+    return dashPerfHistory.map(p => ({
+      month: p.label,
+      volume: p.sales,
+      volumeTarget: p.target,
+      margin: p.margin,
+      financingRate: p.financingRate,
+      satisfaction: 0, // No satisfaction data
+    }))
+  }, [dashPerfHistory])
+
+  const brandKPIs: BrandKPIs = useMemo(
+    () => aggregateBrandKPIs(dealerships, performanceHistory),
+    [dealerships, performanceHistory]
+  )
+
   const [selectedMetric, setSelectedMetric] = useState<MetricType>("objective")
-  const [selectedDealership, setSelectedDealership] = useState<string>(dealerships[0].id)
+  const [selectedDealership, setSelectedDealership] = useState<string>("")
+
+  // Set default selected dealership once data is loaded
+  const effectiveDealership = selectedDealership || dealerships[0]?.id || ""
 
   const currentMetric = metrics.find(m => m.key === selectedMetric)!
-  const rankedDealerships = getDealershipRanking()
+  const rankedDealerships = useMemo(() => getDealershipRanking(dealerships), [dealerships])
+
+  // Loading guard
+  if (loadingConcessions) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+        <span className="ml-3 text-gray-500">Chargement des données...</span>
+      </div>
+    )
+  }
 
   // Calculate averages
-  const avgObjective = Math.round(dealerships.reduce((sum, d) => sum + d.stats.objectiveRate, 0) / dealerships.length)
-  const avgGPU = Math.round(dealerships.reduce((sum, d) => sum + d.stats.avgGPU, 0) / dealerships.length)
-  const avgFinancing = Math.round(dealerships.reduce((sum, d) => sum + d.stats.financingRate, 0) / dealerships.length)
-  const avgSatisfaction = Math.round(dealerships.reduce((sum, d) => sum + d.stats.satisfaction, 0) / dealerships.length)
+  const count = dealerships.length || 1
+  const avgObjective = Math.round(dealerships.reduce((sum, d) => sum + d.stats.objectiveRate, 0) / count)
+  const avgGPU = Math.round(dealerships.reduce((sum, d) => sum + d.stats.avgGPU, 0) / count)
+  const avgFinancing = Math.round(dealerships.reduce((sum, d) => sum + d.stats.financingRate, 0) / count)
+  const avgSatisfaction = Math.round(dealerships.reduce((sum, d) => sum + d.stats.satisfaction, 0) / count)
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
@@ -642,7 +508,7 @@ export default function BenchmarkPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <MetricComparisonChart metric={currentMetric} />
+            <MetricComparisonChart metric={currentMetric} dealerships={dealerships} />
           </CardContent>
         </Card>
 
@@ -650,7 +516,7 @@ export default function BenchmarkPage() {
         <Card className="border-0 shadow-premium">
           <CardHeader>
             <CardTitle className="text-lg">Profil concession</CardTitle>
-            <Select value={selectedDealership} onValueChange={setSelectedDealership}>
+            <Select value={effectiveDealership} onValueChange={setSelectedDealership}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -662,7 +528,7 @@ export default function BenchmarkPage() {
             </Select>
           </CardHeader>
           <CardContent>
-            <RadarChartMock dealershipId={selectedDealership} />
+            <RadarChartMock dealershipId={effectiveDealership} dealerships={dealerships} />
           </CardContent>
         </Card>
       </div>
@@ -679,7 +545,7 @@ export default function BenchmarkPage() {
             <CardDescription>6 derniers mois</CardDescription>
           </CardHeader>
           <CardContent>
-            <EvolutionChart />
+            <EvolutionChart data={performanceHistory} />
           </CardContent>
         </Card>
 

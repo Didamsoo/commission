@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import {
   BarChart3,
@@ -54,7 +54,7 @@ import { useProfil } from "@/hooks/use-profil"
 import { useDashboard } from "@/hooks/use-dashboard"
 import { useEquipe, type EquipeMember } from "@/hooks/use-equipe"
 import { useRapports } from "@/hooks/use-rapports"
-import { exportToExcel, exportToCSV, type ExportTeamMember } from "@/lib/excel/rapports"
+import type { ExportTeamMember } from "@/lib/excel/rapports"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 
 // ============================================
@@ -62,6 +62,27 @@ import { DateRangePicker } from "@/components/ui/date-range-picker"
 // ============================================
 
 type Period = "week" | "month" | "quarter" | "year"
+
+interface PerformanceHistoryEntry {
+  period: string
+  label: string
+  sales: number
+  target: number
+  margin: number
+  financingRate: number
+}
+
+interface ChefVentesDashboardData {
+  equipes: { id: string; name: string; type: string; objective?: number }[]
+  kpis: {
+    teamSales: number
+    teamMargin: number
+    teamRevenue: number
+    teamFinancingRate: number
+    pendingApprovals: number
+  }
+  performanceHistory: PerformanceHistoryEntry[]
+}
 
 // ============================================
 // COMPONENTS
@@ -249,53 +270,60 @@ export default function RapportsPage() {
   } : undefined
 
   const { data: profil } = useProfil()
-  const { data: dashboardRaw, loading: dashLoading } = useDashboard<Record<string, unknown>>("chef_ventes", undefined, dateRangeParams)
+  const { data: dashboard, loading: dashLoading } = useDashboard<ChefVentesDashboardData>("chef_ventes", undefined, dateRangeParams)
   const { data: equipeData, loading: equipeLoading } = useEquipe()
 
-  const teamMembers = (equipeData || []).map((m, i) => ({
+  const teamMembers = (equipeData || []).map((m) => ({
     id: m.user_id || m.id,
     name: m.full_name,
     kpis: { sales: m.total_sales || 0, salesTarget: m.sales_target || 10, margin: m.total_margin || 0, gpu: m.total_sales ? Math.round((m.total_margin || 0) / m.total_sales) : 0, financingRate: m.financing_rate || 0 },
     trend: (m.trend || "stable") as "up" | "down" | "stable",
   }))
 
-  const kpis = ((dashboardRaw as any)?.kpis || {}) as Record<string, number>
+  const kpis = dashboard?.kpis
   const chefVentesKPIs = {
-    teamSales: kpis.total_sales ?? teamMembers.reduce((s, m) => s + m.kpis.sales, 0),
-    teamSalesTarget: kpis.total_sales_target ?? teamMembers.reduce((s, m) => s + m.kpis.salesTarget, 0),
-    teamMargin: kpis.total_margin ?? teamMembers.reduce((s, m) => s + m.kpis.margin, 0),
+    teamSales: kpis?.teamSales ?? teamMembers.reduce((s, m) => s + m.kpis.sales, 0),
+    teamSalesTarget: teamMembers.reduce((s, m) => s + m.kpis.salesTarget, 0),
+    teamMargin: kpis?.teamMargin ?? teamMembers.reduce((s, m) => s + m.kpis.margin, 0),
     teamGPU: 0,
-    teamFinancingRate: kpis.financing_rate ?? 0,
+    teamFinancingRate: kpis?.teamFinancingRate ?? 0,
     objectiveRate: 0,
     membersAtObjective: teamMembers.filter(m => m.kpis.sales >= m.kpis.salesTarget).length,
     teamSize: teamMembers.length,
-    constructorBonusEstimate: kpis.constructor_bonus_estimate ?? 0,
+    constructorBonusEstimate: 0,
   }
   chefVentesKPIs.teamGPU = chefVentesKPIs.teamSales > 0 ? Math.round(chefVentesKPIs.teamMargin / chefVentesKPIs.teamSales) : 0
   chefVentesKPIs.objectiveRate = chefVentesKPIs.teamSalesTarget > 0 ? Math.round((chefVentesKPIs.teamSales / chefVentesKPIs.teamSalesTarget) * 100) : 0
 
-  // TODO: replace with API data
-  const performanceHistory = [
-    { period: "2024-02", label: "Fév", sales: 45, target: 60, margin: 67500, financingRate: 78 },
-    { period: "2024-01", label: "Jan", sales: 52, target: 55, margin: 78000, financingRate: 76 },
-    { period: "2023-12", label: "Déc", sales: 68, target: 65, margin: 102000, financingRate: 82 },
-    { period: "2023-11", label: "Nov", sales: 48, target: 55, margin: 72000, financingRate: 74 },
-    { period: "2023-10", label: "Oct", sales: 55, target: 55, margin: 82500, financingRate: 77 },
-    { period: "2023-09", label: "Sep", sales: 50, target: 55, margin: 75000, financingRate: 75 },
-  ]
-  // TODO: replace with API data
-  const otherTeams = [
-    { type: "VO", name: "Équipe VO", rate: 80, isCurrentTeam: false },
-    { type: "VU", name: "Équipe VU", rate: 67, isCurrentTeam: false },
-  ]
+  // Performance history from API (last 6 months, built server-side)
+  const performanceHistory: PerformanceHistoryEntry[] = dashboard?.performanceHistory ?? []
 
-  // Calculate previous period values (mock)
-  const previousPeriodData = {
-    sales: 52,
-    margin: 78000,
-    financingRate: 76,
-    gpu: 1500
-  }
+  // Derive other teams from the equipes returned by the dashboard API
+  const otherTeams = useMemo(() => {
+    if (!dashboard?.equipes) return []
+    return dashboard.equipes.map((eq) => ({
+      type: eq.type,
+      name: eq.name,
+      rate: eq.objective && eq.objective > 0
+        ? Math.round((chefVentesKPIs.teamSales / eq.objective) * 100)
+        : 0,
+      isCurrentTeam: false,
+    }))
+  }, [dashboard?.equipes, chefVentesKPIs.teamSales])
+
+  // Derive previous period values from the second-to-last entry in performance history
+  const previousPeriodData = useMemo(() => {
+    if (performanceHistory.length < 2) {
+      return { sales: 0, margin: 0, financingRate: 0, gpu: 0 }
+    }
+    const prev = performanceHistory[performanceHistory.length - 2]
+    return {
+      sales: prev.sales,
+      margin: prev.margin,
+      financingRate: prev.financingRate,
+      gpu: prev.sales > 0 ? Math.round(prev.margin / prev.sales) : 0,
+    }
+  }, [performanceHistory])
 
   const buildExportMembers = (): ExportTeamMember[] => {
     return [...teamMembers]
@@ -312,7 +340,8 @@ export default function RapportsPage() {
       }))
   }
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
+    const { exportToExcel } = await import("@/lib/excel/rapports")
     exportToExcel({
       title: "Rapport d'equipe",
       period,
@@ -327,11 +356,12 @@ export default function RapportsPage() {
     })
   }
 
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
+    const { exportToCSV } = await import("@/lib/excel/rapports")
     exportToCSV(buildExportMembers(), period)
   }
 
-  if ((dashLoading || equipeLoading) && !equipeData && !dashboardRaw) {
+  if ((dashLoading || equipeLoading) && !equipeData && !dashboard) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />

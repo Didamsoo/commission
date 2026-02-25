@@ -18,7 +18,8 @@ import {
   Users,
   Zap,
   Gift,
-  Award
+  Award,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -36,16 +37,7 @@ import {
   SelectValue
 } from "@/components/ui/select"
 import { createDefi } from "@/hooks/use-defis"
-
-// TODO: replace with API data
-const dealerships = [
-  { id: "dealership-paris-est", name: "Ford Paris Est", location: "Paris Est", directorName: "Marie Dubois", stats: { objectiveRate: 112 } },
-  { id: "dealership-paris-ouest", name: "Ford Paris Ouest", location: "Paris Ouest", directorName: "Pierre Martin", stats: { objectiveRate: 98 } },
-  { id: "dealership-versailles", name: "Ford Versailles", location: "Versailles", directorName: "Sophie Bernard", stats: { objectiveRate: 104 } },
-  { id: "dealership-creteil", name: "Ford Créteil", location: "Créteil", directorName: "Lucas Petit", stats: { objectiveRate: 89 } },
-  { id: "dealership-saint-denis", name: "Ford Saint-Denis", location: "Saint-Denis", directorName: "Emma Leroy", stats: { objectiveRate: 94 } },
-  { id: "dealership-evry", name: "Ford Évry", location: "Évry", directorName: "Thomas Garcia", stats: { objectiveRate: 102 } },
-]
+import { useConcessionsList } from "@/hooks/use-concessions-list"
 
 // ============================================
 // TYPES
@@ -155,6 +147,15 @@ function NewBrandChallengePageContent() {
   const searchParams = useSearchParams()
   const preselectedDealershipId = searchParams.get("target") || undefined
 
+  const { data: concessionsData, loading: concessionsLoading } = useConcessionsList()
+  const dealerships = ((concessionsData || []) as any[]).map(c => ({
+    id: c.id || "",
+    name: c.name || "",
+    location: c.city || "",
+    directorName: c.director_name || "",
+    stats: { objectiveRate: 0 }
+  }))
+
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<ChallengeFormData>(() => {
     if (preselectedDealershipId) {
@@ -222,8 +223,8 @@ function NewBrandChallengePageContent() {
         all_participants: formData.participantSelection === "all"
       })
       router.push("/marque")
-    } catch (err) {
-      console.error("Failed to create challenge:", err)
+    } catch {
+      // Challenge creation failed
     }
   }
 
@@ -422,7 +423,14 @@ function NewBrandChallengePageContent() {
                     </button>
                   </div>
 
-                  {formData.participantSelection === "manual" && (
+                  {formData.participantSelection === "manual" && concessionsLoading && (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
+                      <span className="ml-2 text-sm text-gray-500">Chargement des concessions...</span>
+                    </div>
+                  )}
+
+                  {formData.participantSelection === "manual" && !concessionsLoading && (
                     <div className="space-y-2 max-h-64 overflow-y-auto p-1">
                       {dealerships.map((dealership) => (
                         <div

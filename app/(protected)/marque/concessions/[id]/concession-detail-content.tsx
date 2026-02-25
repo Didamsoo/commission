@@ -26,7 +26,8 @@ import {
   Package,
   Wrench,
   BarChart3,
-  Calendar
+  Calendar,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -34,56 +35,24 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useConcessionDetail } from "@/hooks/use-concessions-list"
+import { useDefis } from "@/hooks/use-defis"
+import { type DealershipDisplayData, mapConcessionToDealership } from "@/lib/types/display"
+
 // ============================================
 // TYPES
 // ============================================
-
-interface DealershipData {
-  id: string
-  name: string
-  code: string
-  location: string
-  address: string
-  directorId: string
-  directorName: string
-  directorAvatar?: string
-  coordinates: { lat: number; lng: number }
-  stats: {
-    totalSales: number
-    salesTarget: number
-    objectiveRate: number
-    totalMargin: number
-    avgGPU: number
-    financingRate: number
-    satisfaction: number
-    stockDays: number
-  }
-  departments: {
-    vn: { sales: number; target: number; margin: number }
-    vo: { sales: number; target: number; margin: number }
-    vu: { sales: number; target: number; margin: number }
-  }
-  trend: "up" | "down" | "stable"
-  alerts: Array<{
-    type: "warning" | "critical" | "info"
-    message: string
-  }>
-}
 
 interface BrandChallenge {
   id: string
   title: string
   description: string
-  type: "volume" | "margin" | "financing" | "satisfaction" | "electric"
+  type: string
   targetValue: number
   targetUnit: string
   startDate: string
   endDate: string
-  reward: {
-    type: "bonus" | "recognition" | "trophy"
-    value: string
-    description: string
-  }
+  reward: { type: string; value: string; description: string }
   participants: Array<{
     dealershipId: string
     dealershipName: string
@@ -92,272 +61,6 @@ interface BrandChallenge {
     isCompleted: boolean
   }>
   status: "active" | "completed" | "upcoming"
-}
-
-// ============================================
-// STATIC DATA
-// ============================================
-
-// TODO: replace with API data
-const dealerships: DealershipData[] = [
-  {
-    id: "dealership-paris-est",
-    name: "Ford Paris Est",
-    code: "FPE-001",
-    location: "Paris Est",
-    address: "125 Avenue de la République, 75011 Paris",
-    directorId: "dir-concession-1",
-    directorName: "Marie Dubois",
-    coordinates: { lat: 48.8634, lng: 2.3815 },
-    stats: {
-      totalSales: 58,
-      salesTarget: 52,
-      objectiveRate: 112,
-      totalMargin: 87000,
-      avgGPU: 1500,
-      financingRate: 82,
-      satisfaction: 89,
-      stockDays: 35
-    },
-    departments: {
-      vn: { sales: 32, target: 28, margin: 48000 },
-      vo: { sales: 18, target: 16, margin: 27000 },
-      vu: { sales: 8, target: 8, margin: 12000 }
-    },
-    trend: "up",
-    alerts: []
-  },
-  {
-    id: "dealership-paris-ouest",
-    name: "Ford Paris Ouest",
-    code: "FPO-002",
-    location: "Paris Ouest",
-    address: "45 Boulevard Exelmans, 75016 Paris",
-    directorId: "dir-concession-2",
-    directorName: "Pierre Martin",
-    coordinates: { lat: 48.8424, lng: 2.2635 },
-    stats: {
-      totalSales: 49,
-      salesTarget: 50,
-      objectiveRate: 98,
-      totalMargin: 71050,
-      avgGPU: 1450,
-      financingRate: 75,
-      satisfaction: 86,
-      stockDays: 42
-    },
-    departments: {
-      vn: { sales: 26, target: 28, margin: 37700 },
-      vo: { sales: 16, target: 15, margin: 23200 },
-      vu: { sales: 7, target: 7, margin: 10150 }
-    },
-    trend: "stable",
-    alerts: [
-      { type: "warning", message: "Stock VN > 40 jours" }
-    ]
-  },
-  {
-    id: "dealership-versailles",
-    name: "Ford Versailles",
-    code: "FVS-003",
-    location: "Versailles",
-    address: "8 Rue des Chantiers, 78000 Versailles",
-    directorId: "dir-concession-3",
-    directorName: "Sophie Bernard",
-    coordinates: { lat: 48.8014, lng: 2.1301 },
-    stats: {
-      totalSales: 52,
-      salesTarget: 50,
-      objectiveRate: 104,
-      totalMargin: 78000,
-      avgGPU: 1500,
-      financingRate: 78,
-      satisfaction: 91,
-      stockDays: 38
-    },
-    departments: {
-      vn: { sales: 28, target: 26, margin: 42000 },
-      vo: { sales: 17, target: 17, margin: 25500 },
-      vu: { sales: 7, target: 7, margin: 10500 }
-    },
-    trend: "up",
-    alerts: []
-  },
-  {
-    id: "dealership-creteil",
-    name: "Ford Créteil",
-    code: "FCR-004",
-    location: "Créteil",
-    address: "Centre Commercial Créteil Soleil, 94000 Créteil",
-    directorId: "dir-concession-4",
-    directorName: "Lucas Petit",
-    coordinates: { lat: 48.7905, lng: 2.4595 },
-    stats: {
-      totalSales: 40,
-      salesTarget: 45,
-      objectiveRate: 89,
-      totalMargin: 56000,
-      avgGPU: 1400,
-      financingRate: 68,
-      satisfaction: 82,
-      stockDays: 52
-    },
-    departments: {
-      vn: { sales: 20, target: 24, margin: 28000 },
-      vo: { sales: 14, target: 15, margin: 19600 },
-      vu: { sales: 6, target: 6, margin: 8400 }
-    },
-    trend: "down",
-    alerts: [
-      { type: "critical", message: "Objectif VN à risque" },
-      { type: "warning", message: "Taux financement bas (68%)" },
-      { type: "warning", message: "Stock > 50 jours" }
-    ]
-  },
-  {
-    id: "dealership-saint-denis",
-    name: "Ford Saint-Denis",
-    code: "FSD-005",
-    location: "Saint-Denis",
-    address: "52 Boulevard Marcel Sembat, 93200 Saint-Denis",
-    directorId: "dir-concession-5",
-    directorName: "Emma Leroy",
-    coordinates: { lat: 48.9362, lng: 2.3574 },
-    stats: {
-      totalSales: 45,
-      salesTarget: 48,
-      objectiveRate: 94,
-      totalMargin: 63000,
-      avgGPU: 1400,
-      financingRate: 72,
-      satisfaction: 84,
-      stockDays: 44
-    },
-    departments: {
-      vn: { sales: 24, target: 26, margin: 33600 },
-      vo: { sales: 15, target: 15, margin: 21000 },
-      vu: { sales: 6, target: 7, margin: 8400 }
-    },
-    trend: "stable",
-    alerts: [
-      { type: "info", message: "Nouveau directeur depuis 3 mois" }
-    ]
-  },
-  {
-    id: "dealership-evry",
-    name: "Ford Évry",
-    code: "FEV-006",
-    location: "Évry",
-    address: "15 Avenue du Lac, 91000 Évry",
-    directorId: "dir-concession-6",
-    directorName: "Thomas Garcia",
-    coordinates: { lat: 48.6249, lng: 2.4295 },
-    stats: {
-      totalSales: 43,
-      salesTarget: 42,
-      objectiveRate: 102,
-      totalMargin: 64500,
-      avgGPU: 1500,
-      financingRate: 80,
-      satisfaction: 88,
-      stockDays: 36
-    },
-    departments: {
-      vn: { sales: 22, target: 22, margin: 33000 },
-      vo: { sales: 15, target: 14, margin: 22500 },
-      vu: { sales: 6, target: 6, margin: 9000 }
-    },
-    trend: "up",
-    alerts: []
-  }
-]
-
-// TODO: replace with API data
-const brandChallenges: BrandChallenge[] = [
-  {
-    id: "bc-1",
-    title: "Course au 100%",
-    description: "Première concession à atteindre 100% de l'objectif mensuel",
-    type: "volume",
-    targetValue: 100,
-    targetUnit: "%",
-    startDate: "2024-02-01",
-    endDate: "2024-02-29",
-    reward: {
-      type: "bonus",
-      value: "5000€",
-      description: "Bonus équipe direction"
-    },
-    participants: [
-      { dealershipId: "dealership-paris-est", dealershipName: "Ford Paris Est", currentValue: 112, progressRate: 112, isCompleted: true },
-      { dealershipId: "dealership-versailles", dealershipName: "Ford Versailles", currentValue: 104, progressRate: 104, isCompleted: true },
-      { dealershipId: "dealership-evry", dealershipName: "Ford Évry", currentValue: 102, progressRate: 102, isCompleted: true },
-      { dealershipId: "dealership-paris-ouest", dealershipName: "Ford Paris Ouest", currentValue: 98, progressRate: 98, isCompleted: false },
-      { dealershipId: "dealership-saint-denis", dealershipName: "Ford Saint-Denis", currentValue: 94, progressRate: 94, isCompleted: false },
-      { dealershipId: "dealership-creteil", dealershipName: "Ford Créteil", currentValue: 89, progressRate: 89, isCompleted: false }
-    ],
-    status: "active"
-  },
-  {
-    id: "bc-2",
-    title: "Électrique First",
-    description: "Atteindre 20% de ventes de véhicules électriques",
-    type: "electric",
-    targetValue: 20,
-    targetUnit: "%",
-    startDate: "2024-01-01",
-    endDate: "2024-03-31",
-    reward: {
-      type: "trophy",
-      value: "Trophée Green",
-      description: "Concession la plus verte du trimestre"
-    },
-    participants: [
-      { dealershipId: "dealership-paris-est", dealershipName: "Ford Paris Est", currentValue: 22, progressRate: 110, isCompleted: true },
-      { dealershipId: "dealership-paris-ouest", dealershipName: "Ford Paris Ouest", currentValue: 19, progressRate: 95, isCompleted: false },
-      { dealershipId: "dealership-versailles", dealershipName: "Ford Versailles", currentValue: 18, progressRate: 90, isCompleted: false },
-      { dealershipId: "dealership-evry", dealershipName: "Ford Évry", currentValue: 17, progressRate: 85, isCompleted: false },
-      { dealershipId: "dealership-saint-denis", dealershipName: "Ford Saint-Denis", currentValue: 15, progressRate: 75, isCompleted: false },
-      { dealershipId: "dealership-creteil", dealershipName: "Ford Créteil", currentValue: 12, progressRate: 60, isCompleted: false }
-    ],
-    status: "active"
-  },
-  {
-    id: "bc-3",
-    title: "Excellence Client",
-    description: "Maintenir un NPS supérieur à 90",
-    type: "satisfaction",
-    targetValue: 90,
-    targetUnit: "NPS",
-    startDate: "2024-02-01",
-    endDate: "2024-02-29",
-    reward: {
-      type: "recognition",
-      value: "Star Service",
-      description: "Badge Excellence Satisfaction"
-    },
-    participants: [
-      { dealershipId: "dealership-versailles", dealershipName: "Ford Versailles", currentValue: 91, progressRate: 101, isCompleted: true },
-      { dealershipId: "dealership-paris-est", dealershipName: "Ford Paris Est", currentValue: 89, progressRate: 99, isCompleted: false },
-      { dealershipId: "dealership-evry", dealershipName: "Ford Évry", currentValue: 88, progressRate: 98, isCompleted: false },
-      { dealershipId: "dealership-paris-ouest", dealershipName: "Ford Paris Ouest", currentValue: 86, progressRate: 96, isCompleted: false },
-      { dealershipId: "dealership-saint-denis", dealershipName: "Ford Saint-Denis", currentValue: 84, progressRate: 93, isCompleted: false },
-      { dealershipId: "dealership-creteil", dealershipName: "Ford Créteil", currentValue: 82, progressRate: 91, isCompleted: false }
-    ],
-    status: "active"
-  }
-]
-
-// ============================================
-// HELPERS
-// ============================================
-
-function getDealershipById(id: string): DealershipData | undefined {
-  return dealerships.find(d => d.id === id)
-}
-
-function getDealershipRanking(): DealershipData[] {
-  return [...dealerships].sort((a, b) => b.stats.objectiveRate - a.stats.objectiveRate)
 }
 
 // ============================================
@@ -484,15 +187,54 @@ function DepartmentCard({
 // ============================================
 
 export function ConcessionDetailContent({ id }: { id: string }) {
-  const dealership = getDealershipById(id)
+  const { data: concessionRaw, loading } = useConcessionDetail(id)
+  const { data: defisData } = useDefis("active")
+
+  const dealership: DealershipDisplayData | null = concessionRaw
+    ? mapConcessionToDealership(concessionRaw)
+    : null
+
+  const [tab, setTab] = useState<"overview" | "departments" | "challenges">("overview")
+
+  // Build challenges from defis API (same mapping as marque page)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const brandChallenges: BrandChallenge[] = ((defisData || []) as any[]).map(d => ({
+    id: d.id || "",
+    title: d.title || "",
+    description: d.description || "",
+    type: d.type || "volume",
+    targetValue: d.target || 0,
+    targetUnit: d.target_unit || "%",
+    startDate: d.start_date || "",
+    endDate: d.end_date || "",
+    reward: {
+      type: d.reward_type || "bonus",
+      value: d.reward_value != null ? `${d.reward_value}€` : "",
+      description: d.reward_description || ""
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    participants: (d.participants || []).map((p: any) => ({
+      dealershipId: p.dealership_id || p.id || "",
+      dealershipName: p.dealership_name || p.name || "",
+      currentValue: p.current_value || p.current_score || 0,
+      progressRate: p.progress_rate || 0,
+      isCompleted: p.is_completed || false
+    })),
+    status: d.status || "active"
+  }))
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+      </div>
+    )
+  }
 
   if (!dealership) {
     notFound()
   }
 
-  const [tab, setTab] = useState<"overview" | "departments" | "challenges">("overview")
-
-  const globalRank = getDealershipRanking().findIndex(d => d.id === id) + 1
   const objectiveRate = dealership.stats.objectiveRate
 
   // Get challenges where this dealership participates
@@ -520,13 +262,8 @@ export function ConcessionDetailContent({ id }: { id: string }) {
           </div>
 
           <div className="flex items-center gap-5">
-            <div className={`w-16 h-16 rounded-xl flex items-center justify-center font-bold text-xl text-white ${
-              globalRank === 1 ? "bg-amber-500" :
-              globalRank === 2 ? "bg-gray-400" :
-              globalRank === 3 ? "bg-orange-500" :
-              "bg-gray-300"
-            }`}>
-              #{globalRank}
+            <div className="w-16 h-16 rounded-xl flex items-center justify-center font-bold text-xl text-white bg-indigo-500">
+              <Building2 className="w-8 h-8" />
             </div>
 
             <div>
@@ -725,37 +462,6 @@ export function ConcessionDetailContent({ id }: { id: string }) {
         {/* OVERVIEW TAB */}
         <TabsContent value="overview" className="mt-6">
           <div className="grid md:grid-cols-2 gap-6">
-            {/* Comparison with network */}
-            <Card className="border-0 shadow-premium">
-              <CardHeader>
-                <CardTitle className="text-lg">Comparaison réseau</CardTitle>
-                <CardDescription>Position par rapport aux autres concessions</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {getDealershipRanking().map((d, index) => (
-                  <div
-                    key={d.id}
-                    className={`flex items-center gap-3 p-3 rounded-lg ${
-                      d.id === id ? "bg-indigo-50 ring-2 ring-indigo-500" : "bg-gray-50"
-                    }`}
-                  >
-                    <Badge className={`${
-                      index === 0 ? "bg-amber-500 text-white" :
-                      index === 1 ? "bg-gray-400 text-white" :
-                      index === 2 ? "bg-orange-500 text-white" :
-                      "bg-gray-200 text-gray-700"
-                    }`}>
-                      #{index + 1}
-                    </Badge>
-                    <span className={`flex-1 font-medium ${d.id === id ? "text-indigo-700" : "text-gray-700"}`}>
-                      {d.name}
-                    </span>
-                    <span className="font-semibold">{d.stats.objectiveRate}%</span>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
             {/* Information */}
             <Card className="border-0 shadow-premium">
               <CardHeader>
@@ -781,6 +487,55 @@ export function ConcessionDetailContent({ id }: { id: string }) {
                 <div className="flex justify-between items-center py-2">
                   <span className="text-gray-500">GPU moyen</span>
                   <span className="font-semibold">{dealership.stats.avgGPU}€</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Performance summary */}
+            <Card className="border-0 shadow-premium">
+              <CardHeader>
+                <CardTitle className="text-lg">Performance</CardTitle>
+                <CardDescription>Indicateurs clés de la concession</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-gray-500">Taux d&apos;objectif</span>
+                  <Badge className={`${
+                    objectiveRate >= 100 ? "bg-emerald-100 text-emerald-700" :
+                    objectiveRate >= 90 ? "bg-blue-100 text-blue-700" :
+                    "bg-amber-100 text-amber-700"
+                  }`}>
+                    {objectiveRate}%
+                  </Badge>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-gray-500">Financement</span>
+                  <span className="font-semibold">{dealership.stats.financingRate}%</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-gray-500">Satisfaction (NPS)</span>
+                  <span className="font-semibold">{dealership.stats.satisfaction}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b">
+                  <span className="text-gray-500">Stock moyen</span>
+                  <span className="font-semibold">{dealership.stats.stockDays} jours</span>
+                </div>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-gray-500">Tendance</span>
+                  <div className={`flex items-center gap-1 ${
+                    dealership.trend === "up" ? "text-emerald-600" :
+                    dealership.trend === "down" ? "text-red-600" :
+                    "text-gray-500"
+                  }`}>
+                    {dealership.trend === "up" ? <TrendingUp className="w-4 h-4" /> :
+                     dealership.trend === "down" ? <TrendingDown className="w-4 h-4" /> :
+                     <Minus className="w-4 h-4" />}
+                    <span className="font-semibold capitalize">{
+                      dealership.trend === "up" ? "Hausse" :
+                      dealership.trend === "down" ? "Baisse" :
+                      "Stable"
+                    }</span>
+                  </div>
                 </div>
               </CardContent>
             </Card>

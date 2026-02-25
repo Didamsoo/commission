@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import {
   BarChart3,
@@ -50,59 +50,113 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useDashboard } from "@/hooks/use-dashboard"
 import { useEquipe, type EquipeMember } from "@/hooks/use-equipe"
-import { exportToExcel, exportToCSV, type ExportTeamMember } from "@/lib/excel/rapports"
+import type { ExportTeamMember } from "@/lib/excel/rapports"
 
 // ============================================
 // REPORTS PAGE PREMIUM - AutoPerf Pro
 // ============================================
 
-// TODO: replace with API data
-const monthlyData = [
-  { month: "Jan", sales: 65, margin: 72000, commission: 21000 },
-  { month: "Fév", sales: 78, margin: 85600, commission: 24500 },
-  { month: "Mar", sales: 82, margin: 91000, commission: 26800 },
-  { month: "Avr", sales: 74, margin: 82000, commission: 23800 },
-  { month: "Mai", sales: 88, margin: 98000, commission: 28500 },
-  { month: "Juin", sales: 92, margin: 102000, commission: 29800 }
-]
+interface PerformanceMonth {
+  period: string
+  label: string
+  sales: number
+  target: number
+  margin: number
+  financingRate: number
+}
 
-// TODO: replace with API data
-const vehicleTypeData = [
-  { type: "VN", label: "Véhicules Neufs", sales: 42, margin: 52000, color: "bg-emerald-500" },
-  { type: "VO", label: "Occasions", sales: 28, margin: 28000, color: "bg-blue-500" },
-  { type: "VU", label: "Utilitaires", sales: 8, margin: 5600, color: "bg-purple-500" }
-]
-
-// TODO: replace with API data
-const financingData = [
-  { label: "Avec financement", value: 56, amount: 48000 },
-  { label: "Sans financement", value: 22, amount: 37600 }
-]
+interface DirConcessionDashboard {
+  kpis: {
+    totalSales: number
+    totalMargin: number
+    totalRevenue: number
+    teamCount: number
+    staffCount: number
+  }
+  performanceHistory: PerformanceMonth[]
+}
 
 export default function ReportsPage() {
   const [period, setPeriod] = useState("month")
-  const { data: dashboardRaw, loading: dashLoading } = useDashboard<Record<string, unknown>>("dir_concession")
+  const { data: dashboardRaw, loading: dashLoading } = useDashboard<DirConcessionDashboard>("dir_concession")
   const { data: equipeData, loading: equipeLoading } = useEquipe()
 
-  const topPerformers = (equipeData || [])
-    .filter((m: EquipeMember) => m.role === "commercial" || !m.role)
-    .map((m: EquipeMember) => ({
-      name: m.full_name,
-      sales: m.total_sales || 0,
-      margin: m.total_margin || 0,
-      commission: m.total_commission || 0,
-      trend: (m.trend as string) || "same"
+  // --- Derive team performers from equipe data ---
+  const topPerformers = useMemo(
+    () =>
+      (equipeData || [])
+        .filter((m: EquipeMember) => m.role === "commercial" || !m.role)
+        .map((m: EquipeMember) => ({
+          name: m.full_name,
+          sales: m.total_sales || 0,
+          margin: m.total_margin || 0,
+          commission: m.total_commission || 0,
+          trend: (m.trend as string) || "same",
+        }))
+        .sort((a, b) => b.sales - a.sales)
+        .slice(0, 5),
+    [equipeData]
+  )
+
+  // --- Derive monthly data from performanceHistory ---
+  const monthlyData = useMemo(() => {
+    const history = dashboardRaw?.performanceHistory ?? []
+    // Compute a pseudo-commission per month (margin * 30% as a rough estimate)
+    return history.map((m) => ({
+      month: m.label,
+      sales: m.sales,
+      margin: m.margin,
+      commission: Math.round(m.margin * 0.3),
+      financingRate: m.financingRate,
     }))
-    .sort((a, b) => b.sales - a.sales)
-    .slice(0, 5)
+  }, [dashboardRaw])
 
-  const currentMonth = monthlyData[monthlyData.length - 1]
-  const previousMonth = monthlyData[monthlyData.length - 2]
+  // --- Current / previous month KPIs ---
+  const currentMonth = monthlyData.length > 0
+    ? monthlyData[monthlyData.length - 1]
+    : { month: "-", sales: 0, margin: 0, commission: 0, financingRate: 0 }
+  const previousMonth = monthlyData.length > 1
+    ? monthlyData[monthlyData.length - 2]
+    : null
 
-  const salesGrowth = ((currentMonth.sales - previousMonth.sales) / previousMonth.sales * 100).toFixed(1)
-  const marginGrowth = ((currentMonth.margin - previousMonth.margin) / previousMonth.margin * 100).toFixed(1)
-  const commissionGrowth = ((currentMonth.commission - previousMonth.commission) / previousMonth.commission * 100).toFixed(1)
+  const pct = (cur: number, prev: number | undefined): string => {
+    if (prev === undefined || prev === 0) return "0.0"
+    return (((cur - prev) / prev) * 100).toFixed(1)
+  }
 
+  const salesGrowth = pct(currentMonth.sales, previousMonth?.sales)
+  const marginGrowth = pct(currentMonth.margin, previousMonth?.margin)
+  const commissionGrowth = pct(currentMonth.commission, previousMonth?.commission)
+
+  // --- Financing rate from dashboard KPIs or latest month ---
+  const financingRate = currentMonth.financingRate ?? 0
+
+  // --- Vehicle type breakdown (derived from dashboard totals) ---
+  // The API does not return a per-vehicle-type breakdown today, so we show
+  // zeros when there is no data, keeping the UI ready for a future endpoint.
+  const totalSales = dashboardRaw?.kpis?.totalSales ?? 0
+  const totalMargin = dashboardRaw?.kpis?.totalMargin ?? 0
+
+  const vehicleTypeData = useMemo(() => [
+    { type: "VN", label: "Véhicules Neufs", sales: 0, margin: 0, color: "bg-emerald-500" },
+    { type: "VO", label: "Occasions", sales: 0, margin: 0, color: "bg-blue-500" },
+    { type: "VU", label: "Utilitaires", sales: 0, margin: 0, color: "bg-purple-500" },
+  ], [])
+
+  // --- Financing data (derived from KPI financing rate & totals) ---
+  const financedSales = totalSales > 0 ? Math.round((financingRate / 100) * totalSales) : 0
+  const unfinancedSales = totalSales - financedSales
+  const financedMarginEstimate = totalSales > 0
+    ? Math.round((financedSales / totalSales) * totalMargin)
+    : 0
+  const unfinancedMarginEstimate = totalMargin - financedMarginEstimate
+
+  // --- Staff averages ---
+  const staffCount = dashboardRaw?.kpis?.staffCount ?? 0
+  const avgSalesPerSeller = staffCount > 0 ? (totalSales / staffCount).toFixed(1) : "0"
+  const avgMarginPerSale = totalSales > 0 ? Math.round(totalMargin / totalSales) : 0
+
+  // --- Export helpers ---
   const buildExportMembers = (): ExportTeamMember[] => {
     return topPerformers.map((m, i) => ({
       rang: i + 1,
@@ -116,7 +170,8 @@ export default function ReportsPage() {
     }))
   }
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
+    const { exportToExcel } = await import("@/lib/excel/rapports")
     exportToExcel({
       title: "Rapport Direction Concession",
       period,
@@ -125,13 +180,14 @@ export default function ReportsPage() {
         totalSales: currentMonth.sales,
         totalMargin: currentMonth.margin,
         avgGPU: currentMonth.sales > 0 ? Math.round(currentMonth.margin / currentMonth.sales) : 0,
-        financingRate: 72,
-        objectiveRate: 78,
+        financingRate: financingRate,
+        objectiveRate: 0,
       },
     })
   }
 
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
+    const { exportToCSV } = await import("@/lib/excel/rapports")
     exportToCSV(buildExportMembers(), period)
   }
 
@@ -252,10 +308,9 @@ export default function ReportsPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Taux de financement</p>
-                <p className="text-3xl font-bold text-gray-900">72%</p>
-                <div className="flex items-center gap-1 mt-1 text-sm text-emerald-600">
-                  <TrendingUp className="w-4 h-4" />
-                  <span>+5% vs mois dernier</span>
+                <p className="text-3xl font-bold text-gray-900">{financingRate}%</p>
+                <div className="flex items-center gap-1 mt-1 text-sm text-gray-400">
+                  <span>Mois en cours</span>
                 </div>
               </div>
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center shadow-lg">
@@ -301,41 +356,51 @@ export default function ReportsPage() {
               <CardDescription>Comparaison des 6 derniers mois</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-64 flex items-end gap-4">
-                {monthlyData.map((data, index) => (
-                  <div key={data.month} className="flex-1 flex flex-col items-center gap-2">
-                    <div className="w-full flex gap-1 items-end h-48">
-                      <div 
-                        className="flex-1 bg-blue-500 rounded-t-lg transition-all duration-500 hover:bg-blue-600 relative group"
-                        style={{ height: `${(data.sales / 100) * 100}%` }}
-                      >
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                          {data.sales} ventes
+              {monthlyData.length === 0 ? (
+                <p className="text-center text-gray-400 py-12">Aucune donnée disponible</p>
+              ) : (
+                <>
+                  <div className="h-64 flex items-end gap-4">
+                    {monthlyData.map((data) => {
+                      const maxSales = Math.max(...monthlyData.map((d) => d.sales), 1)
+                      const maxMargin = Math.max(...monthlyData.map((d) => d.margin), 1)
+                      return (
+                        <div key={data.month} className="flex-1 flex flex-col items-center gap-2">
+                          <div className="w-full flex gap-1 items-end h-48">
+                            <div
+                              className="flex-1 bg-blue-500 rounded-t-lg transition-all duration-500 hover:bg-blue-600 relative group"
+                              style={{ height: `${(data.sales / maxSales) * 100}%` }}
+                            >
+                              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                {data.sales} ventes
+                              </div>
+                            </div>
+                            <div
+                              className="flex-1 bg-emerald-500 rounded-t-lg transition-all duration-500 hover:bg-emerald-600 relative group"
+                              style={{ height: `${(data.margin / maxMargin) * 100}%` }}
+                            >
+                              <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                {(data.margin / 1000).toFixed(0)}k€ marge
+                              </div>
+                            </div>
+                          </div>
+                          <span className="text-sm text-gray-500 font-medium">{data.month}</span>
                         </div>
-                      </div>
-                      <div 
-                        className="flex-1 bg-emerald-500 rounded-t-lg transition-all duration-500 hover:bg-emerald-600 relative group"
-                        style={{ height: `${(data.margin / 120000) * 100}%` }}
-                      >
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                          {(data.margin / 1000).toFixed(0)}k€ marge
-                        </div>
-                      </div>
-                    </div>
-                    <span className="text-sm text-gray-500 font-medium">{data.month}</span>
+                      )
+                    })}
                   </div>
-                ))}
-              </div>
-              <div className="flex justify-center gap-6 mt-6">
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-blue-500 rounded" />
-                  <span className="text-sm text-gray-600">Ventes</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 bg-emerald-500 rounded" />
-                  <span className="text-sm text-gray-600">Marge</span>
-                </div>
-              </div>
+                  <div className="flex justify-center gap-6 mt-6">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-blue-500 rounded" />
+                      <span className="text-sm text-gray-600">Ventes</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-emerald-500 rounded" />
+                      <span className="text-sm text-gray-600">Marge</span>
+                    </div>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 
@@ -349,8 +414,8 @@ export default function ReportsPage() {
                   </div>
                   <p className="text-sm text-gray-600">Moyenne / vendeur</p>
                 </div>
-                <p className="text-2xl font-bold text-gray-900">6.5 ventes</p>
-                <p className="text-sm text-emerald-600 mt-1">+0.8 vs mois dernier</p>
+                <p className="text-2xl font-bold text-gray-900">{avgSalesPerSeller} ventes</p>
+                <p className="text-sm text-gray-400 mt-1">{staffCount} collaborateur{staffCount > 1 ? "s" : ""}</p>
               </CardContent>
             </Card>
             <Card className="border-0 shadow-premium bg-gradient-to-br from-emerald-50 to-teal-50">
@@ -361,8 +426,8 @@ export default function ReportsPage() {
                   </div>
                   <p className="text-sm text-gray-600">Marge moyenne / vente</p>
                 </div>
-                <p className="text-2xl font-bold text-gray-900">1 097€</p>
-                <p className="text-sm text-emerald-600 mt-1">+124€ vs mois dernier</p>
+                <p className="text-2xl font-bold text-gray-900">{avgMarginPerSale.toLocaleString("fr-FR")}€</p>
+                <p className="text-sm text-gray-400 mt-1">GPU moyen</p>
               </CardContent>
             </Card>
             <Card className="border-0 shadow-premium bg-gradient-to-br from-purple-50 to-violet-50">
@@ -371,10 +436,10 @@ export default function ReportsPage() {
                   <div className="w-10 h-10 rounded-xl bg-purple-500 flex items-center justify-center">
                     <Target className="w-5 h-5 text-white" />
                   </div>
-                  <p className="text-sm text-gray-600">Objectif atteint</p>
+                  <p className="text-sm text-gray-600">Équipes</p>
                 </div>
-                <p className="text-2xl font-bold text-gray-900">78%</p>
-                <p className="text-sm text-emerald-600 mt-1">+12% vs mois dernier</p>
+                <p className="text-2xl font-bold text-gray-900">{dashboardRaw?.kpis?.teamCount ?? 0}</p>
+                <p className="text-sm text-gray-400 mt-1">équipe{(dashboardRaw?.kpis?.teamCount ?? 0) > 1 ? "s" : ""} actives</p>
               </CardContent>
             </Card>
           </div>
@@ -391,35 +456,39 @@ export default function ReportsPage() {
               <CardDescription>Performance du mois en cours</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {topPerformers.map((performer, index) => (
-                  <div key={performer.name} className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
-                      index === 0 ? "bg-amber-100 text-amber-700" :
-                      index === 1 ? "bg-gray-100 text-gray-700" :
-                      index === 2 ? "bg-orange-100 text-orange-700" :
-                      "bg-gray-50 text-gray-500"
-                    }`}>
-                      {index + 1}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900">{performer.name}</p>
-                      <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
-                        <span>{performer.sales} ventes</span>
-                        <span>{performer.margin.toLocaleString()}€ marge</span>
+              {topPerformers.length === 0 ? (
+                <p className="text-center text-gray-400 py-12">Aucun commercial trouvé</p>
+              ) : (
+                <div className="space-y-4">
+                  {topPerformers.map((performer, index) => (
+                    <div key={performer.name} className="flex items-center gap-4 p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold ${
+                        index === 0 ? "bg-amber-100 text-amber-700" :
+                        index === 1 ? "bg-gray-100 text-gray-700" :
+                        index === 2 ? "bg-orange-100 text-orange-700" :
+                        "bg-gray-50 text-gray-500"
+                      }`}>
+                        {index + 1}
                       </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900">{performer.name}</p>
+                        <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+                          <span>{performer.sales} ventes</span>
+                          <span>{performer.margin.toLocaleString()}€ marge</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-emerald-600">{performer.commission.toLocaleString()}€</p>
+                        <p className="text-xs text-gray-500">Commission</p>
+                      </div>
+                      <Badge className={performer.trend === "up" ? "bg-emerald-100 text-emerald-700" : performer.trend === "down" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"}>
+                        {performer.trend === "up" ? <ArrowUpRight className="w-3 h-3 mr-1" /> : performer.trend === "down" ? <ArrowDownRight className="w-3 h-3 mr-1" /> : null}
+                        {performer.trend === "up" ? "En hausse" : performer.trend === "down" ? "En baisse" : "Stable"}
+                      </Badge>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-emerald-600">{performer.commission.toLocaleString()}€</p>
-                      <p className="text-xs text-gray-500">Commission</p>
-                    </div>
-                    <Badge className={performer.trend === "up" ? "bg-emerald-100 text-emerald-700" : performer.trend === "down" ? "bg-red-100 text-red-700" : "bg-gray-100 text-gray-700"}>
-                      {performer.trend === "up" ? <ArrowUpRight className="w-3 h-3 mr-1" /> : performer.trend === "down" ? <ArrowDownRight className="w-3 h-3 mr-1" /> : null}
-                      {performer.trend === "up" ? "En hausse" : performer.trend === "down" ? "En baisse" : "Stable"}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -436,19 +505,22 @@ export default function ReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {vehicleTypeData.map((type) => (
-                    <div key={type.type} className="flex items-center gap-4">
-                      <div className={`w-4 h-4 rounded ${type.color}`} />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-medium text-gray-900">{type.label}</span>
-                          <span className="font-semibold text-gray-900">{type.sales} ventes</span>
+                  {vehicleTypeData.map((type) => {
+                    const maxTypeSales = Math.max(...vehicleTypeData.map((t) => t.sales), 1)
+                    return (
+                      <div key={type.type} className="flex items-center gap-4">
+                        <div className={`w-4 h-4 rounded ${type.color}`} />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="font-medium text-gray-900">{type.label}</span>
+                            <span className="font-semibold text-gray-900">{type.sales} ventes</span>
+                          </div>
+                          <Progress value={(type.sales / maxTypeSales) * 100} className="h-2" />
                         </div>
-                        <Progress value={(type.sales / 78) * 100} className="h-2" />
+                        <span className="text-sm text-gray-500 w-20 text-right">{type.margin.toLocaleString()}€</span>
                       </div>
-                      <span className="text-sm text-gray-500 w-20 text-right">{type.margin.toLocaleString()}€</span>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -462,18 +534,21 @@ export default function ReportsPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {vehicleTypeData.map((type) => (
-                    <div key={type.type} className="p-4 rounded-xl bg-gray-50">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium text-gray-900">{type.label}</span>
-                        <Badge className={type.color.replace('bg-', 'bg-opacity-20 text-').replace('500', '700')}>
-                          {((type.margin / 85600) * 100).toFixed(0)}%
-                        </Badge>
+                  {vehicleTypeData.map((type) => {
+                    const totalTypeMargin = Math.max(vehicleTypeData.reduce((s, t) => s + t.margin, 0), 1)
+                    return (
+                      <div key={type.type} className="p-4 rounded-xl bg-gray-50">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-gray-900">{type.label}</span>
+                          <Badge className={type.color.replace('bg-', 'bg-opacity-20 text-').replace('500', '700')}>
+                            {((type.margin / totalTypeMargin) * 100).toFixed(0)}%
+                          </Badge>
+                        </div>
+                        <p className="text-2xl font-bold text-gray-900">{type.margin.toLocaleString()}€</p>
+                        <p className="text-sm text-gray-500">Marge totale</p>
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">{type.margin.toLocaleString()}€</p>
-                      <p className="text-sm text-gray-500">Marge totale</p>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -508,22 +583,22 @@ export default function ReportsPage() {
                       fill="none"
                       stroke="#3b82f6"
                       strokeWidth="16"
-                      strokeDasharray={`${72 * 5.53} 553`}
+                      strokeDasharray={`${financingRate * 5.53} 553`}
                       strokeLinecap="round"
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-4xl font-bold text-gray-900">72%</span>
+                    <span className="text-4xl font-bold text-gray-900">{financingRate}%</span>
                     <span className="text-sm text-gray-500">financé</span>
                   </div>
                 </div>
                 <div className="flex gap-6 mt-6">
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-blue-600">56</p>
+                    <p className="text-2xl font-bold text-blue-600">{financedSales}</p>
                     <p className="text-sm text-gray-500">Avec financement</p>
                   </div>
                   <div className="text-center">
-                    <p className="text-2xl font-bold text-gray-400">22</p>
+                    <p className="text-2xl font-bold text-gray-400">{unfinancedSales}</p>
                     <p className="text-sm text-gray-500">Sans financement</p>
                   </div>
                 </div>
@@ -544,7 +619,7 @@ export default function ReportsPage() {
                       <span className="font-medium text-emerald-800">Avec financement</span>
                       <Badge className="bg-emerald-100 text-emerald-700">+150€/vente</Badge>
                     </div>
-                    <p className="text-3xl font-bold text-emerald-700">48 000€</p>
+                    <p className="text-3xl font-bold text-emerald-700">{financedMarginEstimate.toLocaleString("fr-FR")}€</p>
                     <p className="text-sm text-emerald-600">Bonus financement total</p>
                   </div>
                   <div className="p-5 rounded-xl bg-gray-50">
@@ -552,7 +627,7 @@ export default function ReportsPage() {
                       <span className="font-medium text-gray-700">Sans financement</span>
                       <Badge variant="secondary">Base</Badge>
                     </div>
-                    <p className="text-3xl font-bold text-gray-700">37 600€</p>
+                    <p className="text-3xl font-bold text-gray-700">{unfinancedMarginEstimate.toLocaleString("fr-FR")}€</p>
                     <p className="text-sm text-gray-500">Marge standard</p>
                   </div>
                 </div>

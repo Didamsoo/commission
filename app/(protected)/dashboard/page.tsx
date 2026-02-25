@@ -61,6 +61,7 @@ interface PerformanceHistoryItem {
 interface CommercialDashboardData {
   kpis: {
     totalSales: number
+    salesTarget: number
     totalMargin: number
     totalCommission: number
     totalRevenue: number
@@ -73,8 +74,8 @@ interface CommercialDashboardData {
   performanceHistory: PerformanceHistoryItem[]
 }
 
-// Static data for badges (no API yet)
-const mockRecentBadges = [
+// Static badge showcase — no badges_utilisateur API yet
+const recentBadges = [
   { id: "1", name: "Semaine Parfaite", icon: "flame", color: "orange", earnedAt: "2024-02-15", rarity: "rare" },
   { id: "2", name: "5 Ventes", icon: "star", color: "blue", earnedAt: "2024-02-10", rarity: "common" },
   { id: "3", name: "Finance Master", icon: "zap", color: "purple", earnedAt: "2024-02-05", rarity: "epic" }
@@ -228,7 +229,7 @@ export default function DashboardPage() {
   const { data: recentFiches } = useFichesMarge({ limit: 4 })
 
   const kpis = dashData?.kpis
-  const salesTarget = 12 // TODO: from payplan API
+  const salesTarget = kpis?.salesTarget || 0
   const totalSales = kpis?.totalSales || 0
   const salesProgress = salesTarget > 0 ? (totalSales / salesTarget) * 100 : 0
   const firstName = profil?.full_name?.split(" ")[0] || "Commercial"
@@ -310,7 +311,6 @@ export default function DashboardPage() {
       {/* ============================================
           STREAK BANNER
           ============================================ */}
-      {/* TODO: streak data from API when available */}
 
       {/* ============================================
           STATS GRID
@@ -616,9 +616,9 @@ export default function DashboardPage() {
           </div>
           <Card className="border-0 shadow-premium animate-fade-in-up opacity-0-initial" style={{ animationFillMode: "forwards", animationDelay: "1100ms" }}>
             <CardContent className="p-6">
-              {mockRecentBadges.length > 0 ? (
+              {recentBadges.length > 0 ? (
                 <div className="grid grid-cols-3 gap-4">
-                  {mockRecentBadges.map((badge) => (
+                  {recentBadges.map((badge) => (
                     <div
                       key={badge.id}
                       className="group flex flex-col items-center p-5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer"

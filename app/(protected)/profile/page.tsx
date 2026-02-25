@@ -152,18 +152,18 @@ export default function ProfilePage() {
   const kpis = dashData?.kpis
 
   // Build user object from API data
-  const mockUser = {
+  const userData = {
     id: profil?.id || "",
     fullName: profil?.full_name || "Utilisateur",
     email: profil?.email || "",
     role: profil?.role || "commercial",
     avatarUrl: profil?.avatar_url || "",
-    dealership: "Ma Concession",
+    dealership: profil?.concession_name || "Ma Concession",
     joinedAt: profil?.created_at || "",
     stats: {
       totalSales: kpis?.totalSales || 0,
       totalCommission: kpis?.totalCommission || 0,
-      totalPoints: 0, // TODO: from points API
+      totalPoints: 0,
       currentRank: 0,
       bestRank: 0,
       currentStreak: 0,
@@ -202,9 +202,9 @@ export default function ProfilePage() {
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 -mt-12 sm:-mt-16">
             <div className="relative">
               <Avatar className="w-24 h-24 sm:w-32 sm:h-32 border-4 border-white shadow-xl">
-                <AvatarImage src={mockUser.avatarUrl} />
+                <AvatarImage src={userData.avatarUrl} />
                 <AvatarFallback className="bg-blue-600 text-white text-3xl">
-                  {mockUser.fullName.split(" ").map(n => n[0]).join("")}
+                  {userData.fullName.split(" ").map(n => n[0]).join("")}
                 </AvatarFallback>
               </Avatar>
               <button
@@ -226,16 +226,16 @@ export default function ProfilePage() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                   <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                    {mockUser.fullName}
+                    {userData.fullName}
                   </h1>
                   <div className="flex items-center gap-4 mt-2 text-gray-600">
                     <span className="flex items-center gap-1">
                       <Building2 className="w-4 h-4" />
-                      {mockUser.dealership}
+                      {userData.dealership}
                     </span>
                     <span className="flex items-center gap-1">
                       <Mail className="w-4 h-4" />
-                      {mockUser.email}
+                      {userData.email}
                     </span>
                   </div>
                 </div>
@@ -251,20 +251,20 @@ export default function ProfilePage() {
           <div className="mt-6 p-4 rounded-xl bg-gradient-to-r from-gray-50 to-gray-100">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-3">
-                <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${levelColors[mockUser.level.name]} flex items-center justify-center text-white font-bold shadow-lg`}>
-                  {mockUser.level.current}
+                <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${levelColors[userData.level.name]} flex items-center justify-center text-white font-bold shadow-lg`}>
+                  {userData.level.current}
                 </div>
                 <div>
-                  <p className="font-semibold text-gray-900">Niveau {mockUser.level.current} - {mockUser.level.name}</p>
-                  <p className="text-sm text-gray-500">{mockUser.level.pointsToNext} points jusqu'au niveau suivant</p>
+                  <p className="font-semibold text-gray-900">Niveau {userData.level.current} - {userData.level.name}</p>
+                  <p className="text-sm text-gray-500">{userData.level.pointsToNext} points jusqu'au niveau suivant</p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-bold text-gray-900">{mockUser.stats.totalPoints.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-gray-900">{userData.stats.totalPoints.toLocaleString()}</p>
                 <p className="text-sm text-gray-500">Points totaux</p>
               </div>
             </div>
-            <Progress value={mockUser.level.progress} className="h-2" />
+            <Progress value={userData.level.progress} className="h-2" />
           </div>
         </CardContent>
       </Card>
@@ -277,7 +277,7 @@ export default function ProfilePage() {
               <Car className="w-6 h-6 text-blue-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{mockUser.stats.totalSales}</p>
+              <p className="text-2xl font-bold text-gray-900">{userData.stats.totalSales}</p>
               <p className="text-sm text-gray-500">Ventes totales</p>
             </div>
           </CardContent>
@@ -288,7 +288,7 @@ export default function ProfilePage() {
               <Euro className="w-6 h-6 text-emerald-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{mockUser.stats.totalCommission.toLocaleString()}€</p>
+              <p className="text-2xl font-bold text-gray-900">{userData.stats.totalCommission.toLocaleString()}€</p>
               <p className="text-sm text-gray-500">Commission totale</p>
             </div>
           </CardContent>
@@ -299,7 +299,7 @@ export default function ProfilePage() {
               <Trophy className="w-6 h-6 text-amber-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">#{mockUser.stats.bestRank}</p>
+              <p className="text-2xl font-bold text-gray-900">#{userData.stats.bestRank}</p>
               <p className="text-sm text-gray-500">Meilleur classement</p>
             </div>
           </CardContent>
@@ -310,7 +310,7 @@ export default function ProfilePage() {
               <Flame className="w-6 h-6 text-orange-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">{mockUser.stats.longestStreak}j</p>
+              <p className="text-2xl font-bold text-gray-900">{userData.stats.longestStreak}j</p>
               <p className="text-sm text-gray-500">Plus longue série</p>
             </div>
           </CardContent>
@@ -377,19 +377,19 @@ export default function ProfilePage() {
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Ventes totales</span>
-                  <span className="font-semibold">{mockUser.stats.totalSales}</span>
+                  <span className="font-semibold">{userData.stats.totalSales}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Commission totale</span>
-                  <span className="font-semibold">{mockUser.stats.totalCommission.toLocaleString()}€</span>
+                  <span className="font-semibold">{userData.stats.totalCommission.toLocaleString()}€</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Classement actuel</span>
-                  <span className="font-semibold">#{mockUser.stats.currentRank}</span>
+                  <span className="font-semibold">#{userData.stats.currentRank}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Meilleur classement</span>
-                  <span className="font-semibold">#{mockUser.stats.bestRank}</span>
+                  <span className="font-semibold">#{userData.stats.bestRank}</span>
                 </div>
               </CardContent>
             </Card>
@@ -401,19 +401,19 @@ export default function ProfilePage() {
               <CardContent className="space-y-4">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Challenges gagnés</span>
-                  <span className="font-semibold">{mockUser.stats.challengesWon}</span>
+                  <span className="font-semibold">{userData.stats.challengesWon}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Badges obtenus</span>
-                  <span className="font-semibold">{mockUser.stats.badgesEarned}</span>
+                  <span className="font-semibold">{userData.stats.badgesEarned}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Série actuelle</span>
-                  <span className="font-semibold">{mockUser.stats.currentStreak} jours</span>
+                  <span className="font-semibold">{userData.stats.currentStreak} jours</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Plus longue série</span>
-                  <span className="font-semibold">{mockUser.stats.longestStreak} jours</span>
+                  <span className="font-semibold">{userData.stats.longestStreak} jours</span>
                 </div>
               </CardContent>
             </Card>

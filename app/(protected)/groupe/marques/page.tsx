@@ -26,7 +26,8 @@ import {
   Crown,
   BadgeCheck,
   Briefcase,
-  MapPin
+  MapPin,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -42,119 +43,12 @@ import {
   SelectValue
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-// ============================================
-// INTERFACES
-// ============================================
-
-interface BrandData {
-  id: string
-  name: string
-  logo: string
-  color: string
-  directorId: string
-  directorName: string
-  dealershipCount: number
-  employeeCount: number
-  stats: {
-    totalSales: number
-    salesTarget: number
-    objectiveRate: number
-    totalRevenue: number
-    totalMargin: number
-    avgGPU: number
-    financingRate: number
-    satisfaction: number
-    marketShare: number
-  }
-  trend: "up" | "down" | "stable"
-  quarterlyGrowth: number
-}
-
-// ============================================
-// STATIC DATA
-// ============================================
-
-// TODO: replace with API data
-const brands: BrandData[] = [
-  {
-    id: "brand-ford",
-    name: "Ford",
-    logo: "\u{1F699}",
-    color: "from-blue-600 to-blue-700",
-    directorId: "dir-marque-1",
-    directorName: "Jean Legrand",
-    dealershipCount: 6,
-    employeeCount: 420,
-    stats: { totalSales: 287, salesTarget: 300, objectiveRate: 95.7, totalRevenue: 8610000, totalMargin: 430500, avgGPU: 1500, financingRate: 76, satisfaction: 86, marketShare: 4.2 },
-    trend: "up",
-    quarterlyGrowth: 8
-  },
-  {
-    id: "brand-nissan",
-    name: "Nissan",
-    logo: "\u{1F697}",
-    color: "from-red-600 to-red-700",
-    directorId: "dir-marque-2",
-    directorName: "Marie Dupont",
-    dealershipCount: 5,
-    employeeCount: 350,
-    stats: { totalSales: 312, salesTarget: 320, objectiveRate: 97.5, totalRevenue: 9360000, totalMargin: 468000, avgGPU: 1500, financingRate: 72, satisfaction: 84, marketShare: 3.8 },
-    trend: "stable",
-    quarterlyGrowth: 3
-  },
-  {
-    id: "brand-suzuki",
-    name: "Suzuki",
-    logo: "\u{1F690}",
-    color: "from-yellow-500 to-yellow-600",
-    directorId: "dir-marque-3",
-    directorName: "Thomas Petit",
-    dealershipCount: 4,
-    employeeCount: 280,
-    stats: { totalSales: 293, salesTarget: 320, objectiveRate: 91.6, totalRevenue: 8790000, totalMargin: 439500, avgGPU: 1500, financingRate: 74, satisfaction: 88, marketShare: 2.9 },
-    trend: "up",
-    quarterlyGrowth: 12
-  }
-]
-
-// TODO: replace with API data
-const groupKPIs = {
-  revenue: {
-    current: 485000000,
-    target: 500000000,
-    growth: 8
-  },
-  ebitda: {
-    current: 14550000,
-    margin: 3.0,
-    target: 15000000
-  },
-  volume: {
-    current: 892,
-    target: 940,
-    objectiveRate: 94.8
-  },
-  marketShare: {
-    current: 10.9,
-    evolution: 0.8
-  },
-  satisfaction: {
-    nps: 86,
-    target: 85
-  },
-  workforce: {
-    total: 1400,
-    turnover: 8.5
-  }
-}
+import { useMarques } from "@/hooks/use-marques"
+import { type BrandDisplayData, mapMarqueToBrand } from "@/lib/types/display"
 
 // ============================================
 // HELPERS
 // ============================================
-
-function getBrandRanking(): BrandData[] {
-  return [...brands].sort((a, b) => b.stats.objectiveRate - a.stats.objectiveRate)
-}
 
 type SortField = "rank" | "revenue" | "margin" | "volume" | "satisfaction" | "growth"
 type FilterStatus = "all" | "above" | "on_track" | "at_risk"
@@ -163,9 +57,9 @@ type FilterStatus = "all" | "above" | "on_track" | "at_risk"
 // COMPONENTS
 // ============================================
 
-function BrandCard({ brand, rank }: { brand: BrandData; rank: number }) {
+function BrandCard({ brand, rank }: { brand: BrandDisplayData; rank: number }) {
   const objectiveRate = brand.stats.objectiveRate
-  
+
   return (
     <Link href={`/groupe/marques/${brand.id}`}>
       <Card className="border-0 shadow-premium hover:shadow-premium-lg transition-all duration-300 cursor-pointer overflow-hidden group h-full">
@@ -301,7 +195,7 @@ function BrandCard({ brand, rank }: { brand: BrandData; rank: number }) {
   )
 }
 
-function BrandRow({ brand, rank }: { brand: BrandData; rank: number }) {
+function BrandRow({ brand, rank }: { brand: BrandDisplayData; rank: number }) {
   const objectiveRate = brand.stats.objectiveRate
 
   return (
@@ -407,14 +301,14 @@ function BrandRow({ brand, rank }: { brand: BrandData; rank: number }) {
   )
 }
 
-function StatCard({ 
-  title, 
-  value, 
-  subtitle, 
-  icon: Icon, 
+function StatCard({
+  title,
+  value,
+  subtitle,
+  icon: Icon,
   color = "blue",
   trend
-}: { 
+}: {
   title: string
   value: string | number
   subtitle?: string
@@ -462,10 +356,17 @@ function StatCard({
 // ============================================
 
 export default function MarquesPage() {
+  const { data: marquesRaw, loading } = useMarques()
+  const brands: BrandDisplayData[] = (marquesRaw || []).map(mapMarqueToBrand)
+
   const [searchQuery, setSearchQuery] = useState("")
   const [sortBy, setSortBy] = useState<SortField>("rank")
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all")
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+
+  function getBrandRanking(): BrandDisplayData[] {
+    return [...brands].sort((a, b) => b.stats.objectiveRate - a.stats.objectiveRate)
+  }
 
   const rankedBrands = useMemo(() => {
     let result = getBrandRanking()
@@ -505,7 +406,22 @@ export default function MarquesPage() {
     }
 
     return result
-  }, [searchQuery, sortBy, filterStatus])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brands, searchQuery, sortBy, filterStatus])
+
+  // Loading state
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+    </div>
+  )
+
+  // Empty state
+  if (!brands.length && !loading) return (
+    <div className="p-8 text-center">
+      <p className="text-gray-500">Aucune marque trouvée</p>
+    </div>
+  )
 
   const stats = {
     total: brands.length,
@@ -693,20 +609,20 @@ export default function MarquesPage() {
       {viewMode === "grid" ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {rankedBrands.map((brand, index) => (
-            <BrandCard 
-              key={brand.id} 
-              brand={brand} 
-              rank={sortBy === "rank" ? index + 1 : getBrandRanking().findIndex(b => b.id === brand.id) + 1} 
+            <BrandCard
+              key={brand.id}
+              brand={brand}
+              rank={sortBy === "rank" ? index + 1 : getBrandRanking().findIndex(b => b.id === brand.id) + 1}
             />
           ))}
         </div>
       ) : (
         <div className="space-y-4">
           {rankedBrands.map((brand, index) => (
-            <BrandRow 
-              key={brand.id} 
-              brand={brand} 
-              rank={sortBy === "rank" ? index + 1 : getBrandRanking().findIndex(b => b.id === brand.id) + 1} 
+            <BrandRow
+              key={brand.id}
+              brand={brand}
+              rank={sortBy === "rank" ? index + 1 : getBrandRanking().findIndex(b => b.id === brand.id) + 1}
             />
           ))}
         </div>

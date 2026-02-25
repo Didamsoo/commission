@@ -1,8 +1,6 @@
 // src/lib/margin-utils.ts
 
 export const VAT_RATE = 0.2
-const PAYPLAN_STORAGE_KEY = "payplanSettings"
-const MARGIN_SHEETS_STORAGE_KEY = "marginSheets"
 
 export interface VNOption {
   id: string
@@ -352,28 +350,6 @@ export function getDefaultPayplan(): Payplan {
   }
 }
 
-export function getPayplan(): Payplan {
-  if (typeof window === "undefined") {
-    return getDefaultPayplan()
-  }
-  try {
-    const storedPayplan = localStorage.getItem(PAYPLAN_STORAGE_KEY)
-    const parsedPayplan = storedPayplan ? JSON.parse(storedPayplan) : getDefaultPayplan()
-    return { ...getDefaultPayplan(), ...parsedPayplan }
-  } catch (error) {
-    console.error("Failed to load payplan from localStorage:", error)
-    return getDefaultPayplan()
-  }
-}
-
-export function savePayplan(payplan: Payplan): void {
-  if (typeof window === "undefined") return
-  try {
-    localStorage.setItem(PAYPLAN_STORAGE_KEY, JSON.stringify(payplan))
-  } catch (error) {
-    console.error("Failed to save payplan to localStorage:", error)
-  }
-}
 
 export function calculateMarginSheet(inputs: CalculateInputs, payplan: Payplan): CalculatedResults {
   const {
@@ -659,22 +635,3 @@ export function calculateMarginSheet(inputs: CalculateInputs, payplan: Payplan):
   return result
 }
 
-export function getMarginSheets(): MarginSheet[] {
-  if (typeof window === "undefined") return []
-  try {
-    const storedSheets = localStorage.getItem(MARGIN_SHEETS_STORAGE_KEY)
-    return storedSheets ? JSON.parse(storedSheets) : []
-  } catch (error) {
-    console.error("Failed to load margin sheets from localStorage:", error)
-    return []
-  }
-}
-
-export function saveMarginSheets(sheets: MarginSheet[]): void {
-  if (typeof window === "undefined") return
-  try {
-    localStorage.setItem(MARGIN_SHEETS_STORAGE_KEY, JSON.stringify(sheets))
-  } catch (error) {
-    console.error("Failed to save margin sheets to localStorage:", error)
-  }
-}

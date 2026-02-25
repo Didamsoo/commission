@@ -24,7 +24,8 @@ import {
   Percent,
   Car,
   Award,
-  Star
+  Star,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -47,97 +48,7 @@ import {
   formatChallengeTarget,
   formatChallengeDuration
 } from "@/types/direction-challenges"
-
-// ============================================
-// MOCK DATA
-// ============================================
-const mockChallenges: DirectionChallenge[] = [
-  {
-    id: "cv-1",
-    title: "Sprint Ventes Semaine 8",
-    description: "Objectif : 4 ventes minimum cette semaine pour toute l'equipe VN.",
-    type: "sales_count",
-    target: 4,
-    targetUnit: "ventes",
-    startDate: "2024-02-19",
-    endDate: "2024-02-25",
-    reward: { type: "bonus", value: 200, description: "Bonus de 200€ par commercial ayant atteint l'objectif" },
-    participantIds: [],
-    allParticipants: true,
-    status: "active",
-    createdBy: "chef_ventes",
-    createdAt: "2024-02-18",
-    participants: [
-      { id: "1", name: "Marie Martin", currentScore: 3, isCompleted: false },
-      { id: "2", name: "Pierre Durand", currentScore: 4, isCompleted: true, completedAt: "2024-02-22" },
-      { id: "3", name: "Jean Dupont", currentScore: 2, isCompleted: false }
-    ],
-    topPerformers: []
-  },
-  {
-    id: "cv-2",
-    title: "Defi Financement Fevrier",
-    description: "Maintenir un taux de financement superieur a 75% sur le mois.",
-    type: "financing_rate",
-    target: 75,
-    targetUnit: "%",
-    startDate: "2024-02-01",
-    endDate: "2024-02-29",
-    reward: { type: "badge", value: 150, description: "Badge As du Financement", badgeName: "As du Financement", badgeIcon: "star" },
-    participantIds: [],
-    allParticipants: true,
-    status: "active",
-    createdBy: "chef_ventes",
-    createdAt: "2024-01-30",
-    participants: [
-      { id: "1", name: "Marie Martin", currentScore: 82, isCompleted: true, completedAt: "2024-02-15" },
-      { id: "2", name: "Pierre Durand", currentScore: 68, isCompleted: false }
-    ],
-    topPerformers: []
-  },
-  {
-    id: "cv-3",
-    title: "Challenge Puma - Equipe VN",
-    description: "Vendre 3 Ford Puma avant fin fevrier.",
-    type: "specific_model",
-    target: 3,
-    targetUnit: "unites",
-    targetModelName: "Puma",
-    startDate: "2024-02-01",
-    endDate: "2024-02-29",
-    reward: { type: "points", value: 500, description: "500 points bonus classement" },
-    participantIds: [],
-    allParticipants: true,
-    status: "active",
-    createdBy: "chef_ventes",
-    createdAt: "2024-01-28",
-    participants: [],
-    topPerformers: []
-  },
-  {
-    id: "cv-4",
-    title: "Sprint Janvier",
-    description: "Challenge de ventes du mois de janvier - termine.",
-    type: "sales_count",
-    target: 10,
-    targetUnit: "ventes",
-    startDate: "2024-01-01",
-    endDate: "2024-01-31",
-    reward: { type: "bonus", value: 300, description: "Bonus de 300€" },
-    participantIds: [],
-    allParticipants: true,
-    status: "completed",
-    createdBy: "chef_ventes",
-    createdAt: "2023-12-28",
-    participants: [
-      { id: "1", name: "Marie Martin", currentScore: 12, isCompleted: true, completedAt: "2024-01-25" },
-      { id: "2", name: "Pierre Durand", currentScore: 10, isCompleted: true, completedAt: "2024-01-30" }
-    ],
-    topPerformers: [
-      { id: "1", name: "Marie Martin", currentScore: 12, isCompleted: true, completedAt: "2024-01-25" }
-    ]
-  }
-]
+import { useDefis } from "@/hooks/use-defis"
 
 // ============================================
 // ICONS MAPPING
@@ -172,7 +83,7 @@ function ChallengeCard({ challenge }: { challenge: DirectionChallenge }) {
   const TypeIcon = CHALLENGE_TYPE_ICONS[challenge.type]
   const StatusIcon = statusConfig.icon
 
-  const participantCount = challenge.participants.length || 6
+  const participantCount = challenge.participants.length
   const completedCount = challenge.participants.filter(p => p.isCompleted).length
   const avgProgress = challenge.status === "active"
     ? Math.round(challenge.participants.reduce((sum, p) => sum + (p.currentScore / challenge.target * 100), 0) / Math.max(participantCount, 1))
@@ -302,15 +213,61 @@ function ChallengeCard({ challenge }: { challenge: DirectionChallenge }) {
 export default function ChefVentesChallengesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState<DirectionChallengeStatus | "all">("all")
+  const { data: defisData, loading } = useDefis()
 
-  const filteredChallenges = mockChallenges.filter((challenge) => {
+  // Map API data to DirectionChallenge[] type
+  const challenges: DirectionChallenge[] = ((defisData || []) as any[]).map(d => ({
+    id: d.id || "",
+    title: d.title || "",
+    description: d.description || "",
+    type: d.type || "sales_count",
+    target: d.target || 0,
+    targetUnit: d.target_unit || "",
+    targetModelName: d.target_model_name,
+    startDate: d.start_date || "",
+    endDate: d.end_date || "",
+    reward: {
+      type: d.reward_type || "bonus",
+      value: d.reward_value || 0,
+      description: d.reward_description || "",
+      badgeName: d.badge_name,
+      badgeIcon: d.badge_icon
+    },
+    participantIds: d.participant_ids || [],
+    allParticipants: d.all_participants || false,
+    status: d.status || "active",
+    createdBy: d.created_by || "",
+    createdAt: d.created_at || "",
+    participants: (d.defis_plateforme_participants || []).map((p: any) => ({
+      id: p.user_id || p.id || "",
+      name: p.name || "",
+      currentScore: p.current_score || 0,
+      isCompleted: p.is_completed || false,
+      completedAt: p.completed_at
+    })),
+    topPerformers: d.top_performers || []
+  }))
+
+  const filteredChallenges = challenges.filter((challenge) => {
     const matchesSearch = challenge.title.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesTab = activeTab === "all" || challenge.status === activeTab
     return matchesSearch && matchesTab
   })
 
-  const activeChallenges = mockChallenges.filter(c => c.status === "active").length
-  const completedChallenges = mockChallenges.filter(c => c.status === "completed").length
+  const activeChallenges = challenges.filter(c => c.status === "active").length
+  const completedChallenges = challenges.filter(c => c.status === "completed").length
+  const totalParticipants = new Set(challenges.flatMap(c => c.participants.map(p => p.id))).size
+  const successRate = challenges.length > 0
+    ? Math.round((challenges.filter(c => c.status === "completed").length / challenges.length) * 100)
+    : 0
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+      </div>
+    )
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
@@ -366,7 +323,7 @@ export default function ChefVentesChallengesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Participants</p>
-                <p className="text-2xl font-bold text-gray-900">6</p>
+                <p className="text-2xl font-bold text-gray-900">{totalParticipants}</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center">
                 <Users className="w-6 h-6 text-white" />
@@ -379,7 +336,7 @@ export default function ChefVentesChallengesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Taux reussite</p>
-                <p className="text-2xl font-bold text-gray-900">72%</p>
+                <p className="text-2xl font-bold text-gray-900">{successRate}%</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
                 <Target className="w-6 h-6 text-white" />

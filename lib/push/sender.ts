@@ -35,11 +35,12 @@ export async function sendPushNotification(
       JSON.stringify(payload)
     )
     return { success: true }
-  } catch (error: any) {
-    if (error.statusCode === 410 || error.statusCode === 404) {
+  } catch (error: unknown) {
+    const err = error as { statusCode?: number; message?: string }
+    if (err.statusCode === 410 || err.statusCode === 404) {
       // Subscription expired or invalid
       return { success: false, expired: true }
     }
-    return { success: false, error: error.message }
+    return { success: false, error: err.message }
   }
 }

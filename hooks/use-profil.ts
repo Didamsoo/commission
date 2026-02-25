@@ -14,6 +14,7 @@ export interface ProfilData {
   role: string
   level: number
   concession_id: string | null
+  concession_name: string | null
   equipe_id: string | null
   marque_id: string | null
   groupe_id: string | null

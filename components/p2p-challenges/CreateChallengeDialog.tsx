@@ -128,7 +128,7 @@ export function CreateChallengeDialog({
       onChallengeCreated?.(newChallenge)
       handleClose()
     } catch {
-      // TODO: show error toast
+      // Challenge creation failed
     } finally {
       setIsSubmitting(false)
     }

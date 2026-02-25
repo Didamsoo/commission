@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import {
   Target,
@@ -20,7 +20,8 @@ import {
   Swords,
   Plus,
   MessageSquare,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -64,117 +65,118 @@ interface Challenge {
   completedAt?: string
 }
 
-const mockChallenges: Challenge[] = [
-  {
-    id: "1",
-    title: "Sprint de Janvier",
-    description: "Vendez 15 véhicules ce mois-ci et remportez un bonus exceptionnel",
-    type: "sales_count",
-    target: 15,
-    current: 8,
-    unit: "ventes",
-    startDate: "2024-01-01",
-    endDate: "2024-01-31",
-    reward: {
-      type: "bonus",
-      value: "500€",
-      description: "Bonus commission"
-    },
-    participants: 12,
-    topPerformers: [
-      { name: "Marie M.", avatar: "", progress: 80 },
-      { name: "Pierre D.", avatar: "", progress: 73 },
-      { name: "Jean D.", avatar: "", progress: 53 }
-    ],
-    status: "active"
-  },
-  {
-    id: "2",
-    title: "Roi du Financement",
-    description: "Atteignez un taux de financement de 80% sur vos ventes éligibles",
-    type: "financing_rate",
-    target: 80,
-    current: 75,
-    unit: "%",
-    startDate: "2024-01-01",
-    endDate: "2024-01-31",
-    reward: {
-      type: "badge",
-      value: "Roi du Financement",
-      description: "Badge exclusif + 500 points"
-    },
-    participants: 12,
-    topPerformers: [
-      { name: "Sophie B.", avatar: "", progress: 92 },
-      { name: "Jean D.", avatar: "", progress: 94 },
-      { name: "Lucas P.", avatar: "", progress: 85 }
-    ],
-    status: "active"
-  },
-  {
-    id: "3",
-    title: "Marge Maximale",
-    description: "Réalisez une marge totale de 5000€ HT sur vos ventes",
-    type: "margin_target",
-    target: 5000,
-    current: 3200,
-    unit: "€",
-    startDate: "2024-01-15",
-    endDate: "2024-02-15",
-    reward: {
-      type: "points",
-      value: "1000",
-      description: "Points bonus"
-    },
-    participants: 10,
-    topPerformers: [
-      { name: "Pierre D.", avatar: "", progress: 85 },
-      { name: "Marie M.", avatar: "", progress: 70 },
-      { name: "Hugo M.", avatar: "", progress: 64 }
-    ],
-    status: "active"
-  },
-  {
-    id: "4",
-    title: "Challenge Puma",
-    description: "Vendez 5 Ford Puma pour célébrer le nouveau modèle",
-    type: "specific_model",
-    target: 5,
-    current: 5,
-    unit: "Puma",
-    startDate: "2023-12-01",
-    endDate: "2023-12-31",
-    reward: {
-      type: "bonus",
-      value: "300€",
-      description: "Bonus + Badge 'Spécialiste Puma'"
-    },
-    participants: 12,
-    topPerformers: [],
-    status: "completed",
-    isCompleted: true,
-    completedAt: "2023-12-28"
-  },
-  {
-    id: "5",
-    title: "Course de Février",
-    description: "Premier à atteindre 10 ventes remporte le grand prix",
-    type: "sales_count",
-    target: 10,
-    current: 0,
-    unit: "ventes",
-    startDate: "2024-02-01",
-    endDate: "2024-02-29",
-    reward: {
-      type: "bonus",
-      value: "750€",
-      description: "Grand prix + Badge 'Sprinter'"
-    },
-    participants: 0,
-    topPerformers: [],
-    status: "upcoming"
+/* ------------------------------------------------------------------ */
+/* Helpers to map API defis_plateforme rows to the Challenge interface */
+/* ------------------------------------------------------------------ */
+
+interface DefiParticipant {
+  id: string
+  user_id: string
+  current_score: number
+  target_score: number
+  progress_rate: number
+  is_completed: boolean
+  ranking: number | null
+}
+
+interface DefiReward {
+  type: "bonus" | "badge" | "points" | "recognition"
+  value: number
+  description: string
+  badgeName?: string
+}
+
+interface DefiRow {
+  id: string
+  title: string
+  description: string | null
+  challenge_type: string
+  target_value: number
+  target_unit: string | null
+  target_model_name: string | null
+  start_date: string
+  end_date: string
+  reward: DefiReward
+  status: string
+  created_at: string
+  creator: { full_name: string; email: string; avatar_url: string | null } | null
+  defis_plateforme_participants: DefiParticipant[]
+}
+
+/** Map challenge_type from the DB to the ChallengeType union used in UI */
+function mapChallengeType(dbType: string): ChallengeType {
+  const mapping: Record<string, ChallengeType> = {
+    sales_count: "sales_count",
+    revenue: "revenue_target",
+    revenue_target: "revenue_target",
+    margin: "margin_target",
+    margin_target: "margin_target",
+    financing_rate: "financing_rate",
+    financing_count: "financing_rate",
+    specific_model: "specific_model",
   }
-]
+  return mapping[dbType] ?? "sales_count"
+}
+
+/** Map DB status to the ChallengeStatus union used in UI */
+function mapChallengeStatus(dbStatus: string): ChallengeStatus {
+  if (dbStatus === "completed" || dbStatus === "cancelled") return "completed"
+  if (dbStatus === "upcoming" || dbStatus === "draft") return "upcoming"
+  return "active"
+}
+
+/** Format reward value for display */
+function formatRewardValue(reward: DefiReward): string {
+  if (reward.type === "bonus") return `${reward.value}\u202F\u20AC`
+  if (reward.type === "points") return String(reward.value)
+  // badge / recognition
+  return reward.badgeName ?? reward.description ?? "Badge"
+}
+
+/** Convert a DefiRow into the Challenge shape consumed by ChallengeCard */
+function mapDefiToChallenge(defi: DefiRow, currentUserId: string): Challenge {
+  const participants = defi.defis_plateforme_participants ?? []
+  const myParticipation = participants.find((p) => p.user_id === currentUserId)
+
+  const currentScore = myParticipation ? Number(myParticipation.current_score) : 0
+  const targetScore = myParticipation ? Number(myParticipation.target_score) : Number(defi.target_value)
+
+  const status = mapChallengeStatus(defi.status)
+
+  // Build top performers sorted by progress descending (top 3)
+  const topPerformers = [...participants]
+    .sort((a, b) => Number(b.progress_rate) - Number(a.progress_rate))
+    .slice(0, 3)
+    .map((p) => ({
+      name: p.user_id.slice(0, 8), // fallback short id; we don't have full names in participant rows
+      avatar: "",
+      progress: Math.round(Number(p.progress_rate)),
+    }))
+
+  const isCompleted = myParticipation?.is_completed ?? false
+
+  return {
+    id: defi.id,
+    title: defi.title,
+    description: defi.description ?? "",
+    type: mapChallengeType(defi.challenge_type),
+    target: targetScore,
+    current: currentScore,
+    unit: defi.target_unit ?? "",
+    startDate: defi.start_date,
+    endDate: defi.end_date,
+    reward: {
+      type: (defi.reward?.type === "recognition" ? "badge" : defi.reward?.type) ?? "bonus",
+      value: formatRewardValue(defi.reward ?? { type: "bonus", value: 0, description: "" }),
+      description: defi.reward?.description ?? "",
+    },
+    participants: participants.length,
+    topPerformers,
+    status,
+    isCompleted,
+    completedAt: isCompleted && myParticipation ? undefined : undefined,
+  }
+}
 
 function ChallengeIcon({ type }: { type: ChallengeType }) {
   const icons = {
@@ -353,18 +355,44 @@ export default function ChallengesPage() {
   const [isResponseDialogOpen, setIsResponseDialogOpen] = useState(false)
 
   const { data: profil } = useProfil()
+  const { data: defisRaw, loading: defisLoading } = useDefis()
   const { data: p2pChallengesRaw } = useDefisP2P()
   const { data: equipeData } = useEquipe()
   const currentUserId = profil?.id || ""
 
+  // Map API defis_plateforme rows to Challenge UI type
+  const challenges: Challenge[] = useMemo(() => {
+    if (!defisRaw || !Array.isArray(defisRaw)) return []
+    return (defisRaw as unknown as DefiRow[]).map((d) => mapDefiToChallenge(d, currentUserId))
+  }, [defisRaw, currentUserId])
+
   // Map API data to P2PChallenge type
   const allP2P = ((p2pChallengesRaw || []) as Array<Record<string, unknown>>).map(d => d as unknown as P2PChallenge)
 
-  const activeChallenges = mockChallenges.filter(c => c.status === "active")
-  const completedChallenges = mockChallenges.filter(c => c.status === "completed")
-  const upcomingChallenges = mockChallenges.filter(c => c.status === "upcoming")
+  const activeChallenges = challenges.filter(c => c.status === "active")
+  const completedChallenges = challenges.filter(c => c.status === "completed")
+  const upcomingChallenges = challenges.filter(c => c.status === "upcoming")
 
   const completedByUser = completedChallenges.filter(c => c.isCompleted)
+
+  // Compute dynamic stats from real data
+  const totalBonusWon = useMemo(() => {
+    return completedByUser
+      .filter(c => c.reward.type === "bonus")
+      .reduce((sum, c) => {
+        const num = parseFloat(c.reward.value.replace(/[^\d.,]/g, "").replace(",", "."))
+        return sum + (isNaN(num) ? 0 : num)
+      }, 0)
+  }, [completedByUser])
+
+  const totalPointsWon = useMemo(() => {
+    return completedByUser
+      .filter(c => c.reward.type === "points")
+      .reduce((sum, c) => {
+        const num = parseFloat(c.reward.value.replace(/[^\d.,]/g, "").replace(",", "."))
+        return sum + (isNaN(num) ? 0 : num)
+      }, 0)
+  }, [completedByUser])
 
   // P2P Challenges from real API
   const pendingP2PChallenges = allP2P.filter(c => c.challenged?.id === currentUserId && c.status === "pending")
@@ -378,29 +406,36 @@ export default function ChallengesPage() {
     .map(m => ({ id: m.id, name: m.full_name, avatar: m.avatar_url || "", currentScore: 0 }))
 
   const handleAcceptChallenge = () => {
-    console.log("Challenge accepted:", selectedP2PChallenge?.id)
     setIsResponseDialogOpen(false)
     setSelectedP2PChallenge(null)
   }
 
   const handleDeclineChallenge = () => {
-    console.log("Challenge declined:", selectedP2PChallenge?.id)
     setIsResponseDialogOpen(false)
     setSelectedP2PChallenge(null)
   }
 
   const handleNegotiateChallenge = (offer: { stake: P2PStake; durationDays?: number; message?: string }) => {
-    console.log("Counter offer sent:", offer)
+    void offer
   }
 
   const handleChallengeCreated = (challenge: P2PChallenge) => {
-    console.log("Challenge created:", challenge)
+    void challenge
     setIsCreateDialogOpen(false)
   }
 
   const openResponseDialog = (challenge: P2PChallenge) => {
     setSelectedP2PChallenge(challenge)
     setIsResponseDialogOpen(true)
+  }
+
+  if (defisLoading) {
+    return (
+      <div className="p-4 sm:p-6 lg:p-8 flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <Loader2 className="w-10 h-10 text-purple-500 animate-spin" />
+        <p className="text-gray-500">Chargement des challenges...</p>
+      </div>
+    )
   }
 
   return (
@@ -437,14 +472,14 @@ export default function ChallengesPage() {
         <Card className="bg-gradient-to-br from-amber-500 to-orange-600 text-white border-0">
           <CardContent className="p-4">
             <Euro className="w-8 h-8 mb-2 opacity-80" />
-            <p className="text-2xl font-bold">800€</p>
+            <p className="text-2xl font-bold">{totalBonusWon.toLocaleString("fr-FR")}{"\u202F"}\u20AC</p>
             <p className="text-sm text-amber-100">Bonus gagnés</p>
           </CardContent>
         </Card>
         <Card className="bg-gradient-to-br from-pink-500 to-rose-600 text-white border-0">
           <CardContent className="p-4">
             <Flame className="w-8 h-8 mb-2 opacity-80" />
-            <p className="text-2xl font-bold">2 500</p>
+            <p className="text-2xl font-bold">{totalPointsWon.toLocaleString("fr-FR")}</p>
             <p className="text-sm text-pink-100">Points bonus</p>
           </CardContent>
         </Card>

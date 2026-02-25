@@ -26,7 +26,8 @@ import {
   Plus,
   FileText,
   PieChart,
-  ExternalLink
+  ExternalLink,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -34,33 +35,18 @@ import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-// ============================================
-// INTERFACES
-// ============================================
+import { useMarqueDetail } from "@/hooks/use-marques"
+import { useDefis } from "@/hooks/use-defis"
+import {
+  type BrandDisplayData,
+  mapMarqueToBrand,
+  mapConcessionToDealership,
+  type DealershipDisplayData
+} from "@/lib/types/display"
 
-interface BrandData {
-  id: string
-  name: string
-  logo: string
-  color: string
-  directorId: string
-  directorName: string
-  dealershipCount: number
-  employeeCount: number
-  stats: {
-    totalSales: number
-    salesTarget: number
-    objectiveRate: number
-    totalRevenue: number
-    totalMargin: number
-    avgGPU: number
-    financingRate: number
-    satisfaction: number
-    marketShare: number
-  }
-  trend: "up" | "down" | "stable"
-  quarterlyGrowth: number
-}
+// ============================================
+// INTERFACES (kept locally for challenges UI)
+// ============================================
 
 interface GroupChallenge {
   id: string
@@ -83,158 +69,42 @@ interface GroupChallenge {
   status: "active" | "completed" | "upcoming"
 }
 
-interface GroupPerformanceHistory {
-  month: string
-  ford: { sales: number; margin: number }
-  nissan: { sales: number; margin: number }
-  suzuki: { sales: number; margin: number }
-  total: { sales: number; margin: number }
+// ============================================
+// HELPERS — map defis API data to GroupChallenge
+// ============================================
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapDefiToGroupChallenge(d: any): GroupChallenge {
+  const participants = (d.defis_plateforme_participants || []).map(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (p: any) => ({
+      brandId: p.user_id ?? "",
+      brandName: "",
+      currentValue: p.current_score ?? 0,
+      progressRate: p.progress_rate ?? 0,
+      isCompleted: p.is_completed ?? false,
+    })
+  )
+
+  return {
+    id: d.id,
+    title: d.title ?? d.name ?? "",
+    description: d.description ?? "",
+    type: d.type ?? "volume",
+    period: d.period ?? "monthly",
+    targetValue: d.target_value ?? 0,
+    targetUnit: d.target_unit ?? "",
+    startDate: d.start_date ?? "",
+    endDate: d.end_date ?? "",
+    reward: d.reward ?? { type: "", value: "", description: "" },
+    participants,
+    status: d.status ?? "active",
+  }
 }
 
 // ============================================
-// STATIC DATA
+// SUB-COMPONENTS
 // ============================================
-
-// TODO: replace with API data
-const brands: BrandData[] = [
-  {
-    id: "brand-ford",
-    name: "Ford",
-    logo: "\u{1F699}",
-    color: "from-blue-600 to-blue-700",
-    directorId: "dir-marque-1",
-    directorName: "Jean Legrand",
-    dealershipCount: 6,
-    employeeCount: 420,
-    stats: { totalSales: 287, salesTarget: 300, objectiveRate: 95.7, totalRevenue: 8610000, totalMargin: 430500, avgGPU: 1500, financingRate: 76, satisfaction: 86, marketShare: 4.2 },
-    trend: "up",
-    quarterlyGrowth: 8
-  },
-  {
-    id: "brand-nissan",
-    name: "Nissan",
-    logo: "\u{1F697}",
-    color: "from-red-600 to-red-700",
-    directorId: "dir-marque-2",
-    directorName: "Marie Dupont",
-    dealershipCount: 5,
-    employeeCount: 350,
-    stats: { totalSales: 312, salesTarget: 320, objectiveRate: 97.5, totalRevenue: 9360000, totalMargin: 468000, avgGPU: 1500, financingRate: 72, satisfaction: 84, marketShare: 3.8 },
-    trend: "stable",
-    quarterlyGrowth: 3
-  },
-  {
-    id: "brand-suzuki",
-    name: "Suzuki",
-    logo: "\u{1F690}",
-    color: "from-yellow-500 to-yellow-600",
-    directorId: "dir-marque-3",
-    directorName: "Thomas Petit",
-    dealershipCount: 4,
-    employeeCount: 280,
-    stats: { totalSales: 293, salesTarget: 320, objectiveRate: 91.6, totalRevenue: 8790000, totalMargin: 439500, avgGPU: 1500, financingRate: 74, satisfaction: 88, marketShare: 2.9 },
-    trend: "up",
-    quarterlyGrowth: 12
-  }
-]
-
-// TODO: replace with API data
-const groupChallenges: GroupChallenge[] = [
-  {
-    id: "gc-1",
-    title: "Meilleure marque Q1",
-    description: "Plus haut taux d'atteinte des objectifs du trimestre",
-    type: "volume",
-    period: "quarterly",
-    targetValue: 100,
-    targetUnit: "%",
-    startDate: "2024-01-01",
-    endDate: "2024-03-31",
-    reward: {
-      type: "trophy",
-      value: "Troph\u00e9e Excellence",
-      description: "Meilleure marque du groupe"
-    },
-    participants: [
-      { brandId: "brand-nissan", brandName: "Nissan", currentValue: 97.5, progressRate: 97.5, isCompleted: false },
-      { brandId: "brand-ford", brandName: "Ford", currentValue: 95.7, progressRate: 95.7, isCompleted: false },
-      { brandId: "brand-suzuki", brandName: "Suzuki", currentValue: 91.6, progressRate: 91.6, isCompleted: false }
-    ],
-    status: "active"
-  },
-  {
-    id: "gc-2",
-    title: "Challenge Rentabilit\u00e9",
-    description: "Atteindre une marge EBITDA de 3.2%",
-    type: "margin",
-    period: "quarterly",
-    targetValue: 3.2,
-    targetUnit: "%",
-    startDate: "2024-01-01",
-    endDate: "2024-03-31",
-    reward: {
-      type: "bonus",
-      value: "Bonus direction",
-      description: "Prime de performance"
-    },
-    participants: [
-      { brandId: "brand-ford", brandName: "Ford", currentValue: 3.1, progressRate: 97, isCompleted: false },
-      { brandId: "brand-nissan", brandName: "Nissan", currentValue: 3.0, progressRate: 94, isCompleted: false },
-      { brandId: "brand-suzuki", brandName: "Suzuki", currentValue: 2.8, progressRate: 88, isCompleted: false }
-    ],
-    status: "active"
-  },
-  {
-    id: "gc-3",
-    title: "Excellence Client",
-    description: "Toutes les marques au-dessus de 85 NPS",
-    type: "satisfaction",
-    period: "monthly",
-    targetValue: 85,
-    targetUnit: "NPS",
-    startDate: "2024-02-01",
-    endDate: "2024-02-29",
-    reward: {
-      type: "recognition",
-      value: "Star Service",
-      description: "Label Excellence Client"
-    },
-    participants: [
-      { brandId: "brand-suzuki", brandName: "Suzuki", currentValue: 88, progressRate: 103.5, isCompleted: true },
-      { brandId: "brand-ford", brandName: "Ford", currentValue: 86, progressRate: 101.2, isCompleted: true },
-      { brandId: "brand-nissan", brandName: "Nissan", currentValue: 84, progressRate: 98.8, isCompleted: false }
-    ],
-    status: "active"
-  }
-]
-
-// TODO: replace with API data
-const groupPerformanceHistory: GroupPerformanceHistory[] = [
-  { month: "Sep", ford: { sales: 265, margin: 397500 }, nissan: { sales: 280, margin: 420000 }, suzuki: { sales: 255, margin: 382500 }, total: { sales: 800, margin: 1200000 } },
-  { month: "Oct", ford: { sales: 278, margin: 417000 }, nissan: { sales: 295, margin: 442500 }, suzuki: { sales: 268, margin: 402000 }, total: { sales: 841, margin: 1261500 } },
-  { month: "Nov", ford: { sales: 290, margin: 435000 }, nissan: { sales: 305, margin: 457500 }, suzuki: { sales: 280, margin: 420000 }, total: { sales: 875, margin: 1312500 } },
-  { month: "D\u00e9c", ford: { sales: 312, margin: 468000 }, nissan: { sales: 328, margin: 492000 }, suzuki: { sales: 305, margin: 457500 }, total: { sales: 945, margin: 1417500 } },
-  { month: "Jan", ford: { sales: 275, margin: 412500 }, nissan: { sales: 298, margin: 447000 }, suzuki: { sales: 278, margin: 417000 }, total: { sales: 851, margin: 1276500 } },
-  { month: "F\u00e9v", ford: { sales: 287, margin: 430500 }, nissan: { sales: 312, margin: 468000 }, suzuki: { sales: 293, margin: 439500 }, total: { sales: 892, margin: 1338000 } }
-]
-
-// ============================================
-// HELPERS
-// ============================================
-
-function getBrandById(id: string): BrandData | undefined {
-  return brands.find(b => b.id === id)
-}
-
-// Mock dealerships data for this brand
-const mockBrandDealerships = [
-  { id: "d1", name: "Paris Est", city: "Paris 12e", objectiveRate: 112, sales: 52, margin: 78000, trend: "up" as const },
-  { id: "d2", name: "Paris Ouest", city: "Paris 16e", objectiveRate: 98, sales: 45, margin: 67500, trend: "stable" as const },
-  { id: "d3", name: "Versailles", city: "Versailles", objectiveRate: 105, sales: 48, margin: 72000, trend: "up" as const },
-  { id: "d4", name: "Créteil", city: "Créteil", objectiveRate: 89, sales: 38, margin: 57000, trend: "down" as const },
-  { id: "d5", name: "Saint-Denis", city: "Saint-Denis", objectiveRate: 95, sales: 42, margin: 63000, trend: "stable" as const },
-  { id: "d6", name: "Évry", city: "Évry", objectiveRate: 102, sales: 46, margin: 69000, trend: "up" as const }
-]
 
 function KPICard({
   title,
@@ -292,7 +162,7 @@ function KPICard({
   )
 }
 
-function DealershipCard({ dealership }: { dealership: typeof mockBrandDealerships[0] }) {
+function DealershipCard({ dealership }: { dealership: DealershipDisplayData }) {
   return (
     <Card className="border-0 shadow-premium hover:shadow-xl transition-all cursor-pointer">
       <CardContent className="p-5">
@@ -301,7 +171,7 @@ function DealershipCard({ dealership }: { dealership: typeof mockBrandDealership
             <h3 className="font-semibold text-gray-900">{dealership.name}</h3>
             <p className="text-sm text-gray-500 flex items-center gap-1">
               <MapPin className="w-3 h-3" />
-              {dealership.city}
+              {dealership.location}
             </p>
           </div>
           <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
@@ -320,16 +190,16 @@ function DealershipCard({ dealership }: { dealership: typeof mockBrandDealership
             <div className="flex justify-between text-sm mb-1">
               <span className="text-gray-500">Objectif</span>
               <span className={`font-semibold ${
-                dealership.objectiveRate >= 100 ? "text-emerald-600" :
-                dealership.objectiveRate >= 95 ? "text-blue-600" :
+                dealership.stats.objectiveRate >= 100 ? "text-emerald-600" :
+                dealership.stats.objectiveRate >= 95 ? "text-blue-600" :
                 "text-amber-600"
               }`}>
-                {dealership.objectiveRate}%
+                {dealership.stats.objectiveRate}%
               </span>
             </div>
-            <Progress value={Math.min(dealership.objectiveRate, 100)} className={`h-2 ${
-              dealership.objectiveRate >= 100 ? "[&>div]:bg-emerald-500" :
-              dealership.objectiveRate >= 95 ? "[&>div]:bg-blue-500" :
+            <Progress value={Math.min(dealership.stats.objectiveRate, 100)} className={`h-2 ${
+              dealership.stats.objectiveRate >= 100 ? "[&>div]:bg-emerald-500" :
+              dealership.stats.objectiveRate >= 95 ? "[&>div]:bg-blue-500" :
               "[&>div]:bg-amber-500"
             }`} />
           </div>
@@ -337,11 +207,11 @@ function DealershipCard({ dealership }: { dealership: typeof mockBrandDealership
           <div className="grid grid-cols-2 gap-3 pt-2 border-t">
             <div>
               <p className="text-xs text-gray-500">Ventes</p>
-              <p className="font-semibold text-gray-900">{dealership.sales}</p>
+              <p className="font-semibold text-gray-900">{dealership.stats.totalSales}</p>
             </div>
             <div>
               <p className="text-xs text-gray-500">Marge</p>
-              <p className="font-semibold text-emerald-600">{(dealership.margin / 1000).toFixed(0)}k€</p>
+              <p className="font-semibold text-emerald-600">{(dealership.stats.totalMargin / 1000).toFixed(0)}k€</p>
             </div>
           </div>
         </div>
@@ -351,29 +221,13 @@ function DealershipCard({ dealership }: { dealership: typeof mockBrandDealership
 }
 
 function BrandPerformanceChart({ brandName }: { brandName: string }) {
-  const brandKey = brandName.toLowerCase() as "ford" | "nissan" | "suzuki"
-  const maxSales = Math.max(...groupPerformanceHistory.map(h => h[brandKey]?.sales || 0))
-
+  // Historical performance data is not yet available from the API.
+  // Displaying a placeholder until the history endpoint is implemented.
   return (
-    <div className="space-y-4">
-      <div className="flex items-end gap-3 h-48">
-        {groupPerformanceHistory.map((month) => {
-          const sales = month[brandKey]?.sales || 0
-          const height = (sales / maxSales) * 100
-
-          return (
-            <div key={month.month} className="flex-1 flex flex-col items-center gap-1">
-              <div className="text-xs font-semibold text-gray-700">{sales}</div>
-              <div className="relative w-full h-40 flex items-end justify-center">
-                <div
-                  className="w-8 bg-gradient-to-t from-blue-600 to-blue-400 rounded-t"
-                  style={{ height: `${height}%` }}
-                />
-              </div>
-              <span className="text-xs text-gray-500">{month.month}</span>
-            </div>
-          )
-        })}
+    <div className="flex items-center justify-center h-48 text-gray-400">
+      <div className="text-center space-y-2">
+        <BarChart3 className="w-12 h-12 mx-auto text-gray-300" />
+        <p className="text-sm">Historique de performance bientôt disponible</p>
       </div>
     </div>
   )
@@ -382,21 +236,39 @@ function BrandPerformanceChart({ brandName }: { brandName: string }) {
 export function BrandDetailContent({ id }: { id: string }) {
   const [tab, setTab] = useState<"overview" | "dealerships" | "challenges">("overview")
 
-  const brand = getBrandById(id)
+  const { data: marqueRaw, loading } = useMarqueDetail(id)
+  const { data: defisData } = useDefis("active")
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    )
+  }
+
+  // Map raw API data to display types
+  const brand: BrandDisplayData | null = marqueRaw ? mapMarqueToBrand(marqueRaw) : null
 
   if (!brand) {
     notFound()
   }
 
-  // Get challenges for this brand
-  const brandChallenges = groupChallenges.filter(c =>
-    c.participants.some(p => p.brandId === id)
+  // Map concessions from the marque detail response
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const dealershipsData: DealershipDisplayData[] = ((marqueRaw as any)?.concessions || []).map(mapConcessionToDealership)
+
+  // Map defis to GroupChallenge format and filter for this brand
+  const allChallenges: GroupChallenge[] = (defisData || []).map(mapDefiToGroupChallenge)
+  const brandChallenges = allChallenges.filter(c =>
+    c.participants.some(p => p.brandId === id) || allChallenges.length > 0
   )
 
   // Calculate dealership stats
-  const aboveTarget = mockBrandDealerships.filter(d => d.objectiveRate >= 100).length
-  const onTrack = mockBrandDealerships.filter(d => d.objectiveRate >= 90 && d.objectiveRate < 100).length
-  const atRisk = mockBrandDealerships.filter(d => d.objectiveRate < 90).length
+  const aboveTarget = dealershipsData.filter(d => d.stats.objectiveRate >= 100).length
+  const onTrack = dealershipsData.filter(d => d.stats.objectiveRate >= 90 && d.stats.objectiveRate < 100).length
+  const atRisk = dealershipsData.filter(d => d.stats.objectiveRate < 90).length
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
@@ -493,7 +365,7 @@ export function BrandDetailContent({ id }: { id: string }) {
         />
         <KPICard
           title="Chiffre d'affaires"
-          value={`${(brand.stats.totalRevenue / 1000000).toFixed(1)}M€`}
+          value={`${(brand.stats.totalRevenue / 1000000).toFixed(1)}M\u20AC`}
           icon={Euro}
           color="green"
           trend="up"
@@ -501,13 +373,13 @@ export function BrandDetailContent({ id }: { id: string }) {
         />
         <KPICard
           title="Marge"
-          value={`${(brand.stats.totalMargin / 1000).toFixed(0)}k€`}
+          value={`${(brand.stats.totalMargin / 1000).toFixed(0)}k\u20AC`}
           icon={Target}
           color="purple"
         />
         <KPICard
           title="GPU"
-          value={`${brand.stats.avgGPU}€`}
+          value={`${brand.stats.avgGPU}\u20AC`}
           icon={BarChart3}
           color="amber"
         />
@@ -614,12 +486,12 @@ export function BrandDetailContent({ id }: { id: string }) {
               Réseau de concessions
             </h2>
             <Badge className="bg-gray-100 text-gray-700">
-              {mockBrandDealerships.length} sites
+              {dealershipsData.length} sites
             </Badge>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {mockBrandDealerships.map(dealership => (
+            {dealershipsData.map(dealership => (
               <DealershipCard key={dealership.id} dealership={dealership} />
             ))}
           </div>
@@ -656,7 +528,7 @@ export function BrandDetailContent({ id }: { id: string }) {
                             "bg-blue-100 text-blue-700"
                           }`}>
                             {challenge.status === "active" ? "En cours" :
-                             challenge.status === "completed" ? "Terminé" : "À venir"}
+                             challenge.status === "completed" ? "Termin\u00e9" : "\u00c0 venir"}
                           </Badge>
                         </div>
                         <p className="text-gray-500">{challenge.description}</p>

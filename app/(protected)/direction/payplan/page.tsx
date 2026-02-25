@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import {
   FileText,
@@ -49,6 +49,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { usePayplan } from "@/hooks/use-payplan"
+import { apiFetch } from "@/lib/api/client"
 
 // ============================================
 // PAYPLAN PAGE PREMIUM - AutoPerf Pro
@@ -64,61 +65,374 @@ interface CommissionRule {
   category: "base" | "bonus" | "peripheral"
 }
 
-// TODO: replace with API data
-const mockPayplanConfig = {
-  baseCommission: {
-    VO: 15,
-    VN: 12,
-    VU: 10
-  },
-  financingBonus: 150,
-  accessoryBonus: {
-    tier1: { min: 50, max: 250, value: 10 },
-    tier2: { min: 251, max: 800, value: 50 },
-    tier3: { min: 801, max: Infinity, value: 75 }
-  },
-  packBonuses: {
-    pack1: 0,
-    pack2: 20,
-    pack3: 35
-  },
-  challengeBonuses: {
-    salesCount: 500,
-    financingRate: 300,
-    marginTarget: 750
-  }
+interface PayplanRecord {
+  id: string
+  concession_id: string
+  name: string
+  config: Record<string, unknown>
+  is_active: boolean
+  created_by: string
+  created_at: string
 }
 
-// TODO: replace with API data
-const commissionRules: CommissionRule[] = [
-  { id: "1", name: "Commission base VO", type: "percentage", value: 15, condition: "Marge HT", active: true, category: "base" },
-  { id: "2", name: "Commission base VN", type: "percentage", value: 12, condition: "Marge HT", active: true, category: "base" },
-  { id: "3", name: "Commission base VU", type: "percentage", value: 10, condition: "Marge HT", active: true, category: "base" },
-  { id: "4", name: "Bonus financement", type: "fixed", value: 150, condition: "Par dossier financé", active: true, category: "bonus" },
-  { id: "5", name: "Bonus pack 2", type: "fixed", value: 20, condition: "Pack livraison 2", active: true, category: "peripheral" },
-  { id: "6", name: "Bonus pack 3", type: "fixed", value: 35, condition: "Pack livraison 3", active: true, category: "peripheral" },
-  { id: "7", name: "Bonus pénétration", type: "fixed", value: 100, condition: "Si taux > 65%", active: true, category: "bonus" }
-]
+// ---------------------------------------------------------------------------
+// Helpers: derive display data from the payplan config coming from the API
+// ---------------------------------------------------------------------------
 
-// TODO: replace with API data
-const vehicleModels = [
-  { id: "puma", name: "Ford Puma", baseCommission: 200 },
-  { id: "kuga", name: "Ford Kuga", baseCommission: 250 },
-  { id: "focus", name: "Ford Focus", baseCommission: 180 },
-  { id: "fiesta", name: "Ford Fiesta", baseCommission: 150 },
-  { id: "explorer", name: "Ford Explorer", baseCommission: 400 },
-  { id: "transit", name: "Ford Transit", baseCommission: 300 }
-]
+function deriveRulesFromConfig(config: Record<string, unknown>): CommissionRule[] {
+  const rules: CommissionRule[] = []
+
+  // Base commissions
+  if (config.baseCommissionVO != null) {
+    rules.push({
+      id: "base-vo",
+      name: "Commission base VO",
+      type: "percentage",
+      value: Number(config.baseCommissionVO),
+      condition: "Marge HT",
+      active: true,
+      category: "base",
+    })
+  }
+  if (config.vnMarginPercentage != null) {
+    rules.push({
+      id: "base-vn",
+      name: "Commission base VN",
+      type: "percentage",
+      value: Number(config.vnMarginPercentage),
+      condition: "Marge HT",
+      active: true,
+      category: "base",
+    })
+  }
+  if (config.vuCommissionRate != null) {
+    rules.push({
+      id: "base-vu",
+      name: "Commission base VU",
+      type: "percentage",
+      value: Number(config.vuCommissionRate),
+      condition: "Marge HT",
+      active: true,
+      category: "base",
+    })
+  }
+
+  // Bonus financement
+  if (config.bonusFinancingVO != null) {
+    rules.push({
+      id: "bonus-financing",
+      name: "Bonus financement",
+      type: "fixed",
+      value: Number(config.bonusFinancingVO),
+      condition: "Par dossier financé",
+      active: true,
+      category: "bonus",
+    })
+  }
+
+  // Pack commissions
+  const packCommissions = config.packCommissions as Record<string, number> | undefined
+  if (packCommissions) {
+    Object.entries(packCommissions).forEach(([key, val]) => {
+      rules.push({
+        id: `pack-${key}`,
+        name: `Bonus pack ${key}`,
+        type: "fixed",
+        value: Number(val),
+        condition: `Pack livraison ${key}`,
+        active: true,
+        category: "peripheral",
+      })
+    })
+  }
+
+  // Bonus 60 jours VO
+  if (config.bonus60DaysVO != null) {
+    rules.push({
+      id: "bonus-60days",
+      name: "Bonus 60 jours VO",
+      type: "fixed",
+      value: Number(config.bonus60DaysVO),
+      condition: "Vente dans les 60 jours",
+      active: true,
+      category: "bonus",
+    })
+  }
+
+  // Bonus prix catalogue VO
+  if (config.bonusListedPriceVO != null) {
+    rules.push({
+      id: "bonus-listed-price",
+      name: "Bonus prix catalogue VO",
+      type: "fixed",
+      value: Number(config.bonusListedPriceVO),
+      condition: "Vendu au prix catalogue",
+      active: true,
+      category: "bonus",
+    })
+  }
+
+  return rules
+}
+
+interface VehicleModel {
+  id: string
+  name: string
+  baseCommission: number
+}
+
+function deriveVehicleModelsFromConfig(config: Record<string, unknown>): VehicleModel[] {
+  const vpCommissions = config.vpCommissions as Record<string, Record<string, number>> | undefined
+  if (!vpCommissions) return []
+
+  return Object.entries(vpCommissions).map(([modelId, commissions]) => {
+    // Use the first commission tier value as the displayed base commission
+    const values = Object.values(commissions)
+    const baseCommission = values.length > 0 ? values[0] : 0
+    return {
+      id: modelId,
+      name: modelId.charAt(0).toUpperCase() + modelId.slice(1),
+      baseCommission,
+    }
+  })
+}
+
+interface AccessoryTier {
+  label: string
+  range: string
+  bonus: number
+}
+
+function deriveAccessoryTiersFromConfig(config: Record<string, unknown>): AccessoryTier[] {
+  const tiers = config.accessoryTiers as {
+    tier1?: { min: number; max: number; bonus: number }
+    tier2?: { min: number; max: number; bonus: number }
+    tier3?: { min: number; bonus: number }
+  } | undefined
+
+  if (!tiers) return []
+
+  const result: AccessoryTier[] = []
+
+  if (tiers.tier1) {
+    result.push({
+      label: "Palier 1",
+      range: `${tiers.tier1.min}€ - ${tiers.tier1.max}€ TTC`,
+      bonus: tiers.tier1.bonus,
+    })
+  }
+  if (tiers.tier2) {
+    result.push({
+      label: "Palier 2",
+      range: `${tiers.tier2.min}€ - ${tiers.tier2.max}€ TTC`,
+      bonus: tiers.tier2.bonus,
+    })
+  }
+  if (tiers.tier3) {
+    result.push({
+      label: "Palier 3",
+      range: `${tiers.tier3.min}€ et plus TTC`,
+      bonus: tiers.tier3.bonus,
+    })
+  }
+
+  return result
+}
+
+interface ChallengeBonusItem {
+  key: string
+  label: string
+  description: string
+  value: number
+  icon: "target" | "percent" | "euro"
+  gradient: { from: string; to: string; border: string; text: string; iconFrom: string; iconTo: string }
+}
+
+function deriveChallengesFromConfig(config: Record<string, unknown>): ChallengeBonusItem[] {
+  const financialPenetrationBonuses = config.financialPenetrationBonuses as Record<string, Record<string, number>> | undefined
+  const financingBonus = config.financingBonus as Record<string, number> | undefined
+
+  const challenges: ChallengeBonusItem[] = []
+
+  // Sales count challenge (from financialPenetrationBonuses)
+  if (financialPenetrationBonuses) {
+    const values = Object.values(financialPenetrationBonuses)
+    const totalBonus = values.reduce((sum, tier) => {
+      return sum + Object.values(tier).reduce((s, v) => s + v, 0)
+    }, 0)
+    if (totalBonus > 0) {
+      challenges.push({
+        key: "salesCount",
+        label: "Objectif de ventes",
+        description: "Atteindre le nombre de ventes ciblé",
+        value: totalBonus,
+        icon: "target",
+        gradient: {
+          from: "from-amber-50", to: "to-orange-50", border: "border-amber-200",
+          text: "text-amber-600", iconFrom: "from-amber-400", iconTo: "to-orange-500",
+        },
+      })
+    }
+  }
+
+  // Financing rate challenge
+  if (financingBonus) {
+    const totalFinBonus = Object.values(financingBonus).reduce((s, v) => s + v, 0)
+    if (totalFinBonus > 0) {
+      challenges.push({
+        key: "financingRate",
+        label: "Taux de financement",
+        description: "Atteindre le taux de financement cible",
+        value: totalFinBonus,
+        icon: "percent",
+        gradient: {
+          from: "from-blue-50", to: "to-indigo-50", border: "border-blue-200",
+          text: "text-blue-600", iconFrom: "from-blue-400", iconTo: "to-indigo-500",
+        },
+      })
+    }
+  }
+
+  // Margin target challenge (maintenanceContractCommission as proxy)
+  const maintenanceVal = Number(config.maintenanceContractCommission ?? 0) + Number(config.maintenanceContractCommissionHighPenetration ?? 0)
+  if (maintenanceVal > 0) {
+    challenges.push({
+      key: "marginTarget",
+      label: "Objectif de marge",
+      description: "Atteindre la marge totale ciblée",
+      value: maintenanceVal,
+      icon: "euro",
+      gradient: {
+        from: "from-emerald-50", to: "to-teal-50", border: "border-emerald-200",
+        text: "text-emerald-600", iconFrom: "from-emerald-400", iconTo: "to-teal-500",
+      },
+    })
+  }
+
+  return challenges
+}
+
+// ---------------------------------------------------------------------------
+// Helper: build an updated config object from the current rules state
+// ---------------------------------------------------------------------------
+
+function buildConfigFromRules(
+  originalConfig: Record<string, unknown>,
+  rules: CommissionRule[]
+): Record<string, unknown> {
+  const config = { ...originalConfig }
+
+  for (const rule of rules) {
+    switch (rule.id) {
+      case "base-vo":
+        config.baseCommissionVO = rule.active ? rule.value : 0
+        break
+      case "base-vn":
+        config.vnMarginPercentage = rule.active ? rule.value : 0
+        break
+      case "base-vu":
+        config.vuCommissionRate = rule.active ? rule.value : 0
+        break
+      case "bonus-financing":
+        config.bonusFinancingVO = rule.active ? rule.value : 0
+        break
+      case "bonus-60days":
+        config.bonus60DaysVO = rule.active ? rule.value : 0
+        break
+      case "bonus-listed-price":
+        config.bonusListedPriceVO = rule.active ? rule.value : 0
+        break
+      default:
+        if (rule.id.startsWith("pack-")) {
+          const packKey = rule.id.replace("pack-", "")
+          const packCommissions = (config.packCommissions as Record<string, number>) ?? {}
+          packCommissions[packKey] = rule.active ? rule.value : 0
+          config.packCommissions = packCommissions
+        }
+        break
+    }
+  }
+
+  return config
+}
+
+// ============================================
+// COMPONENT
+// ============================================
 
 export default function PayplanPage() {
   const [activeTab, setActiveTab] = useState("general")
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [showNewRuleDialog, setShowNewRuleDialog] = useState(false)
-  // TODO: update rules from payplanData when API returns real data
-  const [rules, setRules] = useState<CommissionRule[]>(commissionRules)
+  const [rules, setRules] = useState<CommissionRule[]>([])
   const [hasChanges, setHasChanges] = useState(false)
-  const { data: payplanData, loading } = usePayplan()
+  const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
 
+  const { data: payplanData, loading, error: fetchError, refetch } = usePayplan()
+
+  // Active payplan record (first active or first in the list)
+  const payplan: PayplanRecord | null =
+    (payplanData as PayplanRecord[] | null)?.find((p) => p.is_active) ??
+    (payplanData as PayplanRecord[] | null)?.[0] ??
+    null
+
+  const config = (payplan?.config ?? {}) as Record<string, unknown>
+
+  // Derive display data from the API config
+  const vehicleModels = deriveVehicleModelsFromConfig(config)
+  const accessoryTiers = deriveAccessoryTiersFromConfig(config)
+  const challenges = deriveChallengesFromConfig(config)
+
+  // Sync rules state whenever the payplan config changes
+  useEffect(() => {
+    if (payplan) {
+      setRules(deriveRulesFromConfig(config))
+      setHasChanges(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payplan?.id, payplan?.config])
+
+  const toggleRule = (ruleId: string) => {
+    setRules((prev) =>
+      prev.map((rule) =>
+        rule.id === ruleId ? { ...rule, active: !rule.active } : rule
+      )
+    )
+    setHasChanges(true)
+  }
+
+  // ---- Save handler: PUT /api/payplan/[id] ----
+  const handleSave = useCallback(async () => {
+    if (!payplan) return
+
+    setSaving(true)
+    setSaveError(null)
+
+    try {
+      const updatedConfig = buildConfigFromRules(config, rules)
+
+      await apiFetch(`/api/payplan/${payplan.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ config: updatedConfig }),
+      })
+
+      setHasChanges(false)
+      setShowSaveDialog(false)
+      refetch()
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erreur lors de la sauvegarde"
+      setSaveError(message)
+    } finally {
+      setSaving(false)
+    }
+  }, [payplan, config, rules, refetch])
+
+  const baseRules = rules.filter((r) => r.category === "base")
+  const bonusRules = rules.filter((r) => r.category === "bonus")
+  const peripheralRules = rules.filter((r) => r.category === "peripheral")
+
+  // ---- Loading state ----
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -127,16 +441,43 @@ export default function PayplanPage() {
     )
   }
 
-  const toggleRule = (ruleId: string) => {
-    setRules(rules.map(rule => 
-      rule.id === ruleId ? { ...rule, active: !rule.active } : rule
-    ))
-    setHasChanges(true)
+  // ---- Error state ----
+  if (fetchError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <AlertCircle className="w-12 h-12 text-red-500" />
+        <p className="text-gray-600">{fetchError.message}</p>
+        <Button variant="outline" onClick={refetch}>
+          Réessayer
+        </Button>
+      </div>
+    )
   }
 
-  const baseRules = rules.filter(r => r.category === "base")
-  const bonusRules = rules.filter(r => r.category === "bonus")
-  const peripheralRules = rules.filter(r => r.category === "peripheral")
+  // ---- Empty state (no payplan found) ----
+  if (!payplan) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <Info className="w-12 h-12 text-gray-400" />
+        <p className="text-gray-600">Aucun payplan configuré pour cette concession.</p>
+        <Link href="/direction">
+          <Button variant="outline">Retour</Button>
+        </Link>
+      </div>
+    )
+  }
+
+  // ---- Challenge icon helper ----
+  const ChallengeIcon = ({ icon }: { icon: "target" | "percent" | "euro" }) => {
+    switch (icon) {
+      case "target":
+        return <Target className="w-7 h-7 text-white" />
+      case "percent":
+        return <Percent className="w-7 h-7 text-white" />
+      case "euro":
+        return <Euro className="w-7 h-7 text-white" />
+    }
+  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8 space-y-8 max-w-7xl mx-auto">
@@ -171,7 +512,7 @@ export default function PayplanPage() {
             <Download className="w-4 h-4" />
             Exporter
           </Button>
-          <Button 
+          <Button
             className="bg-gradient-to-r from-blue-600 to-indigo-600 gap-2"
             onClick={() => setShowSaveDialog(true)}
           >
@@ -193,9 +534,9 @@ export default function PayplanPage() {
             <div>
               <h3 className="font-bold text-gray-900 mb-1">Comment fonctionne le payplan ?</h3>
               <p className="text-gray-600 leading-relaxed">
-                Le payplan détermine comment les commissions sont calculées pour vos commerciaux. 
-                Vous pouvez configurer des commissions de base, des bonus sur le financement, les packs, 
-                et des récompenses pour les challenges. Les modifications sont appliquées immédiatement 
+                Le payplan détermine comment les commissions sont calculées pour vos commerciaux.
+                Vous pouvez configurer des commissions de base, des bonus sur le financement, les packs,
+                et des récompenses pour les challenges. Les modifications sont appliquées immédiatement
                 aux nouvelles ventes.
               </p>
             </div>
@@ -253,8 +594,8 @@ export default function PayplanPage() {
                   }`}>
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-semibold text-gray-900">{rule.name}</h4>
-                      <Switch 
-                        checked={rule.active} 
+                      <Switch
+                        checked={rule.active}
                         onCheckedChange={() => toggleRule(rule.id)}
                       />
                     </div>
@@ -299,8 +640,8 @@ export default function PayplanPage() {
                     </div>
                     <div className="flex items-center gap-4">
                       <span className="text-2xl font-bold text-emerald-600">{rule.value}€</span>
-                      <Switch 
-                        checked={rule.active} 
+                      <Switch
+                        checked={rule.active}
                         onCheckedChange={() => toggleRule(rule.id)}
                       />
                     </div>
@@ -327,8 +668,8 @@ export default function PayplanPage() {
                   }`}>
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="font-semibold text-gray-900">{rule.name}</h4>
-                      <Switch 
-                        checked={rule.active} 
+                      <Switch
+                        checked={rule.active}
                         onCheckedChange={() => toggleRule(rule.id)}
                       />
                     </div>
@@ -361,6 +702,9 @@ export default function PayplanPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
+                {vehicleModels.length === 0 && (
+                  <p className="text-sm text-gray-500 text-center py-8">Aucun modèle configuré dans le payplan.</p>
+                )}
                 {vehicleModels.map((model) => (
                   <div key={model.id} className="flex items-center justify-between p-4 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
                     <div className="flex items-center gap-4">
@@ -400,39 +744,22 @@ export default function PayplanPage() {
             </CardHeader>
             <CardContent>
               <div className="grid sm:grid-cols-3 gap-6">
-                <div className="p-6 rounded-2xl bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200">
-                  <div className="w-12 h-12 rounded-xl bg-purple-500 flex items-center justify-center mb-4">
-                    <span className="text-white font-bold">1</span>
+                {accessoryTiers.length === 0 && (
+                  <p className="text-sm text-gray-500 text-center py-8 col-span-3">Aucun palier accessoires configuré dans le payplan.</p>
+                )}
+                {accessoryTiers.map((tier, idx) => (
+                  <div key={idx} className="p-6 rounded-2xl bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200">
+                    <div className="w-12 h-12 rounded-xl bg-purple-500 flex items-center justify-center mb-4">
+                      <span className="text-white font-bold">{idx + 1}</span>
+                    </div>
+                    <h4 className="font-bold text-gray-900 mb-2">{tier.label}</h4>
+                    <p className="text-sm text-gray-600 mb-4">{tier.range}</p>
+                    <div className="flex items-end gap-2">
+                      <span className="text-3xl font-bold text-purple-600">{tier.bonus}€</span>
+                      <span className="text-sm text-gray-500 mb-1">de commission</span>
+                    </div>
                   </div>
-                  <h4 className="font-bold text-gray-900 mb-2">Palier 1</h4>
-                  <p className="text-sm text-gray-600 mb-4">50€ - 250€ TTC</p>
-                  <div className="flex items-end gap-2">
-                    <span className="text-3xl font-bold text-purple-600">10€</span>
-                    <span className="text-sm text-gray-500 mb-1">de commission</span>
-                  </div>
-                </div>
-                <div className="p-6 rounded-2xl bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200">
-                  <div className="w-12 h-12 rounded-xl bg-purple-500 flex items-center justify-center mb-4">
-                    <span className="text-white font-bold">2</span>
-                  </div>
-                  <h4 className="font-bold text-gray-900 mb-2">Palier 2</h4>
-                  <p className="text-sm text-gray-600 mb-4">251€ - 800€ TTC</p>
-                  <div className="flex items-end gap-2">
-                    <span className="text-3xl font-bold text-purple-600">50€</span>
-                    <span className="text-sm text-gray-500 mb-1">de commission</span>
-                  </div>
-                </div>
-                <div className="p-6 rounded-2xl bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200">
-                  <div className="w-12 h-12 rounded-xl bg-purple-500 flex items-center justify-center mb-4">
-                    <span className="text-white font-bold">3</span>
-                  </div>
-                  <h4 className="font-bold text-gray-900 mb-2">Palier 3</h4>
-                  <p className="text-sm text-gray-600 mb-4">801€ et plus TTC</p>
-                  <div className="flex items-end gap-2">
-                    <span className="text-3xl font-bold text-purple-600">75€</span>
-                    <span className="text-sm text-gray-500 mb-1">de commission</span>
-                  </div>
-                </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -458,59 +785,31 @@ export default function PayplanPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-5 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-                      <Target className="w-7 h-7 text-white" />
+                {challenges.length === 0 && (
+                  <p className="text-sm text-gray-500 text-center py-8">Aucun challenge configuré dans le payplan.</p>
+                )}
+                {challenges.map((challenge) => (
+                  <div
+                    key={challenge.key}
+                    className={`flex items-center justify-between p-5 rounded-xl bg-gradient-to-r ${challenge.gradient.from} ${challenge.gradient.to} border ${challenge.gradient.border}`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${challenge.gradient.iconFrom} ${challenge.gradient.iconTo} flex items-center justify-center`}>
+                        <ChallengeIcon icon={challenge.icon} />
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-gray-900">{challenge.label}</h4>
+                        <p className="text-sm text-gray-600">{challenge.description}</p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900">Objectif de ventes</h4>
-                      <p className="text-sm text-gray-600">Atteindre le nombre de ventes ciblé</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-3xl font-bold text-amber-600">500€</span>
-                    <Button variant="ghost" size="icon">
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-5 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center">
-                      <Percent className="w-7 h-7 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900">Taux de financement</h4>
-                      <p className="text-sm text-gray-600">Atteindre le taux de financement cible</p>
+                    <div className="flex items-center gap-4">
+                      <span className={`text-3xl font-bold ${challenge.gradient.text}`}>{challenge.value}€</span>
+                      <Button variant="ghost" size="icon">
+                        <Edit className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-3xl font-bold text-blue-600">300€</span>
-                    <Button variant="ghost" size="icon">
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between p-5 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center">
-                      <Euro className="w-7 h-7 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900">Objectif de marge</h4>
-                      <p className="text-sm text-gray-600">Atteindre la marge totale ciblée</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className="text-3xl font-bold text-emerald-600">750€</span>
-                    <Button variant="ghost" size="icon">
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -520,7 +819,7 @@ export default function PayplanPage() {
       {/* ============================================
           DIALOGS
           ============================================ */}
-      
+
       {/* Save Dialog */}
       <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
         <DialogContent className="max-w-md">
@@ -540,23 +839,39 @@ export default function PayplanPage() {
                 <div>
                   <p className="font-medium text-amber-800">Attention</p>
                   <p className="text-sm text-amber-600">
-                    Les ventes déjà validées ne seront pas recalculées. 
+                    Les ventes déjà validées ne seront pas recalculées.
                     Les modifications affectent uniquement les nouvelles ventes.
                   </p>
                 </div>
               </div>
             </div>
+            {saveError && (
+              <div className="mt-3 p-4 rounded-xl bg-red-50 border border-red-200">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+                  <div>
+                    <p className="font-medium text-red-800">Erreur</p>
+                    <p className="text-sm text-red-600">{saveError}</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+            <Button variant="outline" onClick={() => setShowSaveDialog(false)} disabled={saving}>
               Annuler
             </Button>
-            <Button 
+            <Button
               className="bg-gradient-to-r from-blue-600 to-indigo-600"
-              onClick={() => { setHasChanges(false); setShowSaveDialog(false); }}
+              onClick={handleSave}
+              disabled={saving}
             >
-              <CheckCircle2 className="w-4 h-4 mr-2" />
-              Confirmer la sauvegarde
+              {saving ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+              )}
+              {saving ? "Sauvegarde..." : "Confirmer la sauvegarde"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -114,7 +114,7 @@ async function getCommercialDashboard(
     .eq('user_id', nonNullAuth.user.id)
     .gte('date', sixMonthsAgo.toISOString().split('T')[0])
 
-  const [fichesResult, defisP2PResult, notificationsResult, historyResult] = await Promise.all([
+  const [fichesResult, defisP2PResult, notificationsResult, historyResult, equipeResult] = await Promise.all([
     fichesQuery,
     nonNullAuth.supabase.from('defis_p2p').select('*', { count: 'exact' })
       .or(`challenger_id.eq.${nonNullAuth.user.id},challenged_id.eq.${nonNullAuth.user.id}`)
@@ -122,6 +122,8 @@ async function getCommercialDashboard(
     nonNullAuth.supabase.from('notifications').select('*', { count: 'exact' })
       .eq('user_id', nonNullAuth.user.id).eq('is_read', false),
     historyQuery,
+    nonNullAuth.supabase.from('equipes').select('objective')
+      .eq('concession_id', nonNullAuth.profile.concession_id || ''),
   ])
 
   const fiches = fichesResult.data || []
@@ -132,10 +134,17 @@ async function getCommercialDashboard(
   const financingCount = fiches.filter(f => f.has_financing).length
   const financingRate = totalSales > 0 ? (financingCount / totalSales) * 100 : 0
 
+  // Sales target from team objectives
+  const salesTarget = (equipeResult.data || []).reduce((sum, eq) => {
+    const obj = eq.objective as Record<string, number> | null
+    return sum + (obj?.monthly_target ?? 0)
+  }, 0)
+
   return NextResponse.json({
     data: {
       kpis: {
         totalSales,
+        salesTarget,
         totalMargin,
         totalCommission,
         totalRevenue,
@@ -160,8 +169,10 @@ async function getChefVentesDashboard(
   // Récupérer les équipes managées
   const { data: equipes } = await nonNullAuth.supabase
     .from('equipes')
-    .select('id, name, type, objective')
+    .select('id, name, type, objective, concession_id')
     .eq('chef_ventes_id', nonNullAuth.user.id)
+
+  const concessionId = nonNullAuth.profile.concession_id
 
   // Fiches de marge (RLS filtre automatiquement)
   let fichesQuery = nonNullAuth.supabase
@@ -178,13 +189,64 @@ async function getChefVentesDashboard(
     .select('date, final_margin, selling_price_ht, has_financing')
     .gte('date', sixMonthsAgo.toISOString().split('T')[0])
 
-  const [fichesResult, pendingResult, historyResult] = await Promise.all([
+  // Also fetch all sibling teams in the same concession
+  const siblingTeamsQuery = concessionId
+    ? nonNullAuth.supabase
+        .from('equipes')
+        .select('id, name, type, objective, chef_ventes_id')
+        .eq('concession_id', concessionId)
+    : null
+
+  const [fichesResult, pendingResult, historyResult, siblingResult] = await Promise.all([
     fichesQuery,
     nonNullAuth.supabase.from('approbations').select('*', { count: 'exact' }).eq('status', 'pending'),
     historyQuery,
+    siblingTeamsQuery ?? Promise.resolve({ data: null }),
   ])
 
   const fiches = fichesResult.data || []
+  const allSiblingTeams = siblingResult.data || []
+
+  // Build siblingTeams: for each team in the concession, compute sales/target/rate
+  const myTeamIds = new Set((equipes || []).map(e => e.id))
+  const siblingTeams = await Promise.all(
+    allSiblingTeams
+      .filter(t => !myTeamIds.has(t.id)) // exclude own teams
+      .map(async (team) => {
+        // Get members of this team
+        const { data: members } = await nonNullAuth.supabase
+          .from('profiles')
+          .select('id')
+          .eq('equipe_id', team.id)
+          .eq('is_active', true)
+
+        const memberIds = (members || []).map(m => m.id)
+        let teamSales = 0
+
+        if (memberIds.length > 0) {
+          let q = nonNullAuth.supabase
+            .from('fiches_marge')
+            .select('*', { count: 'exact', head: true })
+            .in('user_id', memberIds)
+            .eq('status', 'approved')
+          if (dateFrom) q = q.gte('date', dateFrom)
+          if (dateTo) q = q.lt('date', dateTo)
+          const { count } = await q
+          teamSales = count ?? 0
+        }
+
+        const obj = team.objective as Record<string, number> | null
+        const target = obj?.monthly_target ?? 0
+
+        return {
+          type: team.type,
+          name: team.name,
+          sales: teamSales,
+          target,
+          rate: target > 0 ? Math.round((teamSales / target) * 100) : 0,
+        }
+      })
+  )
 
   return NextResponse.json({
     data: {
@@ -198,6 +260,7 @@ async function getChefVentesDashboard(
           : 0,
         pendingApprovals: pendingResult.count || 0,
       },
+      siblingTeams,
       performanceHistory: buildPerformanceHistory(historyResult.data || []),
     }
   })
@@ -236,6 +299,36 @@ async function getDirConcessionDashboard(
 
   const fiches = fichesResult.data || []
 
+  // Department stats breakdown by vehicle_type
+  const deptMap: Record<string, { sales: number; revenue: number; margin: number; financingCount: number }> = {}
+  for (const f of fiches) {
+    const vt = f.vehicle_type || 'OTHER'
+    // Map VP → VN for display
+    const dept = vt === 'VP' ? 'VN' : vt
+    if (!deptMap[dept]) deptMap[dept] = { sales: 0, revenue: 0, margin: 0, financingCount: 0 }
+    deptMap[dept].sales += 1
+    deptMap[dept].revenue += Number(f.selling_price_ht) || 0
+    deptMap[dept].margin += Number(f.final_margin) || 0
+    if (f.has_financing) deptMap[dept].financingCount += 1
+  }
+
+  const departmentStats: Record<string, {
+    totalSales: number
+    totalRevenue: number
+    totalMargin: number
+    avgGPU: number
+    financingRate: number
+  }> = {}
+  for (const [dept, data] of Object.entries(deptMap)) {
+    departmentStats[dept] = {
+      totalSales: data.sales,
+      totalRevenue: data.revenue,
+      totalMargin: Math.round(data.margin),
+      avgGPU: data.sales > 0 ? Math.round(data.margin / data.sales) : 0,
+      financingRate: data.sales > 0 ? Math.round((data.financingCount / data.sales) * 100) : 0,
+    }
+  }
+
   return NextResponse.json({
     data: {
       kpis: {
@@ -245,6 +338,7 @@ async function getDirConcessionDashboard(
         teamCount: equipesResult.data?.length || 0,
         staffCount: membersResult.data?.length || 0,
       },
+      departmentStats,
       performanceHistory: buildPerformanceHistory(historyResult.data || []),
     }
   })
@@ -325,7 +419,7 @@ async function getDirPlaqueDashboard(
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
   const historyQuery = nonNullAuth.supabase
     .from('fiches_marge')
-    .select('date, final_margin, selling_price_ht, has_financing')
+    .select('date, final_margin, selling_price_ht, has_financing, concession_id')
     .gte('date', sixMonthsAgo.toISOString().split('T')[0])
 
   const [fichesQueryResult, historyResult] = await Promise.all([
@@ -338,6 +432,33 @@ async function getDirPlaqueDashboard(
 
   if (fichesError) return serverError(fichesError.message)
 
+  // Build per-brand performance history
+  const allConcessions = concessionsResult.data || []
+  const allMarques = marquesResult.data || []
+  const historyFiches = historyResult.data || []
+
+  // Map concession_id -> marque_id
+  const concessionToMarque: Record<string, string> = {}
+  for (const c of allConcessions) {
+    if (c.marque_id) concessionToMarque[c.id] = c.marque_id
+  }
+
+  // Group history fiches by marque
+  const fichesPerMarque: Record<string, typeof historyFiches> = {}
+  for (const f of historyFiches) {
+    const marqueId = concessionToMarque[f.concession_id]
+    if (!marqueId) continue
+    if (!fichesPerMarque[marqueId]) fichesPerMarque[marqueId] = []
+    fichesPerMarque[marqueId].push(f)
+  }
+
+  // Build perBrandHistory
+  const perBrandHistory: Record<string, ReturnType<typeof buildPerformanceHistory>> = {}
+  for (const marque of allMarques) {
+    const brandFiches = fichesPerMarque[marque.id] || []
+    perBrandHistory[marque.id] = buildPerformanceHistory(brandFiches)
+  }
+
   return NextResponse.json({
     data: {
       marques: marquesResult.data || [],
@@ -349,7 +470,8 @@ async function getDirPlaqueDashboard(
         brandsCount: marquesResult.data?.length || 0,
         sitesCount: concessionsResult.data?.length || 0,
       },
-      performanceHistory: buildPerformanceHistory(historyResult.data || []),
+      performanceHistory: buildPerformanceHistory(historyFiches),
+      perBrandHistory,
     }
   })
 }

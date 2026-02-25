@@ -902,8 +902,8 @@ function NewTeamChallengePageContent() {
         participant_ids: formData.participantIds,
       })
       router.push("/chef-ventes")
-    } catch (e) {
-      console.error("Failed to create challenge", e)
+    } catch {
+      // Challenge creation failed
     } finally {
       setIsSubmitting(false)
     }

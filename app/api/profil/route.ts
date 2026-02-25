@@ -8,7 +8,18 @@ export async function GET() {
   const auth = await getAuthenticatedUser()
   if (!auth) return unauthorized()
 
-  return NextResponse.json({ data: auth.profile })
+  // Resolve concession name if the user belongs to one
+  let concession_name: string | null = null
+  if (auth.profile.concession_id) {
+    const { data: concession } = await auth.supabase
+      .from('concessions')
+      .select('name')
+      .eq('id', auth.profile.concession_id)
+      .single()
+    concession_name = concession?.name ?? null
+  }
+
+  return NextResponse.json({ data: { ...auth.profile, concession_name } })
 }
 
 export async function PUT(request: NextRequest) {

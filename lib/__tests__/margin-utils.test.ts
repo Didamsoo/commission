@@ -4,9 +4,6 @@ import {
   convertHTToTTC,
   convertTTCToHT,
   getDefaultPayplan,
-  getPayplan,
-  savePayplan,
-  getMarginSheets,
   calculateMarginSheet,
   type CalculateInputs,
   type Payplan,
@@ -113,33 +110,6 @@ describe('getDefaultPayplan', () => {
     const payplan = getDefaultPayplan()
     const expectedHT = 6001 / (1 + VAT_RATE)
     expect(payplan.financingMinAmount).toBeCloseTo(expectedHT, 2)
-  })
-})
-
-// ============================================
-// localStorage operations
-// ============================================
-
-describe('localStorage operations', () => {
-  beforeEach(() => {
-    localStorage.clear()
-  })
-
-  it('getPayplan retourne le défaut sans localStorage', () => {
-    const payplan = getPayplan()
-    expect(payplan.fixedSalary).toBe(1200)
-  })
-
-  it('savePayplan puis getPayplan round-trip', () => {
-    const custom = { ...getDefaultPayplan(), fixedSalary: 2000 }
-    savePayplan(custom)
-    const loaded = getPayplan()
-    expect(loaded.fixedSalary).toBe(2000)
-  })
-
-  it('getMarginSheets retourne un tableau vide par défaut', () => {
-    const sheets = getMarginSheets()
-    expect(sheets).toEqual([])
   })
 })
 

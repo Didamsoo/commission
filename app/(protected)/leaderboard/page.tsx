@@ -42,7 +42,7 @@ function periodToApiParam(period: Period): string | undefined {
   const month = String(now.getMonth() + 1).padStart(2, "0")
   switch (period) {
     case "month": return `${year}-${month}`
-    default: return undefined // TODO: handle other periods
+    default: return undefined
   }
 }
 

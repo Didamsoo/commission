@@ -20,7 +20,8 @@ import {
   Percent,
   Building,
   Car,
-  BarChart3
+  BarChart3,
+  Loader2
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -37,6 +38,7 @@ import {
   SelectValue
 } from "@/components/ui/select"
 import { createDefi } from "@/hooks/use-defis"
+import { useMarques } from "@/hooks/use-marques"
 
 // ---------------------------------------------------------------------------
 // Inline interfaces (previously imported from mock-dir-plaque-data)
@@ -65,31 +67,6 @@ interface BrandData {
   trend: "up" | "down" | "stable"
   quarterlyGrowth: number
 }
-
-// TODO: replace with API data
-const brands: BrandData[] = [
-  {
-    id: "brand-ford", name: "Ford", logo: "\u{1F699}", color: "from-blue-600 to-blue-700",
-    directorId: "dir-marque-1", directorName: "Jean Legrand",
-    dealershipCount: 6, employeeCount: 420,
-    stats: { totalSales: 287, salesTarget: 300, objectiveRate: 95.7, totalRevenue: 8610000, totalMargin: 430500, avgGPU: 1500, financingRate: 76, satisfaction: 86, marketShare: 4.2 },
-    trend: "up", quarterlyGrowth: 8
-  },
-  {
-    id: "brand-nissan", name: "Nissan", logo: "\u{1F697}", color: "from-red-600 to-red-700",
-    directorId: "dir-marque-2", directorName: "Marie Dupont",
-    dealershipCount: 5, employeeCount: 350,
-    stats: { totalSales: 312, salesTarget: 320, objectiveRate: 97.5, totalRevenue: 9360000, totalMargin: 468000, avgGPU: 1500, financingRate: 72, satisfaction: 84, marketShare: 3.8 },
-    trend: "stable", quarterlyGrowth: 3
-  },
-  {
-    id: "brand-suzuki", name: "Suzuki", logo: "\u{1F690}", color: "from-yellow-500 to-yellow-600",
-    directorId: "dir-marque-3", directorName: "Thomas Petit",
-    dealershipCount: 4, employeeCount: 280,
-    stats: { totalSales: 293, salesTarget: 320, objectiveRate: 91.6, totalRevenue: 8790000, totalMargin: 439500, avgGPU: 1500, financingRate: 74, satisfaction: 88, marketShare: 2.9 },
-    trend: "up", quarterlyGrowth: 12
-  }
-]
 
 // ---------------------------------------------------------------------------
 
@@ -128,6 +105,31 @@ const rewardTypes = [
 function ChallengeNewContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { data: marquesData, loading: marquesLoading } = useMarques()
+
+  const brands: BrandData[] = ((marquesData || []) as any[]).map(m => ({
+    id: m.id || "",
+    name: m.name || "",
+    logo: "",
+    color: "from-blue-600 to-blue-700",
+    directorId: m.director_id || "",
+    directorName: m.director_name || "",
+    dealershipCount: m.dealership_count || 0,
+    employeeCount: m.employee_count || 0,
+    stats: {
+      totalSales: m.total_sales || 0,
+      salesTarget: m.sales_target || 0,
+      objectiveRate: m.sales_target > 0 ? Math.round((m.total_sales / m.sales_target) * 100) : 0,
+      totalRevenue: m.total_revenue || 0,
+      totalMargin: m.total_margin || 0,
+      avgGPU: m.total_sales > 0 ? Math.round((m.total_margin || 0) / m.total_sales) : 0,
+      financingRate: m.financing_rate || 0,
+      satisfaction: 0,
+      marketShare: m.market_share || 0,
+    },
+    trend: (m.quarterly_growth || 0) > 0 ? "up" as const : (m.quarterly_growth || 0) < 0 ? "down" as const : "stable" as const,
+    quarterlyGrowth: m.quarterly_growth || 0
+  }))
 
   const [step, setStep] = useState(1)
   const [formData, setFormData] = useState<ChallengeFormData>({
@@ -205,8 +207,8 @@ function ChallengeNewContent() {
         reward_description: formData.rewardDescription,
       })
       router.push("/groupe")
-    } catch (error) {
-      console.error("Error creating challenge:", error)
+    } catch {
+      // Challenge creation failed
     }
   }
 
@@ -423,6 +425,13 @@ function ChallengeNewContent() {
                   Sélectionner toutes
                 </Button>
               </div>
+
+              {marquesLoading && (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+                  <span className="ml-2 text-sm text-gray-500">Chargement des marques...</span>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {brands.map(brand => {
