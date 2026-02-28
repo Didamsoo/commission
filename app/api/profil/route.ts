@@ -19,7 +19,12 @@ export async function GET() {
     concession_name = concession?.name ?? null
   }
 
-  return NextResponse.json({ data: { ...auth.profile, concession_name } })
+  // Fallback full_name from auth metadata when profile table has no value
+  const { data: { user: authUser } } = await auth.supabase.auth.getUser()
+  const metaName = authUser?.user_metadata?.full_name as string | undefined
+  const full_name = auth.profile.full_name || metaName || auth.user.email
+
+  return NextResponse.json({ data: { ...auth.profile, full_name, concession_name } })
 }
 
 export async function PUT(request: NextRequest) {

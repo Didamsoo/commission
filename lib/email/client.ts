@@ -1,3 +1,4 @@
+import * as Sentry from '@sentry/nextjs'
 import { Resend } from 'resend'
 
 let _resend: Resend | null = null
@@ -18,7 +19,7 @@ interface SendEmailOptions {
 
 export async function sendEmail({ to, subject, react }: SendEmailOptions) {
   if (!process.env.RESEND_API_KEY) {
-    console.warn('[Email] RESEND_API_KEY non configurée, email non envoyé:', subject)
+    Sentry.captureMessage(`[Email] RESEND_API_KEY non configurée, email non envoyé: ${subject}`, 'warning')
     return { success: false, error: 'RESEND_API_KEY not configured' }
   }
 
@@ -31,13 +32,13 @@ export async function sendEmail({ to, subject, react }: SendEmailOptions) {
     })
 
     if (error) {
-      console.error('[Email] Erreur Resend:', error)
+      Sentry.captureMessage(`[Email] Erreur Resend: ${error.message}`, 'error')
       return { success: false, error: error.message }
     }
 
     return { success: true, id: data?.id }
   } catch (err) {
-    console.error('[Email] Erreur envoi:', err)
+    Sentry.captureException(err, { tags: { module: 'email' } })
     return { success: false, error: String(err) }
   }
 }

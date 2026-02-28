@@ -43,6 +43,7 @@ import { useLeaderboard } from "@/hooks/use-leaderboard"
 import { useDefis } from "@/hooks/use-defis"
 import { useFichesMarge } from "@/hooks/use-fiches-marge"
 import { useProfil } from "@/hooks/use-profil"
+import { useBadges, type BadgeData } from "@/hooks/use-badges"
 import { DateRangePicker } from "@/components/ui/date-range-picker"
 
 import { SalesTrendChart } from "@/components/charts/sales-trend-chart"
@@ -74,12 +75,6 @@ interface CommercialDashboardData {
   performanceHistory: PerformanceHistoryItem[]
 }
 
-// Static badge showcase — no badges_utilisateur API yet
-const recentBadges = [
-  { id: "1", name: "Semaine Parfaite", icon: "flame", color: "orange", earnedAt: "2024-02-15", rarity: "rare" },
-  { id: "2", name: "5 Ventes", icon: "star", color: "blue", earnedAt: "2024-02-10", rarity: "common" },
-  { id: "3", name: "Finance Master", icon: "zap", color: "purple", earnedAt: "2024-02-05", rarity: "epic" }
-]
 
 // ============================================
 // PREMIUM STAT CARD COMPONENT
@@ -227,6 +222,8 @@ export default function DashboardPage() {
   const { data: leaderboardData, loading: lbLoading } = useLeaderboard(undefined, undefined, 5)
   const { data: defisData } = useDefis("active")
   const { data: recentFiches } = useFichesMarge({ limit: 4 })
+  const { data: badgesData } = useBadges()
+  const recentBadges = (badgesData || []).filter(b => b.earned).slice(-3).reverse()
 
   const kpis = dashData?.kpis
   const salesTarget = kpis?.salesTarget || 0
@@ -618,38 +615,29 @@ export default function DashboardPage() {
             <CardContent className="p-6">
               {recentBadges.length > 0 ? (
                 <div className="grid grid-cols-3 gap-4">
-                  {recentBadges.map((badge) => (
-                    <div
-                      key={badge.id}
-                      className="group flex flex-col items-center p-5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer"
-                    >
-                      <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg mb-3 ${
-                        badge.rarity === "epic" 
-                          ? "bg-gradient-to-br from-purple-500 to-violet-600" 
-                          : badge.rarity === "rare"
-                          ? "bg-gradient-to-br from-amber-400 to-orange-500"
-                          : "bg-gradient-to-br from-blue-400 to-cyan-500"
-                      }`}>
-                        {badge.icon === "flame" ? (
-                          <Flame className="w-8 h-8 text-white" />
-                        ) : badge.icon === "star" ? (
-                          <Star className="w-8 h-8 text-white" />
-                        ) : (
-                          <Zap className="w-8 h-8 text-white" />
+                  {recentBadges.map((badge: BadgeData) => {
+                    const iconMap: Record<string, React.ElementType> = { flame: Flame, star: Star, zap: Zap, euro: Euro, car: Car, target: Target, crown: Award, award: Award, medal: Medal }
+                    const IconComponent = (badge.icon && iconMap[badge.icon]) || Award
+                    const colorMap: Record<string, string> = { orange: "from-amber-400 to-orange-500", blue: "from-blue-400 to-cyan-500", purple: "from-purple-500 to-violet-600", green: "from-emerald-400 to-emerald-600" }
+                    const gradient = (badge.category && colorMap[badge.category]) || "from-blue-400 to-cyan-500"
+
+                    return (
+                      <div
+                        key={badge.id}
+                        className="group flex flex-col items-center p-5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-100 hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer"
+                      >
+                        <div className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg mb-3 bg-gradient-to-br ${gradient}`}>
+                          <IconComponent className="w-8 h-8 text-white" />
+                        </div>
+                        <p className="font-semibold text-gray-900 text-center text-sm">{badge.name}</p>
+                        {badge.category && (
+                          <Badge className="mt-2 text-xs bg-blue-100 text-blue-700">
+                            {badge.category}
+                          </Badge>
                         )}
                       </div>
-                      <p className="font-semibold text-gray-900 text-center text-sm">{badge.name}</p>
-                      <Badge className={`mt-2 text-xs ${
-                        badge.rarity === "epic" 
-                          ? "bg-purple-100 text-purple-700" 
-                          : badge.rarity === "rare"
-                          ? "bg-amber-100 text-amber-700"
-                          : "bg-blue-100 text-blue-700"
-                      }`}>
-                        {badge.rarity === "epic" ? "Épique" : badge.rarity === "rare" ? "Rare" : "Commun"}
-                      </Badge>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-12">

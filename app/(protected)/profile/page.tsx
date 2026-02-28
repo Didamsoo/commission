@@ -35,26 +35,18 @@ import { useProfil } from "@/hooks/use-profil"
 import { useDashboard } from "@/hooks/use-dashboard"
 import { useAvatarUpload } from "@/hooks/use-avatar-upload"
 import { useToast } from "@/hooks/use-toast"
+import { useBadges, type BadgeData } from "@/hooks/use-badges"
 
-// Mock badges
-const allBadges = [
-  { id: "1", name: "Premier Pas", description: "Première vente réalisée", icon: Star, color: "blue", earned: true, earnedAt: "2023-06-20" },
-  { id: "2", name: "Semaine Parfaite", description: "5+ ventes en une semaine", icon: Flame, color: "orange", earned: true, earnedAt: "2024-01-15" },
-  { id: "3", name: "Roi du Financement", description: "10 ventes financées", icon: Euro, color: "green", earned: true, earnedAt: "2023-11-10" },
-  { id: "4", name: "Champion Électrique", description: "5 véhicules électriques", icon: Zap, color: "cyan", earned: true, earnedAt: "2023-12-05" },
-  { id: "5", name: "Marge Maximale", description: "Vente avec 2000€+ marge", icon: TrendingUp, color: "purple", earned: true, earnedAt: "2024-01-08" },
-  { id: "6", name: "Vendeur du Mois", description: "Top commission mensuelle", icon: Crown, color: "amber", earned: true, earnedAt: "2023-10-31" },
-  { id: "7", name: "5 Ventes", description: "5 ventes totales", icon: Car, color: "blue", earned: true, earnedAt: "2023-07-01" },
-  { id: "8", name: "10 Ventes", description: "10 ventes totales", icon: Car, color: "blue", earned: true, earnedAt: "2023-08-15" },
-  { id: "9", name: "Fidélisateur", description: "Client récurrent", icon: Star, color: "pink", earned: true, earnedAt: "2023-09-20" },
-  { id: "10", name: "Objectif Atteint", description: "100% de l'objectif mensuel", icon: Target, color: "emerald", earned: true, earnedAt: "2023-11-30" },
-  { id: "11", name: "Spécialiste Puma", description: "5 Ford Puma vendues", icon: Award, color: "indigo", earned: true, earnedAt: "2023-12-28" },
-  { id: "12", name: "En Feu", description: "10 jours de série", icon: Flame, color: "red", earned: true, earnedAt: "2024-01-10" },
-  // Locked badges
-  { id: "13", name: "Légende", description: "50 ventes totales", icon: Medal, color: "gray", earned: false, progress: 45, total: 50 },
-  { id: "14", name: "Marathonien", description: "30 jours de série", icon: Flame, color: "gray", earned: false, progress: 5, total: 30 },
-  { id: "15", name: "Master Financement", description: "50 ventes financées", icon: Euro, color: "gray", earned: false, progress: 28, total: 50 }
-]
+// Icon mapping from badge DB icon string to Lucide component
+const BADGE_ICON_MAP: Record<string, React.ElementType> = {
+  star: Star, flame: Flame, euro: Euro, zap: Zap, trending_up: TrendingUp,
+  crown: Crown, car: Car, target: Target, award: Award, medal: Medal,
+  sparkles: Sparkles,
+}
+
+function getBadgeIcon(icon: string | null): React.ElementType {
+  return (icon && BADGE_ICON_MAP[icon]) || Award
+}
 
 const levelColors: Record<string, string> = {
   "Débutant": "from-gray-400 to-gray-500",
@@ -80,9 +72,10 @@ const badgeColors: Record<string, { bg: string; text: string; gradient: string }
   gray: { bg: "bg-gray-100", text: "text-gray-400", gradient: "from-gray-300 to-gray-400" }
 }
 
-function BadgeCard({ badge }: { badge: typeof allBadges[0] }) {
-  const colors = badgeColors[badge.color]
-  const Icon = badge.icon
+function BadgeCard({ badge }: { badge: BadgeData }) {
+  const color = badge.category || "blue"
+  const colors = badgeColors[color] || badgeColors.blue
+  const Icon = getBadgeIcon(badge.icon)
 
   return (
     <div className={`relative p-4 rounded-xl border-2 transition-all ${
@@ -98,7 +91,7 @@ function BadgeCard({ badge }: { badge: typeof allBadges[0] }) {
       <div className="flex flex-col items-center text-center">
         <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-3 shadow-lg ${
           badge.earned
-            ? `bg-gradient-to-br ${colors.gradient} shadow-${badge.color}-500/25`
+            ? `bg-gradient-to-br ${colors.gradient}`
             : "bg-gray-200"
         }`}>
           <Icon className={`w-8 h-8 ${badge.earned ? "text-white" : "text-gray-400"}`} />
@@ -112,14 +105,6 @@ function BadgeCard({ badge }: { badge: typeof allBadges[0] }) {
             {new Date(badge.earnedAt).toLocaleDateString("fr-FR")}
           </p>
         )}
-        {!badge.earned && badge.progress !== undefined && (
-          <div className="w-full mt-3">
-            <Progress value={(badge.progress / badge.total!) * 100} className="h-1.5" />
-            <p className="text-xs text-gray-400 mt-1">
-              {badge.progress}/{badge.total}
-            </p>
-          </div>
-        )}
       </div>
     </div>
   )
@@ -127,11 +112,14 @@ function BadgeCard({ badge }: { badge: typeof allBadges[0] }) {
 
 export default function ProfilePage() {
   const [activeTab, setActiveTab] = useState("overview")
-  const { data: profil, loading: profilLoading } = useProfil()
+  const { data: profil, loading: profilLoading, refetch: refetchProfil } = useProfil()
   const { data: dashData } = useDashboard<{ kpis: { totalSales: number; totalCommission: number; totalMargin: number } }>("commercial")
   const { uploadAvatar, uploading: avatarUploading } = useAvatarUpload()
   const { toast } = useToast()
+  const { data: badgesData } = useBadges()
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const allBadges: BadgeData[] = badgesData || []
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click()
@@ -143,7 +131,7 @@ export default function ProfilePage() {
     const avatarUrl = await uploadAvatar(file)
     if (avatarUrl) {
       toast({ title: "Avatar mis \u00e0 jour !" })
-      window.location.reload()
+      refetchProfil()
     } else {
       toast({ title: "Erreur d'upload", variant: "destructive" })
     }
@@ -239,9 +227,11 @@ export default function ProfilePage() {
                     </span>
                   </div>
                 </div>
-                <Button variant="outline" className="gap-2">
-                  <Edit2 className="w-4 h-4" />
-                  Modifier le profil
+                <Button variant="outline" className="gap-2" asChild>
+                  <Link href="/profile/settings">
+                    <Edit2 className="w-4 h-4" />
+                    Modifier le profil
+                  </Link>
                 </Button>
               </div>
             </div>
@@ -342,8 +332,9 @@ export default function ProfilePage() {
             <CardContent>
               <div className="flex flex-wrap gap-4">
                 {earnedBadges.slice(0, 5).map((badge) => {
-                  const colors = badgeColors[badge.color]
-                  const Icon = badge.icon
+                  const color = badge.category || "blue"
+                  const colors = badgeColors[color] || badgeColors.blue
+                  const Icon = getBadgeIcon(badge.icon)
                   return (
                     <div key={badge.id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50">
                       <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${colors.gradient} flex items-center justify-center`}>

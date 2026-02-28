@@ -260,7 +260,7 @@ function MetricComparisonChart({ metric, dealerships }: { metric: typeof metrics
   )
 }
 
-function RadarChartMock({ dealershipId, dealerships }: { dealershipId: string; dealerships: DealershipDisplayData[] }) {
+function DealershipComparisonChart({ dealershipId, dealerships }: { dealershipId: string; dealerships: DealershipDisplayData[] }) {
   const dealership = dealerships.find(d => d.id === dealershipId)
   if (!dealership) return null
 
@@ -528,7 +528,7 @@ export default function BenchmarkPage() {
             </Select>
           </CardHeader>
           <CardContent>
-            <RadarChartMock dealershipId={effectiveDealership} dealerships={dealerships} />
+            <DealershipComparisonChart dealershipId={effectiveDealership} dealerships={dealerships} />
           </CardContent>
         </Card>
       </div>

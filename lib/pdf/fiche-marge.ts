@@ -64,7 +64,7 @@ export function generateFicheMargePDF(data: FicheMargePDFData): void {
   })
 
   // Pricing Details
-  const finalY1 = (doc as any).lastAutoTable.finalY || 110
+  const finalY1 = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY || 110
   doc.setFontSize(12)
   doc.text("Détails Financiers", 15, finalY1 + 10)
 
@@ -86,7 +86,7 @@ export function generateFicheMargePDF(data: FicheMargePDFData): void {
   })
 
   // Options
-  const finalY2 = (doc as any).lastAutoTable.finalY || 160
+  const finalY2 = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY || 160
   doc.text("Options & Services", 15, finalY2 + 10)
 
   autoTable(doc, {
@@ -103,7 +103,7 @@ export function generateFicheMargePDF(data: FicheMargePDFData): void {
   })
 
   // Results Summary
-  const finalY3 = (doc as any).lastAutoTable.finalY || 200
+  const finalY3 = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY || 200
   doc.setFontSize(14)
   doc.text("Résultats", 15, finalY3 + 10)
 

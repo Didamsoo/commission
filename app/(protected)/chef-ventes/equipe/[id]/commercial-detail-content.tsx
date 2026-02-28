@@ -102,49 +102,39 @@ function StatCard({
   )
 }
 
-function PerformanceHistoryMock() {
-  const months = ["Sep", "Oct", "Nov", "Déc", "Jan", "Fév"]
-  const sales = [6, 8, 7, 10, 9, 8]
-  const targets = [8, 8, 8, 10, 10, 10]
-  const maxValue = Math.max(...sales, ...targets)
+function PerformanceOverview({ member }: { member: MemberData }) {
+  const objectiveRate = member.kpis.salesTarget > 0
+    ? Math.round((member.kpis.sales / member.kpis.salesTarget) * 100)
+    : 0
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-6">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-indigo-500" />
-          <span className="text-sm text-gray-600">Réalisé</span>
+    <div className="space-y-6">
+      <div className="grid grid-cols-3 gap-4">
+        <div className="text-center p-4 rounded-xl bg-indigo-50">
+          <p className="text-2xl font-bold text-indigo-600">{member.kpis.sales}</p>
+          <p className="text-sm text-gray-500">Ventes</p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-gray-300" />
-          <span className="text-sm text-gray-600">Objectif</span>
+        <div className="text-center p-4 rounded-xl bg-gray-50">
+          <p className="text-2xl font-bold text-gray-600">{member.kpis.salesTarget}</p>
+          <p className="text-sm text-gray-500">Objectif</p>
+        </div>
+        <div className="text-center p-4 rounded-xl bg-emerald-50">
+          <p className={`text-2xl font-bold ${objectiveRate >= 100 ? "text-emerald-600" : objectiveRate >= 80 ? "text-blue-600" : "text-amber-600"}`}>
+            {objectiveRate}%
+          </p>
+          <p className="text-sm text-gray-500">Réalisation</p>
         </div>
       </div>
-
-      <div className="flex items-end gap-3 h-32">
-        {months.map((month, index) => {
-          const salesHeight = (sales[index] / maxValue) * 100
-          const targetHeight = (targets[index] / maxValue) * 100
-          const achieved = sales[index] >= targets[index]
-
-          return (
-            <div key={month} className="flex-1 flex flex-col items-center gap-1">
-              <div className="relative w-full h-24 flex items-end justify-center gap-1">
-                <div
-                  className="w-4 bg-gray-200 rounded-t-sm"
-                  style={{ height: `${targetHeight}%` }}
-                />
-                <div
-                  className={`w-4 rounded-t-sm ${
-                    achieved ? "bg-emerald-500" : "bg-indigo-500"
-                  }`}
-                  style={{ height: `${salesHeight}%` }}
-                />
-              </div>
-              <span className="text-xs text-gray-500">{month}</span>
-            </div>
-          )
-        })}
+      <div className="space-y-2">
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-600">Progression vers l&apos;objectif</span>
+          <span className="font-semibold">{member.kpis.sales}/{member.kpis.salesTarget}</span>
+        </div>
+        <Progress value={Math.min(objectiveRate, 100)} className={`h-3 ${
+          objectiveRate >= 100 ? "[&>div]:bg-emerald-500" :
+          objectiveRate >= 80 ? "[&>div]:bg-indigo-500" :
+          "[&>div]:bg-amber-500"
+        }`} />
       </div>
     </div>
   )
@@ -572,7 +562,7 @@ export function CommercialDetailContent({ id }: { id: string }) {
               <CardDescription>Évolution sur les 6 derniers mois</CardDescription>
             </CardHeader>
             <CardContent>
-              <PerformanceHistoryMock />
+              <PerformanceOverview member={member} />
             </CardContent>
           </Card>
 

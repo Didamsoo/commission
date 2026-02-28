@@ -70,7 +70,8 @@ export default function SettingsPage() {
           const registration = await navigator.serviceWorker.ready
           const subscription = await registration.pushManager.getSubscription()
           setPushSubscribed(!!subscription)
-        } catch {
+        } catch (err) {
+          console.error("[Settings] Push check error:", err)
           setPushSubscribed(false)
         }
       }
@@ -83,7 +84,8 @@ export default function SettingsPage() {
     try {
       await updateProfil({ first_name: firstName, last_name: lastName, phone })
       toast({ title: "Informations mises a jour" })
-    } catch {
+    } catch (err) {
+      console.error("[Settings] Save info error:", err)
       toast({ title: "Erreur de sauvegarde", variant: "destructive" })
     } finally {
       setSavingInfo(false)
@@ -102,7 +104,8 @@ export default function SettingsPage() {
         }
       })
       toast({ title: "Preferences mises a jour" })
-    } catch {
+    } catch (err) {
+      console.error("[Settings] Save notifications error:", err)
       toast({ title: "Erreur de sauvegarde", variant: "destructive" })
     } finally {
       setSavingNotif(false)
@@ -134,7 +137,8 @@ export default function SettingsPage() {
 
       setPushSubscribed(true)
       toast({ title: "Notifications push activees" })
-    } catch {
+    } catch (err) {
+      console.error("[Settings] Push subscribe error:", err)
       toast({ title: "Erreur lors de l'activation des notifications", variant: "destructive" })
     } finally {
       setPushLoading(false)
@@ -158,7 +162,8 @@ export default function SettingsPage() {
 
       setPushSubscribed(false)
       toast({ title: "Notifications push desactivees" })
-    } catch {
+    } catch (err) {
+      console.error("[Settings] Push unsubscribe error:", err)
       toast({ title: "Erreur lors de la desactivation", variant: "destructive" })
     } finally {
       setPushLoading(false)

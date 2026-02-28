@@ -433,9 +433,9 @@ export default function RegisterPage() {
                       />
                       <Label htmlFor="terms" className="text-sm text-gray-600 leading-relaxed cursor-pointer">
                         J&apos;accepte les{" "}
-                        <Link href="#" className="text-blue-600 hover:underline font-medium">conditions d&apos;utilisation</Link>
+                        <Link href="/cgu" className="text-blue-600 hover:underline font-medium">conditions d&apos;utilisation</Link>
                         {" "}et la{" "}
-                        <Link href="#" className="text-blue-600 hover:underline font-medium">politique de confidentialité</Link>
+                        <Link href="/confidentialite" className="text-blue-600 hover:underline font-medium">politique de confidentialité</Link>
                       </Label>
                     </div>
                   </div>

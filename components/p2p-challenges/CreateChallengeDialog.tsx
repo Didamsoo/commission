@@ -103,7 +103,7 @@ export function CreateChallengeDialog({
       })
 
       const newChallenge: P2PChallenge = {
-        id: (result.data as any)?.id || `p2p-${Date.now()}`,
+        id: (result.data as { id?: string } | undefined)?.id || `p2p-${Date.now()}`,
         challenger: {
           id: currentUser.id,
           name: currentUser.name,
@@ -127,8 +127,8 @@ export function CreateChallengeDialog({
 
       onChallengeCreated?.(newChallenge)
       handleClose()
-    } catch {
-      // Challenge creation failed
+    } catch (err) {
+      console.error("[P2P] Challenge creation failed:", err)
     } finally {
       setIsSubmitting(false)
     }

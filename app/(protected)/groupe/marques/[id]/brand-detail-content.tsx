@@ -220,15 +220,43 @@ function DealershipCard({ dealership }: { dealership: DealershipDisplayData }) {
   )
 }
 
-function BrandPerformanceChart({ brandName }: { brandName: string }) {
-  // Historical performance data is not yet available from the API.
-  // Displaying a placeholder until the history endpoint is implemented.
-  return (
-    <div className="flex items-center justify-center h-48 text-gray-400">
-      <div className="text-center space-y-2">
-        <BarChart3 className="w-12 h-12 mx-auto text-gray-300" />
-        <p className="text-sm">Historique de performance bientôt disponible</p>
+function BrandPerformanceChart({ dealerships }: { dealerships: DealershipDisplayData[] }) {
+  const totalSales = dealerships.reduce((s, d) => s + d.stats.totalSales, 0)
+  const totalTarget = dealerships.reduce((s, d) => s + d.stats.salesTarget, 0)
+
+  if (totalSales === 0 && totalTarget === 0) {
+    return (
+      <div className="flex items-center justify-center h-48 text-gray-400">
+        <div className="text-center space-y-2">
+          <BarChart3 className="w-12 h-12 mx-auto text-gray-300" />
+          <p className="text-sm">Pas de données de performance disponibles</p>
+        </div>
       </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-4">
+        <div className="text-center p-4 rounded-xl bg-blue-50">
+          <p className="text-2xl font-bold text-blue-600">{totalSales}</p>
+          <p className="text-sm text-gray-500">Ventes totales</p>
+        </div>
+        <div className="text-center p-4 rounded-xl bg-emerald-50">
+          <p className="text-2xl font-bold text-emerald-600">{totalTarget}</p>
+          <p className="text-sm text-gray-500">Objectif</p>
+        </div>
+        <div className="text-center p-4 rounded-xl bg-amber-50">
+          <p className="text-2xl font-bold text-amber-600">
+            {totalTarget > 0 ? Math.round((totalSales / totalTarget) * 100) : 0}%
+          </p>
+          <p className="text-sm text-gray-500">Taux réalisation</p>
+        </div>
+      </div>
+      <Progress
+        value={totalTarget > 0 ? Math.min((totalSales / totalTarget) * 100, 100) : 0}
+        className="h-3"
+      />
     </div>
   )
 }
@@ -256,8 +284,7 @@ export function BrandDetailContent({ id }: { id: string }) {
   }
 
   // Map concessions from the marque detail response
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const dealershipsData: DealershipDisplayData[] = ((marqueRaw as any)?.concessions || []).map(mapConcessionToDealership)
+  const dealershipsData: DealershipDisplayData[] = ((marqueRaw as { concessions?: unknown[] } | null)?.concessions || []).map(mapConcessionToDealership)
 
   // Map defis to GroupChallenge format and filter for this brand
   const allChallenges: GroupChallenge[] = (defisData || []).map(mapDefiToGroupChallenge)
@@ -425,7 +452,7 @@ export function BrandDetailContent({ id }: { id: string }) {
               <CardDescription>Évolution des ventes sur 6 mois</CardDescription>
             </CardHeader>
             <CardContent>
-              <BrandPerformanceChart brandName={brand.name} />
+              <BrandPerformanceChart dealerships={dealershipsData} />
             </CardContent>
           </Card>
 

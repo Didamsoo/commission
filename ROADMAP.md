@@ -199,17 +199,17 @@
 
 ### Badges (données statiques, pas encore branchées sur la BDD)
 
-- [ ] Créer la route API `GET /api/badges` (lire `badges` + `badges_utilisateur` pour l'utilisateur connecté)
-- [ ] `dashboard/page.tsx` : remplacer `recentBadges` statique par l'API badges
-- [ ] `profile/page.tsx` : remplacer `allBadges` mock par l'API badges
-- [ ] `profile/badges/page.tsx` : remplacer `allBadges` mock par l'API badges
+- [x] Créer la route API `GET /api/badges` (lire `badges` + `badges_utilisateur` pour l'utilisateur connecté)
+- [x] `dashboard/page.tsx` : remplacer `recentBadges` statique par l'API badges
+- [x] `profile/page.tsx` : remplacer `allBadges` mock par l'API badges
+- [x] `profile/badges/page.tsx` : remplacer `allBadges` mock par l'API badges
 
 ### Graphiques & visualisations placeholder
 
-- [ ] `chef-ventes/equipe/[id]/commercial-detail-content.tsx` : remplacer `PerformanceHistoryMock()` par les vraies données de performance du commercial
-- [ ] `marque/benchmark/page.tsx` : remplacer `RadarChartMock()` par un vrai radar chart avec données API
-- [ ] `marque/page.tsx` : remplacer l'historique synthétique par un endpoint API dédié
-- [ ] `groupe/marques/[id]/brand-detail-content.tsx` : remplacer le placeholder historique par des données réelles
+- [x] `chef-ventes/equipe/[id]/commercial-detail-content.tsx` : remplacer `PerformanceHistoryMock()` par les vraies données de performance du commercial
+- [x] `marque/benchmark/page.tsx` : remplacer `RadarChartMock()` par un vrai radar chart avec données API
+- [x] `marque/page.tsx` : remplacer l'historique synthétique par un endpoint API dédié
+- [x] `groupe/marques/[id]/brand-detail-content.tsx` : remplacer le placeholder historique par des données réelles
 
 ### Données stock statiques
 
@@ -223,20 +223,20 @@
 
 ### Liens placeholder `href="#"`
 
-- [ ] `app/page.tsx` : créer ou relier les pages "Mentions légales", "Confidentialité", "CGU" (footer landing)
-- [ ] `app/(auth)/register/page.tsx` : relier les liens "conditions d'utilisation" et "politique de confidentialité"
+- [x] `app/page.tsx` : créer ou relier les pages "Mentions légales", "Confidentialité", "CGU" (footer landing)
+- [x] `app/(auth)/register/page.tsx` : relier les liens "conditions d'utilisation" et "politique de confidentialité"
 
 ### Améliorations UX
 
-- [ ] `profile/page.tsx` : remplacer `window.location.reload()` après upload avatar par un rafraîchissement de state
-- [ ] `profile/settings/page.tsx` : ajouter un vrai logging d'erreur dans les blocs catch (actuellement silencieux)
+- [x] `profile/page.tsx` : remplacer `window.location.reload()` après upload avatar par un rafraîchissement de state
+- [x] `profile/settings/page.tsx` : ajouter un vrai logging d'erreur dans les blocs catch (actuellement silencieux)
 
 ### Nettoyage code
 
-- [ ] `lib/pdf/fiche-marge.ts` : typer correctement `(doc as any).lastAutoTable` (éviter `any`)
-- [ ] `components/p2p-challenges/CreateChallengeDialog.tsx` : typer `(result.data as any)?.id`
-- [ ] `groupe/marques/[id]/brand-detail-content.tsx` : typer `(marqueRaw as any)?.concessions`
-- [ ] `lib/email/client.ts` : remplacer les `console.warn`/`console.error` par un logger structuré (ou Sentry)
+- [x] `lib/pdf/fiche-marge.ts` : typer correctement `(doc as any).lastAutoTable` (éviter `any`)
+- [x] `components/p2p-challenges/CreateChallengeDialog.tsx` : typer `(result.data as any)?.id`
+- [x] `groupe/marques/[id]/brand-detail-content.tsx` : typer `(marqueRaw as any)?.concessions`
+- [x] `lib/email/client.ts` : remplacer les `console.warn`/`console.error` par un logger structuré (ou Sentry)
 
 ---
 
@@ -246,44 +246,44 @@
 
 ### Tests unitaires — Schémas Zod
 
-- [ ] Tester `lib/validations/fiches-marge.ts` (cas valides + invalides)
-- [ ] Tester `lib/validations/defis.ts` (création + mise à jour)
-- [ ] Tester `lib/validations/defis-p2p.ts`
-- [ ] Tester `lib/validations/payplan.ts`
-- [ ] Tester `lib/validations/profil.ts`
-- [ ] Tester `lib/validations/equipe.ts`
-- [ ] Tester `lib/validations/approbations.ts`
-- [ ] Tester `lib/validations/coaching.ts`
-- [ ] Tester `lib/validations/notifications.ts`
+- [x] Tester `lib/validations/fiches-marge.ts` (cas valides + invalides)
+- [x] Tester `lib/validations/defis.ts` (création + mise à jour)
+- [x] Tester `lib/validations/defis-p2p.ts`
+- [x] Tester `lib/validations/payplan.ts`
+- [x] Tester `lib/validations/profil.ts`
+- [x] Tester `lib/validations/equipe.ts`
+- [x] Tester `lib/validations/approbations.ts`
+- [x] Tester `lib/validations/coaching.ts`
+- [x] Tester `lib/validations/notifications.ts`
 
 ### Tests unitaires — Helpers & utilitaires
 
-- [ ] Tester `lib/types/display.ts` (`displayValue`, `mapMarqueToBrand`, `mapConcessionToDealership`)
-- [ ] Tester `lib/utils/kpi-helpers.ts` (`deriveBrandKPIs`, `computeTrend`)
+- [x] Tester `lib/types/display.ts` (`displayValue`, `mapMarqueToBrand`, `mapConcessionToDealership`)
+- [x] Tester `lib/utils/kpi-helpers.ts` (`deriveBrandKPIs`, `computeTrend`)
 
 ### Tests d'intégration — Routes API (les plus critiques)
 
-- [ ] Tester `GET/POST /api/fiches-marge` (CRUD complet)
-- [ ] Tester `GET/POST /api/defis` (CRUD complet)
-- [ ] Tester `GET/POST /api/defis-p2p` (CRUD complet)
-- [ ] Tester `GET /api/dashboard/[role]` (5 rôles)
-- [ ] Tester `GET /api/leaderboard`
-- [ ] Tester `GET/PUT /api/profil`
-- [ ] Tester `GET/POST /api/approbations` (workflow validation)
-- [ ] Tester `GET/POST /api/equipe`
-- [ ] Tester `GET/POST /api/coaching`
-- [ ] Tester `GET/POST /api/payplan`
+- [x] Tester `GET/POST /api/fiches-marge` (CRUD complet)
+- [x] Tester `GET/POST /api/defis` (CRUD complet)
+- [x] Tester `GET/POST /api/defis-p2p` (CRUD complet)
+- [x] Tester `GET /api/dashboard/[role]` (5 rôles)
+- [x] Tester `GET /api/leaderboard`
+- [x] Tester `GET/PUT /api/profil`
+- [x] Tester `GET/POST /api/approbations` (workflow validation)
+- [x] Tester `GET/POST /api/equipe`
+- [x] Tester `GET/POST /api/coaching`
+- [x] Tester `GET/POST /api/payplan`
 
 ### Tests E2E — Parcours métier manquants
 
-- [ ] Parcours approbation vente (soumission → validation → retour)
-- [ ] Parcours gestion d'équipe (ajout membre, changement rôle)
-- [ ] Parcours coaching (création note, édition, suppression)
-- [ ] Parcours leaderboard (affichage classement, filtres)
-- [ ] Parcours export rapport (génération PDF + Excel)
-- [ ] Parcours modification profil (avatar, mot de passe, préférences)
-- [ ] Parcours changement de concession (switch + vérification données)
-- [ ] Parcours recherche globale (recherche, navigation vers résultat)
+- [x] Parcours approbation vente (soumission → validation → retour)
+- [x] Parcours gestion d'équipe (ajout membre, changement rôle)
+- [x] Parcours coaching (création note, édition, suppression)
+- [x] Parcours leaderboard (affichage classement, filtres)
+- [x] Parcours export rapport (génération PDF + Excel)
+- [x] Parcours modification profil (avatar, mot de passe, préférences)
+- [x] Parcours changement de concession (switch + vérification données)
+- [x] Parcours recherche globale (recherche, navigation vers résultat)
 
 ---
 
@@ -291,10 +291,10 @@
 
 > Pages nécessaires pour un site professionnel.
 
-- [ ] Créer la page `/mentions-legales`
-- [ ] Créer la page `/confidentialite` (politique de confidentialité / RGPD)
-- [ ] Créer la page `/cgu` (conditions générales d'utilisation)
-- [ ] Mettre à jour les liens dans le footer (`app/page.tsx`) et le formulaire d'inscription
+- [x] Créer la page `/mentions-legales`
+- [x] Créer la page `/confidentialite` (politique de confidentialité / RGPD)
+- [x] Créer la page `/cgu` (conditions générales d'utilisation)
+- [x] Mettre à jour les liens dans le footer (`app/page.tsx`) et le formulaire d'inscription
 
 ---
 
@@ -312,11 +312,11 @@
 | 5 | Fonctionnalités manquantes | 12 | ✅ 12/12 |
 | 6 | Tests & Qualité | 10 | ✅ 10/10 |
 | 7 | Mise en production | 10 | 🟡 7/10 |
-| 8 | Derniers mock data & placeholders | 9 | ⬜ 0/9 |
-| 9 | Corrections UX & nettoyage code | 7 | ⬜ 0/7 |
-| 10 | Tests complémentaires | 28 | ⬜ 0/28 |
-| 11 | Pages légales & contenu | 4 | ⬜ 0/4 |
-| **TOTAL** | | **199 tâches** | **148/199 (74%)** |
+| 8 | Derniers mock data & placeholders | 9 | 🟡 8/9 |
+| 9 | Corrections UX & nettoyage code | 7 | ✅ 7/7 |
+| 10 | Tests complémentaires | 28 | ✅ 28/28 |
+| 11 | Pages légales & contenu | 4 | ✅ 4/4 |
+| **TOTAL** | | **199 tâches** | **195/199 (98%)** |
 
 ---
 

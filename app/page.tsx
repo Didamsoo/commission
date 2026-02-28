@@ -708,9 +708,9 @@ export default function LandingPage() {
               © 2024 AutoPerf Pro. Tous droits réservés.
             </p>
             <div className="flex gap-6 text-sm">
-              <a href="#" className="text-gray-500 hover:text-white transition-colors">Mentions légales</a>
-              <a href="#" className="text-gray-500 hover:text-white transition-colors">Confidentialité</a>
-              <a href="#" className="text-gray-500 hover:text-white transition-colors">CGU</a>
+              <a href="/mentions-legales" className="text-gray-500 hover:text-white transition-colors">Mentions légales</a>
+              <a href="/confidentialite" className="text-gray-500 hover:text-white transition-colors">Confidentialité</a>
+              <a href="/cgu" className="text-gray-500 hover:text-white transition-colors">CGU</a>
             </div>
           </div>
         </div>

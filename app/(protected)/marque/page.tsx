@@ -457,21 +457,21 @@ function AlertCard({ alert }: { alert: NetworkAlert }) {
 }
 
 function PerformanceChart({ dealerships }: { dealerships: DealershipDisplayData[] }) {
-  // Build a simple volume chart from current dealership data
-  // When API provides historical data this will be replaced
   const totalSales = dealerships.reduce((s, d) => s + d.stats.totalSales, 0)
   const totalTarget = dealerships.reduce((s, d) => s + d.stats.salesTarget, 0)
 
-  // Synthetic history based on current snapshot (placeholder until API delivers real history)
-  const months = ["Sep", "Oct", "Nov", "Dec", "Jan", "Fev"]
-  const factors = [0.92, 0.97, 1.01, 1.09, 0.96, 1.0]
-  const data = months.map((m, i) => ({
-    month: m,
-    volume: Math.round(totalSales * factors[i]),
-    volumeTarget: totalTarget
-  }))
+  // Build per-dealership data for comparison chart
+  const data = dealerships
+    .filter(d => d.stats.totalSales > 0 || d.stats.salesTarget > 0)
+    .sort((a, b) => b.stats.totalSales - a.stats.totalSales)
+    .slice(0, 6)
+    .map(d => ({
+      month: d.name.split(" ").slice(0, 2).join(" "),
+      volume: d.stats.totalSales,
+      volumeTarget: d.stats.salesTarget,
+    }))
 
-  const maxVolume = Math.max(...data.map(p => Math.max(p.volume, p.volumeTarget)))
+  const maxVolume = Math.max(...data.map(p => Math.max(p.volume, p.volumeTarget)), 1)
 
   return (
     <div className="space-y-4">
@@ -804,7 +804,7 @@ export default function DirecteurMarqueDashboard() {
                   <BarChart3 className="w-5 h-5 text-indigo-600" />
                   Evolution du volume
                 </CardTitle>
-                <CardDescription>6 derniers mois - Toutes concessions confondues</CardDescription>
+                <CardDescription>Top concessions — ventes vs objectifs</CardDescription>
               </CardHeader>
               <CardContent>
                 <PerformanceChart dealerships={dealerships} />
