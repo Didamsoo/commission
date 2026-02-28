@@ -61,12 +61,14 @@ import { Label } from "@/components/ui/label"
 // TEAM MANAGEMENT PAGE PREMIUM - AutoPerf Pro
 // ============================================
 
+type RoleKey = "commercial" | "chef_ventes" | "dir_concession" | "dir_marque" | "dir_plaque" | "admin"
+
 interface TeamMember {
   id: string
   name: string
   email: string
   phone: string
-  role: "commercial" | "direction" | "admin"
+  role: RoleKey
   status: "active" | "inactive" | "pending"
   avatar: string
   stats: {
@@ -80,9 +82,12 @@ interface TeamMember {
   lastActive: string
 }
 
-const roleConfig = {
+const roleConfig: Record<RoleKey, { label: string; color: string; icon: typeof UserPlus }> = {
   commercial: { label: "Commercial", color: "bg-blue-100 text-blue-700 border-blue-200", icon: UserPlus },
-  direction: { label: "Direction", color: "bg-purple-100 text-purple-700 border-purple-200", icon: Crown },
+  chef_ventes: { label: "Chef des ventes", color: "bg-indigo-100 text-indigo-700 border-indigo-200", icon: Star },
+  dir_concession: { label: "Directeur concession", color: "bg-purple-100 text-purple-700 border-purple-200", icon: Crown },
+  dir_marque: { label: "Directeur marque", color: "bg-violet-100 text-violet-700 border-violet-200", icon: Crown },
+  dir_plaque: { label: "Directeur plaque", color: "bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200", icon: Crown },
   admin: { label: "Administrateur", color: "bg-red-100 text-red-700 border-red-200", icon: Shield }
 }
 
@@ -99,7 +104,7 @@ export default function TeamManagementPage() {
     name: m.full_name,
     email: m.email,
     phone: m.phone || "",
-    role: (m.role === "chef_ventes" || m.role === "dir_concession") ? "direction" : m.role === "admin" ? "admin" : "commercial" as any,
+    role: (m.role as RoleKey) || "commercial",
     status: m.is_active ? "active" : "inactive" as any,
     avatar: m.avatar_url || "",
     stats: { sales: m.total_sales || 0, target: m.sales_target || 10, commission: m.total_commission || 0, margin: m.total_margin || 0, financingRate: m.financing_rate || 0 },
@@ -116,6 +121,10 @@ export default function TeamManagementPage() {
   const [inviteLoading, setInviteLoading] = useState(false)
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null)
   const [showMemberDetail, setShowMemberDetail] = useState(false)
+  const [showRoleDialog, setShowRoleDialog] = useState(false)
+  const [selectedMemberForRole, setSelectedMemberForRole] = useState<TeamMember | null>(null)
+  const [newRole, setNewRole] = useState<RoleKey>("commercial")
+  const [roleChangeLoading, setRoleChangeLoading] = useState(false)
 
   const filteredMembers = members.filter(member => {
     const matchesSearch = 
@@ -133,6 +142,29 @@ export default function TeamManagementPage() {
   const openMemberDetail = (member: TeamMember) => {
     setSelectedMember(member)
     setShowMemberDetail(true)
+  }
+
+  const openRoleDialog = (member: TeamMember) => {
+    setSelectedMemberForRole(member)
+    setNewRole(member.role)
+    setShowRoleDialog(true)
+  }
+
+  const handleRoleChange = async () => {
+    if (!selectedMemberForRole || newRole === selectedMemberForRole.role) return
+    setRoleChangeLoading(true)
+    try {
+      await apiFetch(`/api/equipe/${selectedMemberForRole.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ role: newRole }),
+      })
+      refetch()
+      setShowRoleDialog(false)
+    } catch {
+      // Role change failed
+    } finally {
+      setRoleChangeLoading(false)
+    }
   }
 
   const handleInvite = async () => {
@@ -281,7 +313,10 @@ export default function TeamManagementPage() {
             <SelectContent>
               <SelectItem value="all">Tous les rôles</SelectItem>
               <SelectItem value="commercial">Commercial</SelectItem>
-              <SelectItem value="direction">Direction</SelectItem>
+              <SelectItem value="chef_ventes">Chef des ventes</SelectItem>
+              <SelectItem value="dir_concession">Dir. concession</SelectItem>
+              <SelectItem value="dir_marque">Dir. marque</SelectItem>
+              <SelectItem value="dir_plaque">Dir. plaque</SelectItem>
               <SelectItem value="admin">Administrateur</SelectItem>
             </SelectContent>
           </Select>
@@ -391,9 +426,9 @@ export default function TeamManagementPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openMemberDetail(member); }}>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openRoleDialog(member); }}>
                             <Edit className="w-4 h-4 mr-2" />
-                            Modifier
+                            Changer le rôle
                           </DropdownMenuItem>
                           <DropdownMenuItem className="text-red-600">
                             <Trash2 className="w-4 h-4 mr-2" />
@@ -439,7 +474,10 @@ export default function TeamManagementPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="commercial">Commercial</SelectItem>
-                  <SelectItem value="direction">Direction</SelectItem>
+                  <SelectItem value="chef_ventes">Chef des ventes</SelectItem>
+                  <SelectItem value="dir_concession">Directeur concession</SelectItem>
+                  <SelectItem value="dir_marque">Directeur marque</SelectItem>
+                  <SelectItem value="dir_plaque">Directeur plaque</SelectItem>
                   <SelectItem value="admin">Administrateur</SelectItem>
                 </SelectContent>
               </Select>
@@ -461,6 +499,69 @@ export default function TeamManagementPage() {
             <Button className="bg-gradient-to-r from-blue-600 to-indigo-600" onClick={handleInvite} disabled={inviteLoading || !inviteEmail}>
               {inviteLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
               Envoyer l&apos;invitation
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Role Change Dialog */}
+      <Dialog open={showRoleDialog} onOpenChange={setShowRoleDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-blue-600" />
+              Changer le rôle
+            </DialogTitle>
+            <DialogDescription>
+              {selectedMemberForRole && (
+                <>Modifier le rôle de <strong>{selectedMemberForRole.name}</strong></>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedMemberForRole && (
+            <div className="space-y-4 py-4">
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50">
+                <Avatar className="h-10 w-10">
+                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-semibold">
+                    {selectedMemberForRole.name.split(" ").map(n => n[0]).join("")}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium text-gray-900">{selectedMemberForRole.name}</p>
+                  <Badge className={roleConfig[selectedMemberForRole.role].color}>
+                    {roleConfig[selectedMemberForRole.role].label}
+                  </Badge>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Nouveau rôle</Label>
+                <Select value={newRole} onValueChange={(v) => setNewRole(v as RoleKey)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="commercial">Commercial</SelectItem>
+                    <SelectItem value="chef_ventes">Chef des ventes</SelectItem>
+                    <SelectItem value="dir_concession">Directeur concession</SelectItem>
+                    <SelectItem value="dir_marque">Directeur marque</SelectItem>
+                    <SelectItem value="dir_plaque">Directeur plaque</SelectItem>
+                    <SelectItem value="admin">Administrateur</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRoleDialog(false)}>
+              Annuler
+            </Button>
+            <Button
+              className="bg-gradient-to-r from-blue-600 to-indigo-600"
+              onClick={handleRoleChange}
+              disabled={roleChangeLoading || newRole === selectedMemberForRole?.role}
+            >
+              {roleChangeLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+              Confirmer le changement
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -546,9 +647,9 @@ export default function TeamManagementPage() {
                 <Button variant="outline" onClick={() => setShowMemberDetail(false)}>
                   Fermer
                 </Button>
-                <Button variant="outline" className="gap-2">
+                <Button variant="outline" className="gap-2" onClick={() => { setShowMemberDetail(false); openRoleDialog(selectedMember!); }}>
                   <Edit className="w-4 h-4" />
-                  Modifier
+                  Changer le rôle
                 </Button>
                 <Button className="bg-gradient-to-r from-blue-600 to-indigo-600">
                   <Mail className="w-4 h-4 mr-2" />
