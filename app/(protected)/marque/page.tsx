@@ -44,6 +44,7 @@ import { useDefis } from "@/hooks/use-defis"
 import { useNotifications } from "@/hooks/use-notifications"
 import { useConcessionsList } from "@/hooks/use-concessions-list"
 import { type DealershipDisplayData, mapConcessionToDealership } from "@/lib/types/display"
+import { deriveBrandKPIs, type BrandKPIs } from "@/lib/utils/kpi-helpers"
 import { SalesTrendChart } from "@/components/charts/sales-trend-chart"
 import { FinancingChart } from "@/components/charts/financing-chart"
 
@@ -51,14 +52,7 @@ import { FinancingChart } from "@/components/charts/financing-chart"
 // TYPES
 // ============================================
 
-interface BrandKPIs {
-  volume: { current: number; target: number; objectiveRate: number; trend: number }
-  margin: { total: number; target: number; avgGPU: number; trend: number }
-  financing: { rate: number; target: number; trend: number }
-  satisfaction: { nps: number; target: number; trend: number }
-  stock: { avgDays: number; target: number; totalUnits: number }
-  constructorBonus: { estimated: number; volumeAchieved: boolean; financingAchieved: boolean; satisfactionAchieved: boolean }
-}
+// BrandKPIs imported from shared module below
 
 interface ConstructorTarget {
   category: string
@@ -108,38 +102,7 @@ interface NetworkAlert {
 // HELPERS
 // ============================================
 
-function deriveBrandKPIs(dealerships: DealershipDisplayData[]): BrandKPIs {
-  const count = dealerships.length || 1
-
-  const totalSales = dealerships.reduce((s, d) => s + d.stats.totalSales, 0)
-  const totalTarget = dealerships.reduce((s, d) => s + d.stats.salesTarget, 0)
-  const totalMargin = dealerships.reduce((s, d) => s + d.stats.totalMargin, 0)
-  const avgGPU = totalSales > 0 ? Math.round(totalMargin / totalSales) : 0
-  const financingRate = Math.round(dealerships.reduce((s, d) => s + d.stats.financingRate, 0) / count)
-  const satisfaction = Math.round(dealerships.reduce((s, d) => s + d.stats.satisfaction, 0) / count)
-  const avgStockDays = Math.round(dealerships.reduce((s, d) => s + d.stats.stockDays, 0) / count)
-  const objectiveRate = totalTarget > 0 ? Math.round((totalSales / totalTarget) * 1000) / 10 : 0
-
-  const volumeAchieved = objectiveRate >= 100
-  const financingAchieved = financingRate >= 75
-  const satisfactionAchieved = satisfaction >= 85
-
-  let estimatedBonus = 0
-  if (volumeAchieved) estimatedBonus += 50000
-  if (financingAchieved) estimatedBonus += 31250
-  if (satisfactionAchieved) estimatedBonus += 25000
-  // Add electric and formation when data is available
-  estimatedBonus += 12500 + 6250
-
-  return {
-    volume: { current: totalSales, target: totalTarget, objectiveRate, trend: 0 },
-    margin: { total: totalMargin, target: Math.round(totalTarget * 1500), avgGPU, trend: 0 },
-    financing: { rate: financingRate, target: 75, trend: 0 },
-    satisfaction: { nps: satisfaction, target: 85, trend: 0 },
-    stock: { avgDays: avgStockDays, target: 45, totalUnits: dealerships.reduce((s, d) => s + d.stats.totalSales, 0) },
-    constructorBonus: { estimated: estimatedBonus, volumeAchieved, financingAchieved, satisfactionAchieved }
-  }
-}
+// Using shared deriveBrandKPIs from lib/utils/kpi-helpers
 
 function deriveConstructorTargets(brandKPIs: BrandKPIs): ConstructorTarget[] {
   function statusFor(current: number, target: number): ConstructorTarget["status"] {
@@ -699,17 +662,15 @@ export default function DirecteurMarqueDashboard() {
         />
         <StatCard
           title="Satisfaction"
-          value={brandKPIs.satisfaction.nps}
-          subtitle={`NPS (cible: ${brandKPIs.satisfaction.target})`}
+          value={brandKPIs.satisfaction.hasData ? brandKPIs.satisfaction.nps : "N/A"}
+          subtitle={brandKPIs.satisfaction.hasData ? `NPS (cible: ${brandKPIs.satisfaction.target})` : "Données non disponibles"}
           icon={Star}
-          color={brandKPIs.satisfaction.nps >= brandKPIs.satisfaction.target ? "green" : "amber"}
-          trend={brandKPIs.satisfaction.trend > 0 ? "up" : brandKPIs.satisfaction.trend < 0 ? "down" : "stable"}
-          trendValue={`${brandKPIs.satisfaction.trend > 0 ? "+" : ""}${brandKPIs.satisfaction.trend} pts`}
+          color={!brandKPIs.satisfaction.hasData ? "amber" : brandKPIs.satisfaction.nps >= brandKPIs.satisfaction.target ? "green" : "amber"}
         />
         <StatCard
           title="Prime constructeur"
-          value={`${(brandKPIs.constructorBonus.estimated / 1000).toFixed(0)}k€`}
-          subtitle="Estimee ce mois"
+          value={brandKPIs.constructorBonus.estimated > 0 ? `${(brandKPIs.constructorBonus.estimated / 1000).toFixed(0)}k€` : "N/A"}
+          subtitle={brandKPIs.constructorBonus.isEstimated ? "Estimation" : "Ce mois"}
           icon={Trophy}
           color="purple"
         />
@@ -1031,7 +992,7 @@ export default function DirecteurMarqueDashboard() {
               </div>
               <div>
                 <p className="font-semibold text-gray-900">Stocks</p>
-                <p className="text-sm text-gray-500">{brandKPIs.stock.totalUnits} vehicules</p>
+                <p className="text-sm text-gray-500">{brandKPIs.stock.hasData ? `${brandKPIs.stock.totalUnits} véhicules` : "Voir les stocks"}</p>
               </div>
             </CardContent>
           </Card>

@@ -1,28 +1,23 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useCallback } from "react"
 import Link from "next/link"
 import {
   FileText,
   Download,
-  Calendar,
-  ChevronRight,
   ArrowLeft,
   FileSpreadsheet,
   FilePieChart,
   Clock,
   CheckCircle,
-  Eye,
-  Printer,
-  Share2,
   Filter,
   Search,
-  Plus,
   Building2,
   BarChart3,
-  Loader2
+  Loader2,
+  AlertCircle
 } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -34,39 +29,95 @@ import {
   SelectValue
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useDashboard } from "@/hooks/use-dashboard"
+import { useConcessionsList } from "@/hooks/use-concessions-list"
+import { mapConcessionToDealership } from "@/lib/types/display"
+import { deriveBrandKPIs } from "@/lib/utils/kpi-helpers"
 
-// Brand-level report templates
-const brandReports = [
-  { id: "1", title: "Synthèse mensuelle marque", description: "Performance consolidée de toutes les concessions", type: "sales", format: "pdf", createdAt: "2026-02-20", size: "2.4 MB", status: "ready" },
-  { id: "2", title: "Benchmark concessions", description: "Comparaison détaillée entre concessions", type: "market", format: "excel", createdAt: "2026-02-18", size: "3.1 MB", status: "ready" },
-  { id: "3", title: "Rapport stocks réseau", description: "État des stocks par concession et vieillissement", type: "financial", format: "excel", createdAt: "2026-02-15", size: "1.8 MB", status: "ready" },
-  { id: "4", title: "Suivi objectifs constructeur", description: "Avancement des 5 axes constructeur", type: "board", format: "pdf", createdAt: "2026-02-10", size: "1.2 MB", status: "ready" },
-]
+// ============================================
+// TYPES
+// ============================================
 
-const brandTemplates = [
-  { id: "1", title: "Rapport mensuel réseau", description: "Synthèse automatique de toutes les concessions", icon: Building2, frequency: "Mensuel" },
-  { id: "2", title: "Benchmark performance", description: "Comparatif concessions avec classement", icon: BarChart3, frequency: "Hebdomadaire" },
-  { id: "3", title: "État des stocks", description: "Inventaire réseau avec vieillissement", icon: FileSpreadsheet, frequency: "Quotidien" },
-]
+interface ExportTeamMember {
+  rang: number
+  nom: string
+  ventes: number
+  objectif: number
+  taux: string
+  marge: string
+  gpu: string
+  financement: string
+}
 
-function ReportCard({ report }: { report: typeof brandReports[0] }) {
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case "board": return "bg-purple-100 text-purple-700"
-      case "financial": return "bg-emerald-100 text-emerald-700"
-      case "sales": return "bg-blue-100 text-blue-700"
-      case "market": return "bg-amber-100 text-amber-700"
-      default: return "bg-gray-100 text-gray-700"
-    }
+interface ExportRapportData {
+  title: string
+  period: string
+  teamMembers: ExportTeamMember[]
+  kpis?: {
+    totalSales: number
+    totalMargin: number
+    avgGPU: number
+    financingRate: number
+    objectiveRate: number
+  }
+}
+
+interface DynamicReport {
+  id: string
+  title: string
+  description: string
+  type: "sales" | "market" | "financial" | "board"
+  format: "excel" | "pdf"
+  generatedAt: string
+}
+
+interface ReportTemplate {
+  id: string
+  title: string
+  description: string
+  icon: React.ElementType
+  format: "excel" | "pdf"
+  generate: () => Promise<void>
+}
+
+// ============================================
+// COMPONENTS
+// ============================================
+
+function ReportCard({
+  report,
+  onDownload,
+}: {
+  report: DynamicReport
+  onDownload: () => Promise<void>
+}) {
+  const [downloading, setDownloading] = useState(false)
+
+  const typeColors: Record<string, string> = {
+    board: "bg-purple-100 text-purple-700",
+    financial: "bg-emerald-100 text-emerald-700",
+    sales: "bg-blue-100 text-blue-700",
+    market: "bg-amber-100 text-amber-700",
+  }
+  const typeLabels: Record<string, string> = {
+    board: "Board",
+    financial: "Finance",
+    sales: "Ventes",
+    market: "Marché",
   }
 
-  const getFormatIcon = (format: string) => {
-    switch (format) {
-      case "pdf": return <FileText className="w-5 h-5 text-red-500" />
-      case "excel": return <FileSpreadsheet className="w-5 h-5 text-emerald-500" />
-      case "pptx": return <FilePieChart className="w-5 h-5 text-orange-500" />
-      default: return <FileText className="w-5 h-5 text-gray-500" />
+  const formatIcon =
+    report.format === "excel" ? (
+      <FileSpreadsheet className="w-5 h-5 text-emerald-500" />
+    ) : (
+      <FileText className="w-5 h-5 text-red-500" />
+    )
+
+  const handleDownload = async () => {
+    setDownloading(true)
+    try {
+      await onDownload()
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -75,44 +126,48 @@ function ReportCard({ report }: { report: typeof brandReports[0] }) {
       <CardContent className="p-5">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center">
-            {getFormatIcon(report.format)}
+            {formatIcon}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <div>
-                <h3 className="font-semibold text-gray-900 truncate">{report.title}</h3>
-                <p className="text-sm text-gray-500 line-clamp-1">{report.description}</p>
+                <h3 className="font-semibold text-gray-900 truncate">
+                  {report.title}
+                </h3>
+                <p className="text-sm text-gray-500 line-clamp-1">
+                  {report.description}
+                </p>
               </div>
-              <Badge className={getTypeColor(report.type)}>
-                {report.type === "board" ? "Board" :
-                 report.type === "financial" ? "Finance" :
-                 report.type === "sales" ? "Ventes" : "Marché"}
+              <Badge className={typeColors[report.type] || "bg-gray-100 text-gray-700"}>
+                {typeLabels[report.type] || report.type}
               </Badge>
             </div>
             <div className="flex items-center gap-4 mt-3">
               <span className="text-xs text-gray-400 flex items-center gap-1">
                 <Clock className="w-3 h-3" />
-                {new Date(report.createdAt).toLocaleDateString("fr-FR")}
+                {new Date(report.generatedAt).toLocaleDateString("fr-FR")}
               </span>
-              <span className="text-xs text-gray-400">{report.size}</span>
               <Badge className="bg-emerald-100 text-emerald-700 text-xs">
                 <CheckCircle className="w-3 h-3 mr-1" />
-                Prêt
+                Données actuelles
               </Badge>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2 mt-4 pt-4 border-t">
-          <Button variant="outline" size="sm" className="gap-1 flex-1">
-            <Eye className="w-4 h-4" />
-            Aperçu
-          </Button>
-          <Button variant="outline" size="sm" className="gap-1 flex-1">
-            <Download className="w-4 h-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1 flex-1"
+            onClick={handleDownload}
+            disabled={downloading}
+          >
+            {downloading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
             Télécharger
-          </Button>
-          <Button variant="ghost" size="sm">
-            <Share2 className="w-4 h-4" />
           </Button>
         </div>
       </CardContent>
@@ -120,8 +175,22 @@ function ReportCard({ report }: { report: typeof brandReports[0] }) {
   )
 }
 
-function TemplateCard({ template }: { template: typeof brandTemplates[0] }) {
+function TemplateCard({
+  template,
+}: {
+  template: ReportTemplate
+}) {
+  const [generating, setGenerating] = useState(false)
   const Icon = template.icon
+
+  const handleGenerate = async () => {
+    setGenerating(true)
+    try {
+      await template.generate()
+    } finally {
+      setGenerating(false)
+    }
+  }
 
   return (
     <Card className="border-0 shadow-premium hover:shadow-xl transition-all cursor-pointer group">
@@ -133,11 +202,21 @@ function TemplateCard({ template }: { template: typeof brandTemplates[0] }) {
           <div className="flex-1">
             <h3 className="font-semibold text-gray-900">{template.title}</h3>
             <p className="text-sm text-gray-500">{template.description}</p>
-            <Badge className="bg-gray-100 text-gray-600 mt-2">{template.frequency}</Badge>
+            <Badge className="bg-gray-100 text-gray-600 mt-2">
+              {template.format === "excel" ? "Excel" : "PDF"}
+            </Badge>
           </div>
         </div>
-        <Button className="w-full mt-4 gap-2">
-          <Plus className="w-4 h-4" />
+        <Button
+          className="w-full mt-4 gap-2"
+          onClick={handleGenerate}
+          disabled={generating}
+        >
+          {generating ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Download className="w-4 h-4" />
+          )}
           Générer
         </Button>
       </CardContent>
@@ -145,13 +224,192 @@ function TemplateCard({ template }: { template: typeof brandTemplates[0] }) {
   )
 }
 
+// ============================================
+// MAIN PAGE
+// ============================================
+
 export default function MarqueReportsPage() {
-  const { loading } = useDashboard("dir_marque")
+  const { data: concessionsRaw, loading, error } = useConcessionsList()
   const [searchQuery, setSearchQuery] = useState("")
   const [typeFilter, setTypeFilter] = useState("all")
 
-  const filteredReports = brandReports.filter(r => {
-    const matchesSearch = !searchQuery || r.title.toLowerCase().includes(searchQuery.toLowerCase())
+  const dealerships = useMemo(
+    () => (concessionsRaw || []).map(mapConcessionToDealership),
+    [concessionsRaw]
+  )
+  const brandKPIs = useMemo(() => deriveBrandKPIs(dealerships), [dealerships])
+
+  const currentMonthLabel = useMemo(() => {
+    const d = new Date()
+    return d.toLocaleDateString("fr-FR", { month: "long", year: "numeric" })
+  }, [])
+
+  const todayISO = useMemo(() => new Date().toISOString(), [])
+
+  // Build export data helper
+  const buildExportData = useCallback((): ExportRapportData => {
+    const members: ExportTeamMember[] = dealerships.map((d, i) => ({
+      rang: i + 1,
+      nom: d.name,
+      ventes: d.stats.totalSales,
+      objectif: d.stats.salesTarget,
+      taux:
+        d.stats.salesTarget > 0
+          ? `${Math.round((d.stats.totalSales / d.stats.salesTarget) * 100)}%`
+          : "-",
+      marge: `${d.stats.totalMargin.toLocaleString("fr-FR")} \u20ac`,
+      gpu: `${d.stats.avgGPU.toLocaleString("fr-FR")} \u20ac`,
+      financement: `${d.stats.financingRate}%`,
+    }))
+
+    return {
+      title: "Rapport Marque",
+      period: currentMonthLabel,
+      teamMembers: members,
+      kpis: {
+        totalSales: brandKPIs.volume.current,
+        totalMargin: brandKPIs.margin.total,
+        avgGPU: brandKPIs.margin.avgGPU,
+        financingRate: brandKPIs.financing.rate,
+        objectiveRate: brandKPIs.volume.objectiveRate,
+      },
+    }
+  }, [dealerships, currentMonthLabel, brandKPIs])
+
+  const handleExportExcel = useCallback(async () => {
+    const { exportToExcel } = await import("@/lib/excel/rapports")
+    exportToExcel(buildExportData())
+  }, [buildExportData])
+
+  const handleExportPDF = useCallback(async () => {
+    const { default: jsPDF } = await import("jspdf")
+    const doc = new jsPDF()
+    const data = buildExportData()
+
+    doc.setFontSize(16)
+    doc.text(data.title, 20, 20)
+    doc.setFontSize(10)
+    doc.text(`Période: ${data.period}`, 20, 30)
+
+    if (data.kpis) {
+      doc.setFontSize(12)
+      doc.text("Indicateurs clés", 20, 45)
+      doc.setFontSize(10)
+      doc.text(`Ventes: ${data.kpis.totalSales}`, 20, 55)
+      doc.text(
+        `Marge: ${data.kpis.totalMargin.toLocaleString("fr-FR")} \u20ac`,
+        20,
+        62
+      )
+      doc.text(`GPU moyen: ${data.kpis.avgGPU} \u20ac`, 20, 69)
+      doc.text(`Financement: ${data.kpis.financingRate}%`, 20, 76)
+      doc.text(`Objectif: ${data.kpis.objectiveRate}%`, 20, 83)
+    }
+
+    let y = 100
+    doc.setFontSize(12)
+    doc.text("Concessions", 20, y)
+    y += 10
+    doc.setFontSize(9)
+    for (const m of data.teamMembers) {
+      doc.text(
+        `${m.rang}. ${m.nom} — ${m.ventes} ventes — ${m.marge} marge — ${m.financement} fin.`,
+        20,
+        y
+      )
+      y += 7
+      if (y > 270) {
+        doc.addPage()
+        y = 20
+      }
+    }
+
+    doc.save(`rapport-marque-${Date.now()}.pdf`)
+  }, [buildExportData])
+
+  // Dynamic reports based on real data
+  const dynamicReports: DynamicReport[] = useMemo(
+    () => [
+      {
+        id: "synth",
+        title: `Synthèse ${currentMonthLabel}`,
+        description: `${brandKPIs.volume.current} ventes, ${(brandKPIs.margin.total / 1000).toFixed(0)}k\u20ac marge — ${dealerships.length} concessions`,
+        type: "sales",
+        format: "excel",
+        generatedAt: todayISO,
+      },
+      {
+        id: "bench",
+        title: "Benchmark concessions",
+        description: `Classement des ${dealerships.length} concessions par performance`,
+        type: "market",
+        format: "excel",
+        generatedAt: todayISO,
+      },
+      {
+        id: "finance",
+        title: "Rapport financement",
+        description: `Taux moyen: ${brandKPIs.financing.rate}% (cible: ${brandKPIs.financing.target}%)`,
+        type: "financial",
+        format: "excel",
+        generatedAt: todayISO,
+      },
+      {
+        id: "objectifs",
+        title: "Suivi objectifs constructeur",
+        description: `Objectif volume: ${brandKPIs.volume.objectiveRate}%`,
+        type: "board",
+        format: "pdf",
+        generatedAt: todayISO,
+      },
+    ],
+    [brandKPIs, dealerships.length, currentMonthLabel, todayISO]
+  )
+
+  const reportDownloadHandlers: Record<string, () => Promise<void>> = useMemo(
+    () => ({
+      synth: handleExportExcel,
+      bench: handleExportExcel,
+      finance: handleExportExcel,
+      objectifs: handleExportPDF,
+    }),
+    [handleExportExcel, handleExportPDF]
+  )
+
+  // Dynamic templates
+  const templates: ReportTemplate[] = useMemo(
+    () => [
+      {
+        id: "t-monthly",
+        title: "Rapport mensuel réseau",
+        description: "Synthèse automatique de toutes les concessions",
+        icon: Building2,
+        format: "excel",
+        generate: handleExportExcel,
+      },
+      {
+        id: "t-benchmark",
+        title: "Benchmark performance",
+        description: "Comparatif concessions avec classement",
+        icon: BarChart3,
+        format: "excel",
+        generate: handleExportExcel,
+      },
+      {
+        id: "t-pdf",
+        title: "Rapport PDF synthèse",
+        description: "Document PDF avec indicateurs clés",
+        icon: FileText,
+        format: "pdf",
+        generate: handleExportPDF,
+      },
+    ],
+    [handleExportExcel, handleExportPDF]
+  )
+
+  const filteredReports = dynamicReports.filter((r) => {
+    const matchesSearch =
+      !searchQuery || r.title.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesType = typeFilter === "all" || r.type === typeFilter
     return matchesSearch && matchesType
   })
@@ -160,6 +418,16 @@ export default function MarqueReportsPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+        <AlertCircle className="w-12 h-12 text-red-400" />
+        <p className="text-gray-600">Impossible de charger les données</p>
+        <p className="text-sm text-gray-400">{error.message}</p>
       </div>
     )
   }
@@ -179,14 +447,18 @@ export default function MarqueReportsPage() {
               <FileText className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Rapports Marque</h1>
-              <p className="text-sm text-gray-500">Rapports et exports réseau</p>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Rapports Marque
+              </h1>
+              <p className="text-sm text-gray-500">
+                Rapports et exports réseau — {currentMonthLabel}
+              </p>
             </div>
           </div>
         </div>
-        <Button className="gap-2">
-          <Plus className="w-4 h-4" />
-          Nouveau rapport
+        <Button className="gap-2" onClick={handleExportExcel}>
+          <Download className="w-4 h-4" />
+          Export Excel
         </Button>
       </div>
 
@@ -195,11 +467,11 @@ export default function MarqueReportsPage() {
         <TabsList>
           <TabsTrigger value="reports" className="gap-2">
             <FileText className="w-4 h-4" />
-            Rapports
+            Rapports ({dynamicReports.length})
           </TabsTrigger>
           <TabsTrigger value="templates" className="gap-2">
             <FilePieChart className="w-4 h-4" />
-            Modèles
+            Générer un rapport
           </TabsTrigger>
         </TabsList>
 
@@ -231,15 +503,21 @@ export default function MarqueReportsPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredReports.map(report => (
-              <ReportCard key={report.id} report={report} />
+            {filteredReports.map((report) => (
+              <ReportCard
+                key={report.id}
+                report={report}
+                onDownload={
+                  reportDownloadHandlers[report.id] || handleExportExcel
+                }
+              />
             ))}
           </div>
         </TabsContent>
 
         <TabsContent value="templates" className="mt-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {brandTemplates.map(template => (
+            {templates.map((template) => (
               <TemplateCard key={template.id} template={template} />
             ))}
           </div>

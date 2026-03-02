@@ -206,10 +206,12 @@ describe('deriveBrandKPIs', () => {
       expect(kpis.constructorBonus.satisfactionAchieved).toBe(false)
     })
 
-    it('always sets estimated to 125000', () => {
-      const d = makeDealership()
+    it('estimates bonus from salesTarget', () => {
+      const d = makeDealership({ salesTarget: 120 })
       const kpis = deriveBrandKPIs([d])
-      expect(kpis.constructorBonus.estimated).toBe(125000)
+      // 120 * 10 = 1200
+      expect(kpis.constructorBonus.estimated).toBe(1200)
+      expect(kpis.constructorBonus.isEstimated).toBe(true)
     })
   })
 
@@ -223,8 +225,12 @@ describe('deriveBrandKPIs', () => {
     expect(kpis.margin.avgGPU).toBe(0)
     expect(kpis.financing.rate).toBe(0)
     expect(kpis.satisfaction.nps).toBe(0)
+    expect(kpis.satisfaction.hasData).toBe(false)
     expect(kpis.stock.avgDays).toBe(0)
     expect(kpis.stock.totalUnits).toBe(0)
+    expect(kpis.stock.hasData).toBe(false)
+    expect(kpis.constructorBonus.estimated).toBe(0)
+    expect(kpis.constructorBonus.isEstimated).toBe(true)
   })
 
   it('sets fixed targets for financing, satisfaction, and stock', () => {
@@ -235,19 +241,27 @@ describe('deriveBrandKPIs', () => {
     expect(kpis.stock.target).toBe(45)
   })
 
-  it('computes margin.target as totalMargin * 1.05 (rounded)', () => {
-    const d = makeDealership({ totalMargin: 200000 })
+  it('computes margin.target from salesTarget when available', () => {
+    const d = makeDealership({ totalSales: 100, salesTarget: 120, totalMargin: 200000 })
     const kpis = deriveBrandKPIs([d])
-    // 200000 * 1.05 = 210000
-    expect(kpis.margin.target).toBe(210000)
+    // totalTarget=120, totalMargin/totalSales=2000, 120*2000=240000
+    expect(kpis.margin.target).toBe(240000)
+    expect(kpis.margin.isEstimated).toBe(false)
   })
 
-  it('computes stock.totalUnits as totalSales * 2', () => {
+  it('falls back margin.target to totalMargin * 1.05 when no salesTarget', () => {
+    const d = makeDealership({ totalSales: 100, salesTarget: 0, totalMargin: 200000 })
+    const kpis = deriveBrandKPIs([d])
+    expect(kpis.margin.target).toBe(210000)
+    expect(kpis.margin.isEstimated).toBe(true)
+  })
+
+  it('sets stock.totalUnits to 0 (no real stock data)', () => {
     const d1 = makeDealership({ totalSales: 50 })
     const d2 = makeDealership({ totalSales: 75 })
     const kpis = deriveBrandKPIs([d1, d2])
-    // totalSales = 125, totalUnits = 250
-    expect(kpis.stock.totalUnits).toBe(250)
+    expect(kpis.stock.totalUnits).toBe(0)
+    expect(kpis.stock.hasData).toBe(true) // because avgStock > 0
   })
 
   it('satisfaction trend is always 0 (hardcoded)', () => {

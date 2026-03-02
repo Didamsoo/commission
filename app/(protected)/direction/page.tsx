@@ -108,15 +108,6 @@ interface TeamStats {
   trend: "up" | "down" | "stable"
 }
 
-interface PLLine {
-  label: string
-  category: "revenue" | "cost" | "margin" | "result"
-  actual: number
-  budget: number
-  variance: number
-  variancePercent: number
-}
-
 interface PendingSaleType {
   id: string
   vehicleType: "VN" | "VO" | "VU"
@@ -146,8 +137,7 @@ interface ChallengeType {
   participants: { id: string; name: string; avatar?: string; currentScore: number; progressRate: number; isCompleted: boolean }[]
 }
 
-// Static data imported from config (stock/cost data not from API)
-import { stockInfo, plCostLines, type StockInfoType } from "@/lib/config/static-data"
+// Static data imports removed — stock/P&L data requires DMS integration
 
 // ============================================
 // COMPONENTS
@@ -444,8 +434,6 @@ function ChallengeCard({ challenge }: { challenge: ChallengeType }) {
 }
 
 function StockSummaryCard() {
-  const totalOver60 = stockInfo.reduce((sum, s) => sum + s.over60Days, 0)
-
   return (
     <Card className="border-0 shadow-premium">
       <CardHeader className="pb-2">
@@ -455,38 +443,10 @@ function StockSummaryCard() {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {stockInfo.map(stock => (
-            <div key={stock.teamType} className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="font-medium">{TEAM_TYPE_CONFIG[stock.teamType].label}</span>
-                <span className="text-sm text-gray-500">{stock.totalVehicles} véhicules</span>
-              </div>
-              <div className="flex gap-1 h-2">
-                <div
-                  className="bg-emerald-500 rounded-l"
-                  style={{ width: `${(stock.under30Days / stock.totalVehicles) * 100}%` }}
-                />
-                <div
-                  className="bg-amber-500"
-                  style={{ width: `${(stock.between30And60Days / stock.totalVehicles) * 100}%` }}
-                />
-                <div
-                  className="bg-red-500 rounded-r"
-                  style={{ width: `${(stock.over60Days / stock.totalVehicles) * 100}%` }}
-                />
-              </div>
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>{stock.avgDaysInStock}j moy.</span>
-                <span>{stock.over60Days > 0 && <Badge className="bg-red-100 text-red-700 text-xs">{stock.over60Days} &gt;60j</Badge>}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="flex items-center gap-4 mt-4 pt-4 border-t text-xs">
-          <div className="flex items-center gap-1"><div className="w-3 h-3 bg-emerald-500 rounded" /> &lt;30j</div>
-          <div className="flex items-center gap-1"><div className="w-3 h-3 bg-amber-500 rounded" /> 30-60j</div>
-          <div className="flex items-center gap-1"><div className="w-3 h-3 bg-red-500 rounded" /> &gt;60j</div>
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <Package className="w-10 h-10 text-gray-300 mb-3" />
+          <p className="text-sm text-gray-500">Données stock non disponibles</p>
+          <p className="text-xs text-gray-400 mt-1">Connectez votre DMS pour afficher les stocks en temps réel</p>
         </div>
       </CardContent>
     </Card>
@@ -498,7 +458,7 @@ function StockSummaryCard() {
 // ============================================
 
 export default function DirectionDashboard() {
-  const [tab, setTab] = useState<"overview" | "alerts" | "pl">("overview")
+  const [tab, setTab] = useState<"overview" | "alerts">("overview")
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined)
 
   const dateRangeParams = dateRange?.from && dateRange?.to ? {
@@ -581,57 +541,6 @@ export default function DirectionDashboard() {
       }
     }
   }
-
-  // Build hybrid P&L: revenue/margin from API departmentStats + costs from config
-  const buildPLData = (): PLLine[] => {
-    const vn = apiDeptStats["VN"] || { totalRevenue: 0, totalMargin: 0 }
-    const vo = apiDeptStats["VO"] || { totalRevenue: 0, totalMargin: 0 }
-    const vu = apiDeptStats["VU"] || { totalRevenue: 0, totalMargin: 0 }
-    const apv = apiDeptStats["APV"] || { totalRevenue: 0, totalMargin: 0 }
-
-    const totalRevenue = vn.totalRevenue + vo.totalRevenue + vu.totalRevenue + apv.totalRevenue
-    const totalMargin = vn.totalMargin + vo.totalMargin + vu.totalMargin + apv.totalMargin
-
-    const makeLine = (label: string, category: PLLine["category"], actual: number, budget: number): PLLine => {
-      const variance = actual - budget
-      const variancePercent = budget !== 0 ? Math.round((variance / Math.abs(budget)) * 1000) / 10 : 0
-      return { label, category, actual, budget, variance, variancePercent }
-    }
-
-    // Revenue lines (budget estimated at 95% of actual as placeholder)
-    const revBudgetFactor = 0.95
-    const lines: PLLine[] = [
-      makeLine("CA Véhicules Neufs", "revenue", vn.totalRevenue, Math.round(vn.totalRevenue * revBudgetFactor)),
-      makeLine("CA Véhicules Occasion", "revenue", vo.totalRevenue, Math.round(vo.totalRevenue * revBudgetFactor)),
-      makeLine("CA Véhicules Utilitaires", "revenue", vu.totalRevenue, Math.round(vu.totalRevenue * revBudgetFactor)),
-      makeLine("CA Après-Vente", "revenue", apv.totalRevenue, Math.round(apv.totalRevenue * revBudgetFactor)),
-      makeLine("Total Revenus", "revenue", totalRevenue, Math.round(totalRevenue * revBudgetFactor)),
-      makeLine("Marge VN", "margin", vn.totalMargin, Math.round(vn.totalMargin * revBudgetFactor)),
-      makeLine("Marge VO", "margin", vo.totalMargin, Math.round(vo.totalMargin * revBudgetFactor)),
-      makeLine("Marge VU", "margin", vu.totalMargin, Math.round(vu.totalMargin * revBudgetFactor)),
-      makeLine("Marge APV", "margin", apv.totalMargin, Math.round(apv.totalMargin * revBudgetFactor)),
-      makeLine("Total Marges", "margin", totalMargin, Math.round(totalMargin * revBudgetFactor)),
-    ]
-
-    // Cost lines from config
-    let totalCostActual = 0
-    let totalCostBudget = 0
-    for (const cost of plCostLines) {
-      const variance = cost.actual - cost.budget
-      const variancePercent = cost.budget !== 0 ? Math.round((variance / Math.abs(cost.budget)) * 1000) / 10 : 0
-      lines.push({ label: cost.label, category: "cost", actual: cost.actual, budget: cost.budget, variance, variancePercent })
-      totalCostActual += cost.actual
-      totalCostBudget += cost.budget
-    }
-
-    // Result line
-    const resultActual = totalMargin + totalCostActual
-    const resultBudget = Math.round(totalMargin * revBudgetFactor) + totalCostBudget
-    lines.push(makeLine("Résultat Net", "result", resultActual, resultBudget))
-
-    return lines
-  }
-  const plData = buildPLData()
 
   // Derive alerts from notifications
   const allAlerts: AlertType[] = ((notifData as unknown[]) || []).map((n: unknown) => {
@@ -904,7 +813,7 @@ export default function DirectionDashboard() {
       </div>
 
       {/* ============================================
-          TABS: OVERVIEW / ALERTS / P&L
+          TABS: OVERVIEW / ALERTS
           ============================================ */}
       <Tabs value={tab} onValueChange={(v) => setTab(v as typeof tab)}>
         <TabsList className="bg-gray-100 p-1">
@@ -920,10 +829,6 @@ export default function DirectionDashboard() {
                 {unreadAlerts.length}
               </Badge>
             )}
-          </TabsTrigger>
-          <TabsTrigger value="pl" className="gap-2">
-            <BarChart3 className="w-4 h-4" />
-            P&L
           </TabsTrigger>
         </TabsList>
 
@@ -949,59 +854,6 @@ export default function DirectionDashboard() {
           </Card>
         </TabsContent>
 
-        {/* P&L TAB */}
-        <TabsContent value="pl" className="mt-6">
-          <Card className="border-0 shadow-premium">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-indigo-600" />
-                Compte de résultat simplifié
-              </CardTitle>
-              <CardDescription>Février 2024 - Réel vs Budget</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left py-3 px-2 font-semibold text-gray-700">Libellé</th>
-                      <th className="text-right py-3 px-2 font-semibold text-gray-700">Réel</th>
-                      <th className="text-right py-3 px-2 font-semibold text-gray-700">Budget</th>
-                      <th className="text-right py-3 px-2 font-semibold text-gray-700">Écart</th>
-                      <th className="text-right py-3 px-2 font-semibold text-gray-700">%</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {plData.map((line, index) => {
-                      const isTotal = line.label.startsWith("Total") || line.category === "result"
-                      return (
-                        <tr key={index} className={`border-b ${isTotal ? "bg-gray-50 font-semibold" : ""}`}>
-                          <td className="py-2 px-2">{line.label}</td>
-                          <td className="py-2 px-2 text-right">
-                            {line.actual < 0 ? `(${Math.abs(line.actual).toLocaleString()})` : line.actual.toLocaleString()}€
-                          </td>
-                          <td className="py-2 px-2 text-right text-gray-500">
-                            {line.budget < 0 ? `(${Math.abs(line.budget).toLocaleString()})` : line.budget.toLocaleString()}€
-                          </td>
-                          <td className={`py-2 px-2 text-right ${line.variance >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-                            {line.variance >= 0 ? "+" : ""}{line.variance.toLocaleString()}€
-                          </td>
-                          <td className="py-2 px-2 text-right">
-                            <Badge className={`${
-                              line.variancePercent >= 0 ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
-                            }`}>
-                              {line.variancePercent >= 0 ? "+" : ""}{line.variancePercent.toFixed(1)}%
-                            </Badge>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
 
       {/* ============================================

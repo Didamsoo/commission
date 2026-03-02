@@ -278,11 +278,11 @@ function TeamMemberCard({ member, rank, coachingData }: { member: TeamMember; ra
           </div>
           <div className="text-center p-2 bg-purple-50 rounded-lg">
             <p className="text-xs text-gray-500">Accessoires</p>
-            <p className="font-bold text-purple-700">{member.kpis.accessories}€</p>
+            <p className="font-bold text-purple-700">{member.kpis.accessories ? `${member.kpis.accessories}€` : "N/A"}</p>
           </div>
           <div className="text-center p-2 bg-emerald-50 rounded-lg">
             <p className="text-xs text-gray-500">Satisfaction</p>
-            <p className="font-bold text-emerald-700">{member.kpis.satisfaction}%</p>
+            <p className="font-bold text-emerald-700">{member.kpis.satisfaction ? `${member.kpis.satisfaction}%` : "N/A"}</p>
           </div>
         </div>
 

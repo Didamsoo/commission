@@ -36,6 +36,9 @@ import { useDashboard } from "@/hooks/use-dashboard"
 import { useAvatarUpload } from "@/hooks/use-avatar-upload"
 import { useToast } from "@/hooks/use-toast"
 import { useBadges, type BadgeData } from "@/hooks/use-badges"
+import { useLeaderboard } from "@/hooks/use-leaderboard"
+import { useDefis } from "@/hooks/use-defis"
+import { useFichesMarge } from "@/hooks/use-fiches-marge"
 
 // Icon mapping from badge DB icon string to Lucide component
 const BADGE_ICON_MAP: Record<string, React.ElementType> = {
@@ -117,6 +120,9 @@ export default function ProfilePage() {
   const { uploadAvatar, uploading: avatarUploading } = useAvatarUpload()
   const { toast } = useToast()
   const { data: badgesData } = useBadges()
+  const { data: leaderboardData } = useLeaderboard("month", "sales")
+  const { data: defisData } = useDefis()
+  const { data: fichesData } = useFichesMarge()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const allBadges: BadgeData[] = badgesData || []
@@ -139,6 +145,93 @@ export default function ProfilePage() {
 
   const kpis = dashData?.kpis
 
+  // Compute currentRank from leaderboard
+  const currentRank = (() => {
+    if (!leaderboardData || !profil?.id) return 0
+    const entry = leaderboardData.find(e => e.user_id === profil.id)
+    return entry?.rank || 0
+  })()
+
+  // Compute challenges won from defis
+  const challengesWon = (() => {
+    if (!defisData || !profil?.id) return 0
+    return (defisData as Record<string, unknown>[]).filter(d => {
+      const participants = (d.defis_plateforme_participants || []) as Record<string, unknown>[]
+      return participants.some(
+        p => p.user_id === profil.id && p.is_completed === true
+      )
+    }).length
+  })()
+
+  // Compute streaks from fiches marge (consecutive days with sales)
+  const { currentStreak, longestStreak } = (() => {
+    if (!fichesData || fichesData.length === 0) return { currentStreak: 0, longestStreak: 0 }
+    const dates = (fichesData as Record<string, unknown>[])
+      .map(f => f.created_at as string)
+      .filter(Boolean)
+      .map(d => d.substring(0, 10))
+    const uniqueDates = [...new Set(dates)].sort().reverse()
+    if (uniqueDates.length === 0) return { currentStreak: 0, longestStreak: 0 }
+
+    let current = 1
+    let longest = 1
+    let streak = 1
+    const today = new Date().toISOString().substring(0, 10)
+    const dayMs = 86400000
+
+    // Current streak: count from today backwards
+    const firstDate = uniqueDates[0]
+    const daysSinceFirst = Math.floor((new Date(today).getTime() - new Date(firstDate).getTime()) / dayMs)
+    if (daysSinceFirst > 1) {
+      current = 0
+    } else {
+      current = 1
+      for (let i = 1; i < uniqueDates.length; i++) {
+        const diff = Math.floor((new Date(uniqueDates[i - 1]).getTime() - new Date(uniqueDates[i]).getTime()) / dayMs)
+        if (diff === 1) current++
+        else break
+      }
+    }
+
+    // Longest streak
+    streak = 1
+    for (let i = 1; i < uniqueDates.length; i++) {
+      const diff = Math.floor((new Date(uniqueDates[i - 1]).getTime() - new Date(uniqueDates[i]).getTime()) / dayMs)
+      if (diff === 1) {
+        streak++
+        longest = Math.max(longest, streak)
+      } else {
+        streak = 1
+      }
+    }
+    longest = Math.max(longest, current)
+
+    return { currentStreak: current, longestStreak: longest }
+  })()
+
+  const earnedBadges = allBadges.filter(b => b.earned)
+  const badgesEarnedCount = earnedBadges.length
+  const totalPoints = badgesEarnedCount * 10
+
+  // Level progress based on badges earned
+  const levelThresholds = [0, 3, 7, 12, 18, 25, 35]
+  const levelNames = ["Débutant", "Apprenti", "Confirmé", "Avancé", "Expert", "Maître", "Légende"]
+  const currentLevel = levelThresholds.findIndex((t, i) => {
+    const next = levelThresholds[i + 1]
+    return next === undefined || badgesEarnedCount < next
+  })
+  const levelProgress = (() => {
+    const current = levelThresholds[currentLevel] || 0
+    const next = levelThresholds[currentLevel + 1]
+    if (!next) return 100
+    return Math.round(((badgesEarnedCount - current) / (next - current)) * 100)
+  })()
+  const pointsToNext = (() => {
+    const next = levelThresholds[currentLevel + 1]
+    if (!next) return 0
+    return next - badgesEarnedCount
+  })()
+
   // Build user object from API data
   const userData = {
     id: profil?.id || "",
@@ -151,23 +244,21 @@ export default function ProfilePage() {
     stats: {
       totalSales: kpis?.totalSales || 0,
       totalCommission: kpis?.totalCommission || 0,
-      totalPoints: 0,
-      currentRank: 0,
-      bestRank: 0,
-      currentStreak: 0,
-      longestStreak: 0,
-      challengesWon: 0,
-      badgesEarned: 0
+      totalPoints,
+      currentRank,
+      bestRank: currentRank,
+      currentStreak,
+      longestStreak,
+      challengesWon,
+      badgesEarned: badgesEarnedCount
     },
     level: {
-      current: profil?.level || 1,
-      name: profil?.role || "Commercial",
-      progress: 0,
-      pointsToNext: 0
+      current: currentLevel + 1,
+      name: levelNames[currentLevel] || "Débutant",
+      progress: levelProgress,
+      pointsToNext
     }
   }
-
-  const earnedBadges = allBadges.filter(b => b.earned)
   const lockedBadges = allBadges.filter(b => !b.earned)
 
   if (profilLoading) {
@@ -246,7 +337,7 @@ export default function ProfilePage() {
                 </div>
                 <div>
                   <p className="font-semibold text-gray-900">Niveau {userData.level.current} - {userData.level.name}</p>
-                  <p className="text-sm text-gray-500">{userData.level.pointsToNext} points jusqu'au niveau suivant</p>
+                  <p className="text-sm text-gray-500">{userData.level.pointsToNext > 0 ? `${userData.level.pointsToNext} badges jusqu'au niveau suivant` : "Niveau maximum atteint"}</p>
                 </div>
               </div>
               <div className="text-right">
@@ -289,7 +380,7 @@ export default function ProfilePage() {
               <Trophy className="w-6 h-6 text-amber-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-900">#{userData.stats.bestRank}</p>
+              <p className="text-2xl font-bold text-gray-900">{userData.stats.bestRank ? `#${userData.stats.bestRank}` : "-"}</p>
               <p className="text-sm text-gray-500">Meilleur classement</p>
             </div>
           </CardContent>
@@ -376,11 +467,11 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Classement actuel</span>
-                  <span className="font-semibold">#{userData.stats.currentRank}</span>
+                  <span className="font-semibold">{userData.stats.currentRank ? `#${userData.stats.currentRank}` : "-"}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">Meilleur classement</span>
-                  <span className="font-semibold">#{userData.stats.bestRank}</span>
+                  <span className="font-semibold">{userData.stats.bestRank ? `#${userData.stats.bestRank}` : "-"}</span>
                 </div>
               </CardContent>
             </Card>

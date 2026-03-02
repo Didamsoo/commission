@@ -82,6 +82,23 @@ interface TeamMember {
   lastActive: string
 }
 
+function formatRelativeDate(dateStr: string | undefined): string {
+  if (!dateStr) return ""
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return ""
+  const now = new Date()
+  const diffMs = now.getTime() - date.getTime()
+  const diffMin = Math.floor(diffMs / 60000)
+  if (diffMin < 1) return "À l'instant"
+  if (diffMin < 60) return `Il y a ${diffMin}min`
+  const diffH = Math.floor(diffMin / 60)
+  if (diffH < 24) return `Il y a ${diffH}h`
+  const diffD = Math.floor(diffH / 24)
+  if (diffD === 1) return "Hier"
+  if (diffD < 7) return `Il y a ${diffD}j`
+  return date.toLocaleDateString("fr-FR")
+}
+
 const roleConfig: Record<RoleKey, { label: string; color: string; icon: typeof UserPlus }> = {
   commercial: { label: "Commercial", color: "bg-blue-100 text-blue-700 border-blue-200", icon: UserPlus },
   chef_ventes: { label: "Chef des ventes", color: "bg-indigo-100 text-indigo-700 border-indigo-200", icon: Star },
@@ -109,7 +126,7 @@ export default function TeamManagementPage() {
     avatar: m.avatar_url || "",
     stats: { sales: m.total_sales || 0, target: m.sales_target || 10, commission: m.total_commission || 0, margin: m.total_margin || 0, financingRate: m.financing_rate || 0 },
     joinDate: m.joined_at || "",
-    lastActive: "En ligne"
+    lastActive: formatRelativeDate(m.joined_at) || ""
   }))
   const [searchQuery, setSearchQuery] = useState("")
   const [filterRole, setFilterRole] = useState<string>("all")
@@ -280,8 +297,18 @@ export default function TeamManagementPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Top performer</p>
-                <p className="text-xl font-bold text-gray-900">Marie M.</p>
-                <p className="text-xs text-emerald-600">5 200€ de commission</p>
+                {(() => {
+                  const top = [...members].sort((a, b) => b.stats.commission - a.stats.commission)[0]
+                  if (!top || top.stats.commission === 0) return (
+                    <p className="text-xl font-bold text-gray-400">Aucun</p>
+                  )
+                  return (
+                    <>
+                      <p className="text-xl font-bold text-gray-900">{top.name}</p>
+                      <p className="text-xs text-emerald-600">{top.stats.commission.toLocaleString()}€ de commission</p>
+                    </>
+                  )
+                })()}
               </div>
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center shadow-lg">
                 <Trophy className="w-7 h-7 text-white" />

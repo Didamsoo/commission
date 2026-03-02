@@ -65,6 +65,14 @@ interface PerformanceMonth {
   financingRate: number
 }
 
+interface DepartmentStat {
+  totalSales: number
+  totalRevenue: number
+  totalMargin: number
+  avgGPU: number
+  financingRate: number
+}
+
 interface DirConcessionDashboard {
   kpis: {
     totalSales: number
@@ -73,6 +81,7 @@ interface DirConcessionDashboard {
     teamCount: number
     staffCount: number
   }
+  departmentStats: Record<string, DepartmentStat>
   performanceHistory: PerformanceMonth[]
 }
 
@@ -98,18 +107,26 @@ export default function ReportsPage() {
     [equipeData]
   )
 
+  // --- Derive total commission from equipe data ---
+  const totalTeamCommission = useMemo(
+    () => (equipeData || []).reduce((sum, m) => sum + (m.total_commission || 0), 0),
+    [equipeData]
+  )
+
   // --- Derive monthly data from performanceHistory ---
   const monthlyData = useMemo(() => {
     const history = dashboardRaw?.performanceHistory ?? []
-    // Compute a pseudo-commission per month (margin * 30% as a rough estimate)
+    const totalHistoryMargin = history.reduce((s, m) => s + m.margin, 0)
     return history.map((m) => ({
       month: m.label,
       sales: m.sales,
       margin: m.margin,
-      commission: Math.round(m.margin * 0.3),
+      commission: totalHistoryMargin > 0
+        ? Math.round((m.margin / totalHistoryMargin) * totalTeamCommission)
+        : 0,
       financingRate: m.financingRate,
     }))
-  }, [dashboardRaw])
+  }, [dashboardRaw, totalTeamCommission])
 
   // --- Current / previous month KPIs ---
   const currentMonth = monthlyData.length > 0
@@ -131,17 +148,16 @@ export default function ReportsPage() {
   // --- Financing rate from dashboard KPIs or latest month ---
   const financingRate = currentMonth.financingRate ?? 0
 
-  // --- Vehicle type breakdown (derived from dashboard totals) ---
-  // The API does not return a per-vehicle-type breakdown today, so we show
-  // zeros when there is no data, keeping the UI ready for a future endpoint.
+  // --- Vehicle type breakdown from departmentStats ---
   const totalSales = dashboardRaw?.kpis?.totalSales ?? 0
   const totalMargin = dashboardRaw?.kpis?.totalMargin ?? 0
+  const deptStats = dashboardRaw?.departmentStats ?? {}
 
   const vehicleTypeData = useMemo(() => [
-    { type: "VN", label: "Véhicules Neufs", sales: 0, margin: 0, color: "bg-emerald-500" },
-    { type: "VO", label: "Occasions", sales: 0, margin: 0, color: "bg-blue-500" },
-    { type: "VU", label: "Utilitaires", sales: 0, margin: 0, color: "bg-purple-500" },
-  ], [])
+    { type: "VN", label: "Véhicules Neufs", sales: deptStats["VN"]?.totalSales ?? 0, margin: deptStats["VN"]?.totalMargin ?? 0, color: "bg-emerald-500" },
+    { type: "VO", label: "Occasions", sales: deptStats["VO"]?.totalSales ?? 0, margin: deptStats["VO"]?.totalMargin ?? 0, color: "bg-blue-500" },
+    { type: "VU", label: "Utilitaires", sales: deptStats["VU"]?.totalSales ?? 0, margin: deptStats["VU"]?.totalMargin ?? 0, color: "bg-purple-500" },
+  ], [deptStats])
 
   // --- Financing data (derived from KPI financing rate & totals) ---
   const financedSales = totalSales > 0 ? Math.round((financingRate / 100) * totalSales) : 0

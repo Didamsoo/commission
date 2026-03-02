@@ -470,7 +470,7 @@ export function CommercialDetailContent({ id }: { id: string }) {
         <StatCard
           title="Conversion"
           value={`${member.kpis.conversionRate}%`}
-          subtitle={`Satisfaction: ${member.kpis.satisfaction}%`}
+          subtitle={`Satisfaction: ${member.kpis.satisfaction ? `${member.kpis.satisfaction}%` : "N/A"}`}
           icon={ThumbsUp}
           color={member.kpis.conversionRate >= 25 ? "green" : "amber"}
         />
@@ -596,13 +596,13 @@ export function CommercialDetailContent({ id }: { id: string }) {
                 </div>
                 <div className="flex justify-between items-center py-2 border-b">
                   <span className="text-gray-500">Satisfaction client</span>
-                  <span className={`font-semibold ${member.kpis.satisfaction >= 85 ? "text-emerald-600" : "text-amber-600"}`}>
-                    {member.kpis.satisfaction}%
+                  <span className={`font-semibold ${!member.kpis.satisfaction ? "text-gray-400" : member.kpis.satisfaction >= 85 ? "text-emerald-600" : "text-amber-600"}`}>
+                    {member.kpis.satisfaction ? `${member.kpis.satisfaction}%` : "N/A"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-2">
                   <span className="text-gray-500">Accessoires/vente</span>
-                  <span className="font-semibold">{member.kpis.accessories}€</span>
+                  <span className="font-semibold">{member.kpis.accessories ? `${member.kpis.accessories}€` : "N/A"}</span>
                 </div>
               </CardContent>
             </Card>
