@@ -27,107 +27,121 @@ export interface FicheMargePDFData {
   marginRate: number
 }
 
+// Safe number formatter that avoids Unicode thin spaces (U+202F)
+// which jsPDF cannot render (shows as "/")
+function fmt(value: number): string {
+  const parts = value.toFixed(2).split(".")
+  const intPart = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, " ")
+  const dec = parts[1]
+  return dec === "00" ? `${intPart} EUR` : `${intPart},${dec} EUR`
+}
+
 export function generateFicheMargePDF(data: FicheMargePDFData): void {
   const doc = new jsPDF()
+  const pageWidth = doc.internal.pageSize.getWidth()
 
-  // Header
-  doc.setFontSize(20)
-  doc.setTextColor(37, 99, 235)
-  doc.text("Feuille de Marge", 105, 20, { align: "center" })
+  // Header bar
+  doc.setFillColor(37, 99, 235)
+  doc.rect(0, 0, pageWidth, 28, "F")
+  doc.setFontSize(18)
+  doc.setTextColor(255, 255, 255)
+  doc.text("Feuille de Marge", pageWidth / 2, 13, { align: "center" })
+  doc.setFontSize(9)
+  doc.text("AutoPerf Pro", pageWidth / 2, 21, { align: "center" })
 
-  doc.setFontSize(10)
-  doc.setTextColor(107, 114, 128)
-  doc.text("AutoPerf Pro", 105, 28, { align: "center" })
+  // Date & type line
+  doc.setFontSize(9)
+  doc.setTextColor(100, 100, 100)
+  doc.text(`Date : ${data.date}`, 15, 36)
+  doc.text(`Type : ${data.vehicleType}`, pageWidth - 15, 36, { align: "right" })
 
-  // Document info
-  doc.setFontSize(10)
-  doc.setTextColor(55, 65, 81)
-  doc.text(`Date: ${data.date}`, 15, 45)
-  doc.text(`Type: ${data.vehicleType}`, 15, 52)
-
-  // Vehicle & Client Info
-  doc.setFontSize(12)
-  doc.setTextColor(17, 24, 39)
-  doc.text("Informations", 15, 65)
-
+  // Info table
   autoTable(doc, {
-    startY: 70,
-    head: [["Champ", "Valeur"]],
-    body: [
-      ["Modèle", data.vehicleName],
-      ["N° Véhicule", data.vehicleNumber],
-      ["Vendeur", data.sellerName],
-      ["Client", data.clientName],
-    ],
+    startY: 40,
+    head: [["Modele", "N. Vehicule", "Vendeur", "Client"]],
+    body: [[data.vehicleName, data.vehicleNumber, data.sellerName, data.clientName]],
     theme: "grid",
-    headStyles: { fillColor: [37, 99, 235] },
+    headStyles: { fillColor: [37, 99, 235], fontSize: 8, cellPadding: 2 },
+    bodyStyles: { fontSize: 8, cellPadding: 2 },
+    margin: { left: 15, right: 15 },
   })
 
-  // Pricing Details
-  const finalY1 = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY || 110
-  doc.setFontSize(12)
-  doc.text("Détails Financiers", 15, finalY1 + 10)
+  const y1 = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 4
 
-  const pricingBody: (string | number)[][] = [
-    ["Prix d'achat TTC", `${data.purchasePrice.toLocaleString("fr-FR")} €`],
-    ["Prix de vente TTC", `${data.sellingPrice.toLocaleString("fr-FR")} €`],
-    ["Valeur de reprise HT", `${data.tradeInValue.toLocaleString("fr-FR")} €`],
-    ["Préparation HT", `${data.preparationCost.toLocaleString("fr-FR")} €`],
+  // Financial details
+  doc.setFontSize(10)
+  doc.setTextColor(17, 24, 39)
+  doc.text("Details Financiers", 15, y1)
+
+  const pricingBody: string[][] = [
+    ["Prix d'achat TTC", fmt(data.purchasePrice)],
+    ["Prix de vente TTC", fmt(data.sellingPrice)],
+    ["Valeur de reprise HT", fmt(data.tradeInValue)],
+    ["Preparation HT", fmt(data.preparationCost)],
   ]
-  if (data.hasWarranty) pricingBody.push(["Garantie", `${data.warrantyAmount.toLocaleString("fr-FR")} €`])
-  if (data.hasAccessories) pricingBody.push(["Accessoires TTC", `${data.accessoryAmount.toLocaleString("fr-FR")} €`])
+  if (data.hasWarranty) pricingBody.push(["Garantie", fmt(data.warrantyAmount)])
+  if (data.hasAccessories) pricingBody.push(["Accessoires TTC", fmt(data.accessoryAmount)])
 
   autoTable(doc, {
-    startY: finalY1 + 15,
+    startY: y1 + 2,
     head: [["Description", "Montant"]],
     body: pricingBody,
     theme: "grid",
-    headStyles: { fillColor: [37, 99, 235] },
+    headStyles: { fillColor: [37, 99, 235], fontSize: 8, cellPadding: 2 },
+    bodyStyles: { fontSize: 8, cellPadding: 2 },
+    margin: { left: 15, right: 15 },
   })
 
-  // Options
-  const finalY2 = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY || 160
-  doc.text("Options & Services", 15, finalY2 + 10)
+  const y2 = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 4
+
+  // Options & services
+  doc.setFontSize(10)
+  doc.text("Options & Services", 15, y2)
 
   autoTable(doc, {
-    startY: finalY2 + 15,
-    head: [["Service", "Détails"]],
+    startY: y2 + 2,
+    head: [["Service", "Details"]],
     body: [
-      ["Financement", data.hasFinancing ? `Oui - ${data.financedAmount.toLocaleString("fr-FR")} € HT` : "Non"],
-      ["Accessoires", data.hasAccessories ? `Oui - ${data.accessoryAmount.toLocaleString("fr-FR")} € TTC` : "Non"],
-      ["Garantie", data.hasWarranty ? `Oui - ${data.warrantyAmount.toLocaleString("fr-FR")} €` : "Non"],
+      ["Financement", data.hasFinancing ? `Oui - ${fmt(data.financedAmount)}` : "Non"],
+      ["Accessoires", data.hasAccessories ? `Oui - ${fmt(data.accessoryAmount)}` : "Non"],
+      ["Garantie", data.hasWarranty ? `Oui - ${fmt(data.warrantyAmount)}` : "Non"],
       ["Pack livraison", data.deliveryPack === "none" ? "Aucun" : data.deliveryPack.toUpperCase()],
     ],
     theme: "grid",
-    headStyles: { fillColor: [37, 99, 235] },
+    headStyles: { fillColor: [37, 99, 235], fontSize: 8, cellPadding: 2 },
+    bodyStyles: { fontSize: 8, cellPadding: 2 },
+    margin: { left: 15, right: 15 },
   })
 
-  // Results Summary
-  const finalY3 = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY || 200
-  doc.setFontSize(14)
-  doc.text("Résultats", 15, finalY3 + 10)
+  const y3 = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 4
+
+  // Results
+  doc.setFontSize(11)
+  doc.setTextColor(17, 24, 39)
+  doc.text("Resultats", 15, y3)
 
   autoTable(doc, {
-    startY: finalY3 + 15,
+    startY: y3 + 2,
     head: [["Indicateur", "Valeur"]],
     body: [
-      ["Chiffre d'affaires total", `${data.totalRevenue.toLocaleString("fr-FR")} €`],
-      ["Coûts totaux", `${data.totalCosts.toLocaleString("fr-FR")} €`],
-      ["Marge brute", `${data.grossMargin.toLocaleString("fr-FR")} € (${data.marginRate.toFixed(1)}%)`],
-      ["Commission vendeur", `${data.commission.toLocaleString("fr-FR")} €`],
-      ["Marge nette concession", `${data.netMargin.toLocaleString("fr-FR")} €`],
+      ["Chiffre d'affaires total", fmt(data.totalRevenue)],
+      ["Couts totaux", fmt(data.totalCosts)],
+      ["Marge brute", `${fmt(data.grossMargin)} (${data.marginRate.toFixed(1)}%)`],
+      ["Commission vendeur", fmt(data.commission)],
+      ["Marge nette concession", fmt(data.netMargin)],
     ],
     theme: "striped",
-    headStyles: { fillColor: [16, 185, 129] },
-    bodyStyles: { fontSize: 11 },
+    headStyles: { fillColor: [16, 185, 129], fontSize: 9, cellPadding: 2.5 },
+    bodyStyles: { fontSize: 9, cellPadding: 2.5 },
+    margin: { left: 15, right: 15 },
   })
 
   // Footer
-  doc.setFontSize(8)
+  doc.setFontSize(7)
   doc.setTextColor(156, 163, 175)
   doc.text(
-    `Généré le ${new Date().toLocaleDateString("fr-FR")} à ${new Date().toLocaleTimeString("fr-FR")}`,
-    105, 285, { align: "center" }
+    `Genere le ${data.date}`,
+    pageWidth / 2, 287, { align: "center" }
   )
 
   doc.save(`fiche-marge-${data.vehicleNumber || Date.now()}.pdf`)

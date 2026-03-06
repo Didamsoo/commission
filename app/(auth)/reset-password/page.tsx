@@ -18,6 +18,19 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { createClient } from "@/lib/supabase/client"
 
+function getPasswordStrength(pw: string): { score: number; label: string; color: string } {
+  let score = 0
+  if (pw.length >= 8) score++
+  if (pw.length >= 12) score++
+  if (/[A-Z]/.test(pw)) score++
+  if (/[0-9]/.test(pw)) score++
+  if (/[^A-Za-z0-9]/.test(pw)) score++
+  if (score <= 1) return { score, label: "Faible", color: "bg-red-500" }
+  if (score <= 2) return { score, label: "Moyen", color: "bg-orange-500" }
+  if (score <= 3) return { score, label: "Bon", color: "bg-yellow-500" }
+  return { score, label: "Fort", color: "bg-emerald-500" }
+}
+
 export default function ResetPasswordPage() {
   const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
@@ -146,9 +159,23 @@ export default function ResetPasswordPage() {
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
-                <p className="text-xs text-gray-500">
-                  Minimum 6 caractères
-                </p>
+                {password.length > 0 ? (
+                  <div className="space-y-1">
+                    <div className="flex gap-1">
+                      {[1, 2, 3, 4, 5].map((i) => {
+                        const { score, color } = getPasswordStrength(password)
+                        return <div key={i} className={`h-1 flex-1 rounded-full ${i <= score ? color : "bg-gray-200"}`} />
+                      })}
+                    </div>
+                    <p className={`text-xs ${getPasswordStrength(password).score <= 1 ? "text-red-600" : getPasswordStrength(password).score <= 2 ? "text-orange-600" : getPasswordStrength(password).score <= 3 ? "text-yellow-600" : "text-emerald-600"}`}>
+                      {getPasswordStrength(password).label} — min. 8 caracteres, 1 majuscule, 1 chiffre
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-500">
+                    Minimum 8 caracteres, dont 1 majuscule et 1 chiffre
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">

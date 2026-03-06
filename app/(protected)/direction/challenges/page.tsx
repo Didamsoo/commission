@@ -50,7 +50,18 @@ import {
   formatChallengeTarget,
   formatChallengeDuration
 } from "@/types/direction-challenges"
-import { useDefis } from "@/hooks/use-defis"
+import { useDefis, deleteDefi } from "@/hooks/use-defis"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 // ============================================
 // ICONS MAPPING
@@ -79,7 +90,7 @@ const STATUS_CONFIG: Record<DirectionChallengeStatus, {
 // ============================================
 // CHALLENGE CARD COMPONENT
 // ============================================
-function DirectionChallengeCard({ challenge }: { challenge: DirectionChallenge }) {
+function DirectionChallengeCard({ challenge, onDelete }: { challenge: DirectionChallenge; onDelete?: (id: string) => void }) {
   const typeConfig = CHALLENGE_TYPE_CONFIG[challenge.type]
   const statusConfig = STATUS_CONFIG[challenge.status]
   const TypeIcon = CHALLENGE_TYPE_ICONS[challenge.type]
@@ -136,10 +147,28 @@ function DirectionChallengeCard({ challenge }: { challenge: DirectionChallenge }
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="gap-2 text-red-600">
-                    <Trash2 className="w-4 h-4" />
-                    Supprimer
-                  </DropdownMenuItem>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <DropdownMenuItem className="gap-2 text-red-600" onSelect={(e) => e.preventDefault()}>
+                        <Trash2 className="w-4 h-4" />
+                        Supprimer
+                      </DropdownMenuItem>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Supprimer ce challenge ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Cette action est irreversible. Le challenge &quot;{challenge.title}&quot; sera definitivement supprime.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => onDelete?.(challenge.id)} className="bg-red-600 hover:bg-red-700">
+                          Supprimer
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -260,7 +289,16 @@ function StatCard({
 export default function DirectionChallengesPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [activeTab, setActiveTab] = useState<DirectionChallengeStatus | "all">("all")
-  const { data: defisData, loading } = useDefis()
+  const { data: defisData, loading, refetch } = useDefis()
+
+  const handleDeleteChallenge = async (id: string) => {
+    try {
+      await deleteDefi(id)
+      refetch()
+    } catch {
+      // Delete failed silently — Sentry captures
+    }
+  }
 
   // Map API data to DirectionChallenge[] type
   const challenges: DirectionChallenge[] = ((defisData || []) as any[]).map(d => ({
@@ -412,7 +450,7 @@ export default function DirectionChallengesPage() {
       {filteredChallenges.length > 0 ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredChallenges.map((challenge) => (
-            <DirectionChallengeCard key={challenge.id} challenge={challenge} />
+            <DirectionChallengeCard key={challenge.id} challenge={challenge} onDelete={handleDeleteChallenge} />
           ))}
         </div>
       ) : (

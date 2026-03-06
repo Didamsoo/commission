@@ -1,323 +1,135 @@
-# ROADMAP — Projet AutoPerf
+# ROADMAP — AutoPerf Pro
 
-> Dernière mise à jour : 28 février 2026
-> On coche ensemble au fur et à mesure.
-
----
-
-## Phases terminées (0–6) — 141 tâches ✅
-
-<details>
-<summary>Phase 0 — Nettoyage & Corrections (9/9 ✅)</summary>
-
-- [x] Retirer `ignoreBuildErrors: true` dans `next.config.mjs`
-- [x] Retirer `ignoreEslintDuringBuilds: true` dans `next.config.mjs`
-- [x] Corriger toutes les erreurs TypeScript révélées après suppression des flags
-- [x] Corriger toutes les erreurs ESLint révélées
-- [x] Créer la page manquante `chef-ventes/challenges/page.tsx`
-- [x] Créer la page manquante `marque/challenges/page.tsx`
-- [x] Créer la page manquante `groupe/challenges/page.tsx`
-- [x] Vérifier que le build `npm run build` passe sans erreur
-- [x] Créer un fichier `.env.example` listant les variables nécessaires
-
-</details>
-
-<details>
-<summary>Phase 1 — Authentification (12/12 ✅)</summary>
-
-- [x] Choisir le provider d'auth → **Supabase Auth**
-- [x] Installer et configurer le provider choisi
-- [x] Créer le fichier `.env.local` avec les clés d'API
-- [x] Brancher la page Login sur l'auth réelle
-- [x] Brancher la page Register sur l'auth réelle
-- [x] Implémenter la déconnexion
-- [x] Implémenter la réinitialisation de mot de passe
-- [x] Stocker le rôle utilisateur
-- [x] Protéger les routes `/protected/*`
-- [x] Restreindre l'accès aux pages selon le rôle
-- [x] Remplacer l'utilisateur fictif du layout par l'utilisateur connecté réel
-- [x] Supprimer les boutons de démo "Accès rapide" de la page login
-
-</details>
-
-<details>
-<summary>Phase 2 — Base de données (15/15 ✅)</summary>
-
-- [x] Choisir la base de données → **Supabase PostgreSQL**
-- [x] Créer la table `profiles` + trigger auto
-- [x] Créer la table `concessions`
-- [x] Créer la table `marques`
-- [x] Créer la table `equipes`
-- [x] Créer la table `fiches_marge`
-- [x] Créer la table `payplans`
-- [x] Créer la table `defis_plateforme`
-- [x] Créer la table `defis_p2p`
-- [x] Créer la table `badges`
-- [x] Créer la table `badges_utilisateur`
-- [x] Créer la table `notes_coaching`
-- [x] Créer la table `approbations`
-- [x] Créer la table `notifications`
-- [x] Migrer les données du localStorage vers la base
-
-</details>
-
-<details>
-<summary>Phase 3 — API Backend (15/15 ✅)</summary>
-
-- [x] Retirer `output: 'export'` de `next.config.mjs`
-- [x] Adapter le déploiement (Vercel SSR)
-- [x] Créer les utilitaires API partagés (`lib/api/`)
-- [x] Créer les schémas de validation Zod (`lib/validations/`)
-- [x] Route API `GET/POST /api/fiches-marge` + `[id]`
-- [x] Route API `GET/POST /api/payplan` + `[id]`
-- [x] Route API `GET/POST /api/defis` + `[id]`
-- [x] Route API `GET/POST /api/defis-p2p` + `[id]`
-- [x] Route API `GET/POST /api/equipe` + `[id]`
-- [x] Route API `GET/POST /api/approbations` + `[id]`
-- [x] Route API `GET/POST /api/coaching` + `[id]`
-- [x] Route API `GET /api/leaderboard`
-- [x] Route API `GET /api/dashboard/[role]`
-- [x] Route API `GET /api/rapports`
-- [x] Route API `GET/PUT /api/profil` + notifications
-
-</details>
-
-<details>
-<summary>Phase 4 — Connexion Frontend ↔ Backend (27/27 ✅)</summary>
-
-- [x] Dashboard commercial : API réelle
-- [x] Calculateur : sauvegarde en base
-- [x] Leaderboard : API classement
-- [x] Défis : API plateforme + P2P
-- [x] Profil : API profil + badges + stats
-- [x] Dashboard chef des ventes : API réelle
-- [x] Équipe : liste des commerciaux
-- [x] Coaching : CRUD notes via API
-- [x] Rapports chef des ventes : données réelles
-- [x] Défis chef des ventes : API
-- [x] Dashboard direction concession : API réelle
-- [x] Utilisateurs : CRUD invitation/rôle/activation
-- [x] Approbations : workflow validation ventes
-- [x] Défis direction concession : API
-- [x] Rapports direction : données réelles
-- [x] Payplan : sauvegarde en base
-- [x] Dashboard direction marque : API réelle
-- [x] Concessions : liste API
-- [x] Benchmark : calculs réels
-- [x] Stocks : données réelles
-- [x] Défis direction marque : API
-- [x] Dashboard direction plaque : API réelle
-- [x] Marques : liste API
-- [x] Performance groupe : calculs consolidés
-- [x] Rapports groupe : données réelles
-- [x] Défis groupe : API
-- [x] Notifications + recherche globale branchées
-
-</details>
-
-<details>
-<summary>Phase 4B — Migration mock restant + Fix zéro (22/22 ✅)</summary>
-
-- [x] Fix `sales_target`, `quarterly_growth`, `market_share`, `growth`, `satisfaction`/`stock_days`
-- [x] Helper `displayValue()` dans `lib/types/display.ts`
-- [x] Migration pages : chef-ventes, direction, benchmark, performance, stocks, rapports groupe
-- [x] Enrichissements API dashboard : departmentStats, siblingTeams, perBrandHistory
-- [x] Fichiers config : static-data, static-stock-data, report-templates, kpi-helpers
-
-</details>
-
-<details>
-<summary>Phase 4C — Audit & Nettoyage final (19/19 ✅)</summary>
-
-- [x] Fix open redirect `/auth/callback`
-- [x] Fix bypass auth cron `/api/email/send-queued`
-- [x] Fix mot de passe minimum 6→8 caractères
-- [x] Enrichir `/api/marques/[id]`
-- [x] Migration mock pages challenges (marque, chef-ventes, groupe, direction)
-- [x] Dashboard `salesTarget` + profil `concession_name` depuis API
-- [x] Nettoyage console.log, renommage variables mock, fix `error: any`
-- [x] Middleware redirection par rôle + protection routes
-
-</details>
-
-<details>
-<summary>Phase 5 — Fonctionnalités manquantes (12/12 ✅)</summary>
-
-- [x] Page "Mot de passe oublié"
-- [x] Upload d'avatar utilisateur
-- [x] Export PDF des fiches de marge
-- [x] Export Excel des rapports
-- [x] Notifications email
-- [x] Notifications push (navigateur)
-- [x] Historique fiche de marge (audit trail)
-- [x] Filtre par période sur tous les dashboards
-- [x] Graphiques interactifs (Recharts)
-- [x] Page paramètres utilisateur
-- [x] Page paramètres concession
-- [x] Gestion multi-concessions
-
-</details>
-
-<details>
-<summary>Phase 6 — Tests & Qualité (10/10 ✅)</summary>
-
-- [x] Installer Vitest + Testing Library
-- [x] Tests unitaires `margin-utils.ts` (82 tests)
-- [x] Tests unitaires fonctions API (28 tests)
-- [x] Installer Playwright
-- [x] Tests E2E login → dashboard (5 tests)
-- [x] Tests E2E création fiche de marge (4 tests)
-- [x] Tests E2E création défi P2P (4 tests)
-- [x] ESLint flat config + jsx-a11y + react-hooks + Prettier
-- [x] Vérification accessibilité a11y (7 pages, axe-core WCAG 2.0 AA)
-- [x] Tests responsive mobile/tablette/desktop
-
-</details>
+> Derniere mise a jour : 6 mars 2026
+> On coche ensemble au fur et a mesure.
 
 ---
 
-## PHASE 7 — Mise en production (7/10)
+## Etat des lieux
 
-> Préparer le déploiement final.
-
-- [x] Configurer le HTTPS (automatique avec Vercel)
-- [x] Mettre en place un CI/CD (`.github/workflows/ci.yml`)
-- [x] Installer Sentry (monitoring d'erreurs)
-- [x] Installer Vercel Analytics
-- [x] Optimiser les performances (dynamic imports jspdf, xlsx)
-- [x] Rédiger un README.md
-- [x] Créer le guide utilisateur (`GUIDE-UTILISATEUR.md`)
-- [ ] Configurer les variables d'environnement de production (Vercel dashboard)
-- [ ] Mettre en place un domaine personnalisé (Vercel dashboard)
-- [ ] Configurer les backups de la base de données (Supabase dashboard)
+Le projet est a **98%** (195/199 taches des phases 0-11 terminees). Il reste des taches de mise en production, quelques donnees statiques a remplacer, et des ameliorations pour un produit solide.
 
 ---
 
-## PHASE 8 — Derniers mock data & placeholders
+## PRIORITE 0 — Bloquant production
 
-> Éliminer les données hardcodées restantes dans le frontend.
+> Sans ca, le site ne tourne pas correctement en prod. (Actions manuelles Vercel/Supabase Dashboard)
 
-### Badges (données statiques, pas encore branchées sur la BDD)
+### Deploiement & infra
 
-- [x] Créer la route API `GET /api/badges` (lire `badges` + `badges_utilisateur` pour l'utilisateur connecté)
-- [x] `dashboard/page.tsx` : remplacer `recentBadges` statique par l'API badges
-- [x] `profile/page.tsx` : remplacer `allBadges` mock par l'API badges
-- [x] `profile/badges/page.tsx` : remplacer `allBadges` mock par l'API badges
-
-### Graphiques & visualisations placeholder
-
-- [x] `chef-ventes/equipe/[id]/commercial-detail-content.tsx` : remplacer `PerformanceHistoryMock()` par les vraies données de performance du commercial
-- [x] `marque/benchmark/page.tsx` : remplacer `RadarChartMock()` par un vrai radar chart avec données API
-- [x] `marque/page.tsx` : remplacer l'historique synthétique par un endpoint API dédié
-- [x] `groupe/marques/[id]/brand-detail-content.tsx` : remplacer le placeholder historique par des données réelles
-
-### Données stock statiques
-
-- [ ] `lib/config/static-stock-data.ts` : connecter `stockTransfers` et `stockItems` à une source réelle (DMS ou table Supabase)
+- [ ] Configurer les variables d'environnement de production dans Vercel Dashboard (Supabase URL, keys, Sentry DSN, VAPID, Resend)
+- [ ] Executer la migration `supabase/migrations/008_stocks.sql` dans le SQL Editor de Supabase (tables `stocks` + `stock_transfers` + RLS)
+- [ ] Configurer les backups automatiques de la base de donnees (Supabase Dashboard > Database > Backups)
 
 ---
 
-## PHASE 9 — Corrections UX & nettoyage code
+## PRIORITE 1 — Important avant lancement
 
-> Petites corrections d'expérience utilisateur et de qualité de code.
+> Qualite pro, fiabilite, premiere impression.
 
-### Liens placeholder `href="#"`
+### Page d'erreur globale
 
-- [x] `app/page.tsx` : créer ou relier les pages "Mentions légales", "Confidentialité", "CGU" (footer landing)
-- [x] `app/(auth)/register/page.tsx` : relier les liens "conditions d'utilisation" et "politique de confidentialité"
+- [x] Creer `app/error.tsx` (error boundary React pour les erreurs 5xx, avec bouton "Reessayer" et lien retour accueil)
+- [x] Creer `app/(protected)/error.tsx` (variante pour les pages protegees, avec lien vers /dashboard)
 
-### Améliorations UX
+### Domaine & SEO
 
-- [x] `profile/page.tsx` : remplacer `window.location.reload()` après upload avatar par un rafraîchissement de state
-- [x] `profile/settings/page.tsx` : ajouter un vrai logging d'erreur dans les blocs catch (actuellement silencieux)
+- [ ] Configurer un domaine personnalise sur Vercel (DNS + certificat SSL)
+- [x] Ajouter les meta tags Open Graph et Twitter Card sur la landing page (deja present dans `app/layout.tsx`)
+- [x] Ajouter un `robots.txt` et un `sitemap.xml` (pages publiques uniquement)
 
-### Nettoyage code
+### Contenu legal definitif
 
-- [x] `lib/pdf/fiche-marge.ts` : typer correctement `(doc as any).lastAutoTable` (éviter `any`)
-- [x] `components/p2p-challenges/CreateChallengeDialog.tsx` : typer `(result.data as any)?.id`
-- [x] `groupe/marques/[id]/brand-detail-content.tsx` : typer `(marqueRaw as any)?.concessions`
-- [x] `lib/email/client.ts` : remplacer les `console.warn`/`console.error` par un logger structuré (ou Sentry)
+- [ ] Remplacer le texte placeholder de `/cgu` par le contenu juridique reel
+- [ ] Remplacer le texte placeholder de `/confidentialite` par la politique RGPD reelle
+- [ ] Remplacer le texte placeholder de `/mentions-legales` par les mentions reelles (raison sociale, SIRET, hebergeur, etc.)
 
----
+### Donnees statiques restantes
 
-## PHASE 10 — Tests complémentaires
-
-> Augmenter la couverture de tests sur les zones critiques.
-
-### Tests unitaires — Schémas Zod
-
-- [x] Tester `lib/validations/fiches-marge.ts` (cas valides + invalides)
-- [x] Tester `lib/validations/defis.ts` (création + mise à jour)
-- [x] Tester `lib/validations/defis-p2p.ts`
-- [x] Tester `lib/validations/payplan.ts`
-- [x] Tester `lib/validations/profil.ts`
-- [x] Tester `lib/validations/equipe.ts`
-- [x] Tester `lib/validations/approbations.ts`
-- [x] Tester `lib/validations/coaching.ts`
-- [x] Tester `lib/validations/notifications.ts`
-
-### Tests unitaires — Helpers & utilitaires
-
-- [x] Tester `lib/types/display.ts` (`displayValue`, `mapMarqueToBrand`, `mapConcessionToDealership`)
-- [x] Tester `lib/utils/kpi-helpers.ts` (`deriveBrandKPIs`, `computeTrend`)
-
-### Tests d'intégration — Routes API (les plus critiques)
-
-- [x] Tester `GET/POST /api/fiches-marge` (CRUD complet)
-- [x] Tester `GET/POST /api/defis` (CRUD complet)
-- [x] Tester `GET/POST /api/defis-p2p` (CRUD complet)
-- [x] Tester `GET /api/dashboard/[role]` (5 rôles)
-- [x] Tester `GET /api/leaderboard`
-- [x] Tester `GET/PUT /api/profil`
-- [x] Tester `GET/POST /api/approbations` (workflow validation)
-- [x] Tester `GET/POST /api/equipe`
-- [x] Tester `GET/POST /api/coaching`
-- [x] Tester `GET/POST /api/payplan`
-
-### Tests E2E — Parcours métier manquants
-
-- [x] Parcours approbation vente (soumission → validation → retour)
-- [x] Parcours gestion d'équipe (ajout membre, changement rôle)
-- [x] Parcours coaching (création note, édition, suppression)
-- [x] Parcours leaderboard (affichage classement, filtres)
-- [x] Parcours export rapport (génération PDF + Excel)
-- [x] Parcours modification profil (avatar, mot de passe, préférences)
-- [x] Parcours changement de concession (switch + vérification données)
-- [x] Parcours recherche globale (recherche, navigation vers résultat)
+- [x] `lib/config/static-stock-data.ts` : supprime — n'etait importe nulle part, l'UI utilise deja l'API `/api/stocks` et `/api/stock-transfers`
+- [x] `lib/config/static-data.ts` : supprime — n'etait importe nulle part, les dashboards utilisent deja les APIs reelles
 
 ---
 
-## PHASE 11 — Pages légales & contenu
+## PRIORITE 2 — Ameliorations qualite
 
-> Pages nécessaires pour un site professionnel.
+> Rend le produit plus solide et agreable au quotidien.
 
-- [x] Créer la page `/mentions-legales`
-- [x] Créer la page `/confidentialite` (politique de confidentialité / RGPD)
-- [x] Créer la page `/cgu` (conditions générales d'utilisation)
-- [x] Mettre à jour les liens dans le footer (`app/page.tsx`) et le formulaire d'inscription
+### UX & feedback utilisateur
 
----
+- [x] Ajouter des fichiers `loading.tsx` pour les sections principales (`app/(protected)/loading.tsx`, `app/(auth)/loading.tsx`)
+- [x] Ajouter des etats vides (empty states) — deja present sur toutes les pages listes (equipe, defis, coaching, notifications, stocks, leaderboard)
+- [x] Ajouter la confirmation avant suppression (AlertDialog) sur coaching, challenges (4 pages), direction/users
+- [x] Ajouter un indicateur de force du mot de passe sur les pages register et reset-password
 
-## Résumé par phase
+### Securite
 
-| Phase | Contenu | Nb tâches | Statut |
-|-------|---------|-----------|--------|
-| 0 | Nettoyage & Corrections | 9 | ✅ 9/9 |
-| 1 | Authentification | 12 | ✅ 12/12 |
-| 2 | Base de données | 15 | ✅ 15/15 |
-| 3 | API Backend | 15 | ✅ 15/15 |
-| 4 | Connexion Frontend ↔ Backend | 27 | ✅ 27/27 |
-| 4B | Migration mock restant + Fix zéro | 22 | ✅ 22/22 |
-| 4C | Audit & Nettoyage final | 19 | ✅ 19/19 |
-| 5 | Fonctionnalités manquantes | 12 | ✅ 12/12 |
-| 6 | Tests & Qualité | 10 | ✅ 10/10 |
-| 7 | Mise en production | 10 | 🟡 7/10 |
-| 8 | Derniers mock data & placeholders | 9 | 🟡 8/9 |
-| 9 | Corrections UX & nettoyage code | 7 | ✅ 7/7 |
-| 10 | Tests complémentaires | 28 | ✅ 28/28 |
-| 11 | Pages légales & contenu | 4 | ✅ 4/4 |
-| **TOTAL** | | **199 tâches** | **195/199 (98%)** |
+- [ ] Ajouter un rate limiting sur les routes API sensibles (`/api/profil/password`, `/api/push/subscribe`, `/api/email/send-queued`)
+- [x] Ajouter des headers de securite (X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy) dans `next.config.mjs`
+- [ ] Verifier que toutes les routes API qui modifient des donnees valident le Content-Type `application/json`
+
+### Tests supplementaires
+
+- [x] Ajouter un test E2E pour le parcours stocks (consultation, transfert, approbation)
+- [x] Ajouter un test E2E pour le parcours payplan (creation regle, modification, suppression)
+- [x] Ajouter un test E2E pour le parcours notifications (reception, lecture, marquer tout lu)
+- [x] Ajouter des tests unitaires pour les hooks critiques (`use-fiches-marge`, `use-defis`)
 
 ---
 
-> **Comment on avance :** tu me dis quelle tâche on attaque, je code, on coche, on passe à la suivante.
+## PRIORITE 3 — Fonctionnalites futures
+
+> Nouvelles features pour enrichir la plateforme apres le lancement.
+
+### Dark mode
+
+- [x] Activer le theme sombre via `next-themes` (ThemeProvider integre dans `app/layout.tsx`)
+- [x] Ajouter un toggle clair/sombre dans la navbar + settings utilisateur (`/profile/settings`)
+- [ ] Verifier le rendu de tous les composants et graphiques en mode sombre
+
+### Performance & offline
+
+- [ ] Mettre en cache les donnees dashboard avec `stale-while-revalidate` (SWR ou React Query)
+- [ ] Ajouter un Service Worker pour le mode offline basique (PWA)
+- [ ] Ajouter une page `/offline` avec message d'indisponibilite
+
+### Tableaux de bord avances
+
+- [ ] Ajouter un filtre par commercial sur le dashboard chef des ventes
+- [ ] Ajouter un comparatif mois par mois (M vs M-1) sur tous les dashboards
+- [ ] Ajouter l'export PDF du dashboard (capture des KPIs + graphiques)
+- [ ] Ajouter des objectifs personnalisables par commercial (pas seulement par equipe)
+
+### Collaboration & communication
+
+- [ ] Ajouter un systeme de commentaires sur les fiches de marge (echanges commercial <-> chef des ventes)
+- [ ] Ajouter des notifications en temps reel (WebSocket ou Supabase Realtime)
+- [ ] Ajouter un fil d'activite par concession (timeline des evenements recents)
+
+### Multi-langue
+
+- [ ] Extraire toutes les chaines de caracteres dans des fichiers de traduction
+- [ ] Ajouter le support anglais (i18n avec `next-intl` ou similaire)
+- [ ] Ajouter un selecteur de langue dans les settings utilisateur
+
+### Integration DMS
+
+- [ ] Definir le format d'import des donnees vehicules depuis un DMS (CSV / API)
+- [ ] Creer une page d'import de donnees (`/direction/import`)
+- [ ] Connecter les stocks et le P&L a un flux de donnees reel
+
+---
+
+## Resume
+
+| Priorite | Description | Taches | Statut |
+|----------|-------------|--------|--------|
+| P0 | Bloquant production (manuel) | 3 | 0/3 |
+| P1 | Important avant lancement | 9 | 5/9 |
+| P2 | Ameliorations qualite | 11 | 8/11 |
+| P3 | Fonctionnalites futures | 16 | 2/16 |
+| **TOTAL** | | **39 taches** | **15/39** |
+
+---
+
+> **Comment on avance :** tu me dis quelle tache on attaque, je code, on coche, on passe a la suivante.

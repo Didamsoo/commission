@@ -101,8 +101,8 @@ export default function CalculatorPage() {
 
   // API hooks
   const { data: profil } = useProfil()
-  const { data: dashboardData } = useDashboard<{ kpis?: { total_sales?: number; total_commission?: number; financing_rate?: number }; ranking?: number }>("commercial")
-  const { data: recentFiches } = useFichesMarge({ limit: 3 })
+  const { data: dashboardData, refetch: refetchDashboard } = useDashboard<{ kpis?: { totalSales?: number; totalCommission?: number; financingRate?: number }; ranking?: number }>("commercial")
+  const { data: recentFiches, refetch: refetchFiches } = useFichesMarge({ limit: 3 })
 
   // Form states
   const [formData, setFormData] = useState({
@@ -223,31 +223,37 @@ export default function CalculatorPage() {
     setSaveSuccess(false)
     try {
       const response = await saveFicheMarge({
-        vehicle_type: vehicleType,
-        vehicle_name: formData.vehicleName,
+        date: new Date().toISOString().slice(0, 10),
+        vehicle_type: vehicleType === "VN" ? "VP" : vehicleType,
+        vehicle_sold_name: formData.vehicleName,
         vehicle_number: formData.vehicleNumber,
+        seller_name: formData.sellerName,
         client_name: formData.clientName,
-        purchase_price: parseFloat(formData.purchasePrice) || 0,
-        selling_price: parseFloat(formData.sellingPrice) || 0,
-        trade_in_value: parseFloat(formData.tradeInValue) || 0,
+        purchase_price_ttc: parseFloat(formData.purchasePrice) || 0,
+        selling_price_ttc: parseFloat(formData.sellingPrice) || 0,
+        trade_in_value_ht: parseFloat(formData.tradeInValue) || 0,
         has_financing: formData.hasFinancing,
-        financed_amount: parseFloat(formData.financedAmount) || 0,
+        financed_amount_ht: parseFloat(formData.financedAmount) || 0,
         has_accessories: formData.hasAccessories,
-        accessory_amount: parseFloat(formData.accessoryAmount) || 0,
-        has_warranty: formData.hasWarranty,
-        warranty_amount: parseFloat(formData.warrantyAmount) || 0,
-        preparation_cost: parseFloat(formData.preparationCost) || 0,
-        delivery_pack: formData.deliveryPack,
-        gross_margin: result.grossMargin,
+        accessory_amount_ht: parseFloat(formData.accessoryAmount) || 0,
+        accessory_amount_ttc: parseFloat(formData.accessoryAmount) || 0,
+        warranty_12months: parseFloat(formData.warrantyAmount) || 0,
+        preparation_ht: parseFloat(formData.preparationCost) || 0,
+        delivery_pack_sold: formData.deliveryPack,
+        initial_margin_ht: result.grossMargin,
         seller_commission: result.commission,
         final_margin: result.netMargin,
-        margin_rate: result.marginRate,
       })
       setSaveSuccess(true)
+      // Refresh data widgets
+      refetchFiches()
+      refetchDashboard()
       // Capture fiche id for audit trail
       const savedFiche = response?.data as Record<string, unknown> | undefined
       if (savedFiche?.id) {
-        setCurrentFicheId(String(savedFiche.id))
+        const ficheId = String(savedFiche.id)
+        setCurrentFicheId(ficheId)
+        fetchHistory(ficheId)
       }
     } catch {
       // Error handled silently, user sees button state
@@ -828,15 +834,15 @@ export default function CalculatorPage() {
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Ventes ce mois</span>
-                <span className="font-bold text-gray-900">{dashboardData?.kpis?.total_sales ?? "—"}</span>
+                <span className="font-bold text-gray-900">{dashboardData?.kpis?.totalSales ?? "—"}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Commission totale</span>
-                <span className="font-bold text-emerald-600">{dashboardData?.kpis?.total_commission != null ? `${dashboardData.kpis.total_commission.toLocaleString()} €` : "—"}</span>
+                <span className="font-bold text-emerald-600">{dashboardData?.kpis?.totalCommission != null ? `${dashboardData.kpis.totalCommission.toLocaleString()} €` : "—"}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600">Taux de financement</span>
-                <span className="font-bold text-blue-600">{dashboardData?.kpis?.financing_rate != null ? `${dashboardData.kpis.financing_rate}%` : "—"}</span>
+                <span className="font-bold text-blue-600">{dashboardData?.kpis?.financingRate != null ? `${dashboardData.kpis.financingRate}%` : "—"}</span>
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -859,7 +865,7 @@ export default function CalculatorPage() {
                 {recentFiches && recentFiches.length > 0 ? (recentFiches as Record<string, unknown>[]).map((fiche, i) => (
                   <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer">
                     <div>
-                      <p className="font-medium text-gray-900 text-sm">{String(fiche.vehicle_name || "Véhicule")}</p>
+                      <p className="font-medium text-gray-900 text-sm">{String(fiche.vehicle_sold_name || "Véhicule")}</p>
                       <p className="text-xs text-gray-500">{fiche.created_at ? new Date(String(fiche.created_at)).toLocaleDateString("fr-FR") : ""}</p>
                     </div>
                     <span className="font-bold text-emerald-600 text-sm">+{Number(fiche.seller_commission || 0).toLocaleString()}€</span>
@@ -883,11 +889,63 @@ export default function CalculatorPage() {
             </DialogDescription>
           </DialogHeader>
           <ScrollArea className="max-h-[60vh]">
-            <div className="p-6 space-y-6">
-              {/* Preview content would go here */}
-              <div className="p-8 border-2 border-dashed border-gray-200 rounded-xl text-center">
-                <p className="text-gray-500">Aperçu de la feuille de marge</p>
+            <div className="p-6 space-y-5">
+              {/* Header */}
+              <div className="text-center space-y-1 pb-3 border-b">
+                <h3 className="text-xl font-bold text-blue-600">Feuille de Marge</h3>
+                <p className="text-sm text-gray-500">AutoPerf Pro &mdash; {new Date().toLocaleDateString("fr-FR")}</p>
+                <Badge variant="outline">{vehicleType}</Badge>
               </div>
+
+              {/* Informations */}
+              <div>
+                <h4 className="font-semibold text-sm text-gray-700 mb-2">Informations</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded p-2"><span className="text-gray-500">Modele :</span> <span className="font-medium">{formData.vehicleName || "—"}</span></div>
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded p-2"><span className="text-gray-500">N. Vehicule :</span> <span className="font-medium">{formData.vehicleNumber || "—"}</span></div>
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded p-2"><span className="text-gray-500">Vendeur :</span> <span className="font-medium">{formData.sellerName || "—"}</span></div>
+                  <div className="bg-gray-50 dark:bg-gray-800 rounded p-2"><span className="text-gray-500">Client :</span> <span className="font-medium">{formData.clientName || "—"}</span></div>
+                </div>
+              </div>
+
+              {/* Details financiers */}
+              <div>
+                <h4 className="font-semibold text-sm text-gray-700 mb-2">Details Financiers</h4>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between py-1 border-b border-gray-100"><span className="text-gray-600">Prix d&apos;achat TTC</span><span className="font-medium">{formatCurrency(parseFloat(formData.purchasePrice) || 0)}</span></div>
+                  <div className="flex justify-between py-1 border-b border-gray-100"><span className="text-gray-600">Prix de vente TTC</span><span className="font-medium">{formatCurrency(parseFloat(formData.sellingPrice) || 0)}</span></div>
+                  <div className="flex justify-between py-1 border-b border-gray-100"><span className="text-gray-600">Valeur de reprise HT</span><span className="font-medium">{formatCurrency(parseFloat(formData.tradeInValue) || 0)}</span></div>
+                  <div className="flex justify-between py-1 border-b border-gray-100"><span className="text-gray-600">Preparation HT</span><span className="font-medium">{formatCurrency(parseFloat(formData.preparationCost) || 0)}</span></div>
+                  {formData.hasWarranty && <div className="flex justify-between py-1 border-b border-gray-100"><span className="text-gray-600">Garantie</span><span className="font-medium">{formatCurrency(parseFloat(formData.warrantyAmount) || 0)}</span></div>}
+                  {formData.hasAccessories && <div className="flex justify-between py-1 border-b border-gray-100"><span className="text-gray-600">Accessoires TTC</span><span className="font-medium">{formatCurrency(parseFloat(formData.accessoryAmount) || 0)}</span></div>}
+                </div>
+              </div>
+
+              {/* Options & services */}
+              <div>
+                <h4 className="font-semibold text-sm text-gray-700 mb-2">Options & Services</h4>
+                <div className="space-y-1 text-sm">
+                  <div className="flex justify-between py-1 border-b border-gray-100"><span className="text-gray-600">Financement</span><span className="font-medium">{formData.hasFinancing ? `Oui — ${formatCurrency(parseFloat(formData.financedAmount) || 0)}` : "Non"}</span></div>
+                  <div className="flex justify-between py-1 border-b border-gray-100"><span className="text-gray-600">Accessoires</span><span className="font-medium">{formData.hasAccessories ? `Oui — ${formatCurrency(parseFloat(formData.accessoryAmount) || 0)}` : "Non"}</span></div>
+                  <div className="flex justify-between py-1 border-b border-gray-100"><span className="text-gray-600">Garantie</span><span className="font-medium">{formData.hasWarranty ? `Oui — ${formatCurrency(parseFloat(formData.warrantyAmount) || 0)}` : "Non"}</span></div>
+                  <div className="flex justify-between py-1 border-b border-gray-100"><span className="text-gray-600">Pack livraison</span><span className="font-medium">{formData.deliveryPack === "none" ? "Aucun" : formData.deliveryPack.toUpperCase()}</span></div>
+                </div>
+              </div>
+
+              {/* Resultats */}
+              {result && (
+                <div className="bg-gradient-to-r from-emerald-50 to-blue-50 dark:from-emerald-950 dark:to-blue-950 rounded-xl p-4">
+                  <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 mb-2">Resultats</h4>
+                  <div className="space-y-1 text-sm">
+                    <div className="flex justify-between py-1"><span className="text-gray-600 dark:text-gray-400">CA total</span><span className="font-bold">{formatCurrency(result.totalRevenue)}</span></div>
+                    <div className="flex justify-between py-1"><span className="text-gray-600 dark:text-gray-400">Couts totaux</span><span className="font-bold">{formatCurrency(result.totalCosts)}</span></div>
+                    <div className="flex justify-between py-1"><span className="text-gray-600 dark:text-gray-400">Marge brute</span><span className="font-bold text-emerald-600">{formatCurrency(result.grossMargin)} ({result.marginRate.toFixed(1)}%)</span></div>
+                    <Separator />
+                    <div className="flex justify-between py-1"><span className="text-gray-600 dark:text-gray-400">Commission vendeur</span><span className="font-bold text-blue-600">{formatCurrency(result.commission)}</span></div>
+                    <div className="flex justify-between py-1"><span className="text-gray-600 dark:text-gray-400">Marge nette concession</span><span className="font-bold text-emerald-700">{formatCurrency(result.netMargin)}</span></div>
+                  </div>
+                </div>
+              )}
             </div>
           </ScrollArea>
           <DialogFooter>

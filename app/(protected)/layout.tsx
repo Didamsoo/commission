@@ -54,6 +54,7 @@ import { createClient } from "@/lib/supabase/client"
 import type { User as SupabaseUser } from "@supabase/supabase-js"
 import { useNotifications, markRead, markAllRead, type Notification } from "@/hooks/use-notifications"
 import { useProfil } from "@/hooks/use-profil"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 // ============================================
 // PREMIUM PROTECTED LAYOUT - AutoPerf Pro
@@ -808,6 +809,9 @@ export default function ProtectedLayout({
 
           {/* Right Actions */}
           <div className="flex items-center gap-4">
+            {/* Theme Toggle */}
+            <ThemeToggle />
+
             {/* Plan Badge */}
             <Badge className="bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 border-amber-200 hover:from-amber-100 hover:to-orange-100">
               <Crown className="w-3 h-3 mr-1" />

@@ -11,6 +11,13 @@ interface UseApiResult<T> {
   refetch: () => void
 }
 
+function isAbortError(err: unknown): boolean {
+  if (err instanceof DOMException && err.name === "AbortError") return true
+  if (err instanceof Error && err.name === "AbortError") return true
+  if (err instanceof Error && err.message.includes("aborted")) return true
+  return false
+}
+
 export function useApi<T>(url: string | null): UseApiResult<T> {
   const [data, setData] = useState<T | null>(null)
   const [loading, setLoading] = useState<boolean>(url !== null)
@@ -32,7 +39,7 @@ export function useApi<T>(url: string | null): UseApiResult<T> {
       return
     }
 
-    abortRef.current?.abort()
+    abortRef.current?.abort("cancelled")
     const controller = new AbortController()
     abortRef.current = controller
 
@@ -48,18 +55,18 @@ export function useApi<T>(url: string | null): UseApiResult<T> {
         }
       })
       .catch((err) => {
-        if (!controller.signal.aborted) {
-          if (err instanceof ApiError) {
-            setError(err)
-          } else if (err?.name !== "AbortError") {
-            setError(new ApiError(0, err?.message || "Erreur réseau"))
-          }
-          setLoading(false)
+        // Always ignore aborted requests — never update state
+        if (controller.signal.aborted || isAbortError(err)) return
+        if (err instanceof ApiError) {
+          setError(err)
+        } else {
+          setError(new ApiError(0, err?.message || "Erreur réseau"))
         }
+        setLoading(false)
       })
 
     return () => {
-      controller.abort()
+      controller.abort("cleanup")
     }
   }, [url, trigger])
 

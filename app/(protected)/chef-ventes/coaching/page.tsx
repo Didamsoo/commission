@@ -55,6 +55,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { useProfil } from "@/hooks/use-profil"
 import { useEquipe, type EquipeMember } from "@/hooks/use-equipe"
 import { useCoaching, createNote } from "@/hooks/use-coaching"
@@ -155,9 +166,27 @@ function NoteCard({ note, onEdit, onDelete, teamMembers }: {
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(note)}>
               <Edit className="w-4 h-4 text-gray-500" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onDelete(note.id)}>
-              <Trash2 className="w-4 h-4 text-red-500" />
-            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <Trash2 className="w-4 h-4 text-red-500" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Supprimer cette note ?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Cette action est irreversible. La note de coaching sera definitivement supprimee.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => onDelete(note.id)} className="bg-red-600 hover:bg-red-700">
+                    Supprimer
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
 

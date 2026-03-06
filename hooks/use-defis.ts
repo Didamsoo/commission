@@ -16,3 +16,9 @@ export async function createDefi(data: Record<string, unknown>) {
     body: JSON.stringify(data),
   })
 }
+
+export async function deleteDefi(id: string) {
+  return apiFetch(`/api/defis/${id}`, {
+    method: "DELETE",
+  })
+}

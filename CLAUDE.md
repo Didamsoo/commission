@@ -6,6 +6,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 AutoPerf Pro — a margin/commission management platform for automotive dealerships. French-language domain (UI, API errors, DB columns). Supports 6 role levels: commercial (1), chef_ventes (2), dir_concession (3), dir_marque (4), dir_plaque (5), admin (6). Each role has its own dashboard section and route group.
 
+Role hierarchy is defined in `types/hierarchy.ts` with `ROLE_CONFIG` (levels, labels, colors, `canChallenge` chain) and `DEFAULT_PERMISSIONS` per role. Note: `admin` has `level: 0` in `ROLE_CONFIG` (not 6) — the value 6 is only used in middleware's `ROLE_LEVELS` for route gating.
+
+## Setup
+
+Requires Node.js 20+ and npm 10+. Copy `.env.example` to `.env.local` and fill in Supabase credentials (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`), VAPID keys, Resend API key, and Sentry DSN.
+
 ## Commands
 
 ```bash
@@ -65,7 +71,8 @@ export async function GET(request: NextRequest) {
 
 - **Server:** `createClient()` from `lib/supabase/server.ts` (SSR, cookie-based)
 - **Client:** `createClient()` from `lib/supabase/client.ts` (browser)
-- **Hooks:** `hooks/use-api.ts` provides `useApi<T>()` generic fetcher; domain hooks (`use-dashboard.ts`, `use-fiches-marge.ts`, `use-defis.ts`, etc.) wrap specific endpoints
+- **API client:** `lib/api/client.ts` — `apiFetch<T>()` wrapper returns `ApiResponse<T>`, throws `ApiError` on non-OK responses. Used by all client-side hooks.
+- **Hooks:** `hooks/use-api.ts` provides `useApi<T>()` generic fetcher (pass `null` URL to skip); domain hooks (`use-dashboard.ts`, `use-fiches-marge.ts`, `use-defis.ts`, etc.) wrap specific endpoints
 - **Validation:** Zod schemas in `lib/validations/` for each domain (defis, fiches-marge, profil, etc.)
 - **Display mapping:** `lib/types/display.ts` — `mapMarqueToBrand()`, `mapConcessionToDealership()`, `displayValue()`
 - **KPI helpers:** `lib/utils/kpi-helpers.ts` — `deriveBrandKPIs()`, `computeTrend()`

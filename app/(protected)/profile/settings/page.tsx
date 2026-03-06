@@ -8,7 +8,10 @@ import {
   Bell,
   Lock,
   Save,
-  Loader2
+  Loader2,
+  Sun,
+  Moon,
+  Monitor
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -16,12 +19,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
+import { useTheme } from "next-themes"
 import { useProfil, updateProfil } from "@/hooks/use-profil"
 import { useToast } from "@/hooks/use-toast"
 
 export default function SettingsPage() {
   const { data: profil, loading } = useProfil()
   const { toast } = useToast()
+  const { theme, setTheme } = useTheme()
 
   // Personal info state
   const [firstName, setFirstName] = useState("")
@@ -349,7 +354,42 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Section 4: Password */}
+      {/* Section 4: Appearance */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sun className="w-5 h-5 text-orange-600" />
+            Apparence
+          </CardTitle>
+          <CardDescription>Choisissez le theme de l&apos;interface</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { value: "light", label: "Clair", icon: Sun },
+              { value: "dark", label: "Sombre", icon: Moon },
+              { value: "system", label: "Systeme", icon: Monitor },
+            ].map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setTheme(option.value)}
+                className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                  theme === option.value
+                    ? "border-blue-500 bg-blue-50 dark:bg-blue-950"
+                    : "border-gray-200 hover:border-gray-300 dark:border-gray-700"
+                }`}
+              >
+                <option.icon className={`w-5 h-5 ${theme === option.value ? "text-blue-600" : "text-gray-500"}`} />
+                <span className={`text-sm font-medium ${theme === option.value ? "text-blue-700 dark:text-blue-400" : "text-gray-600 dark:text-gray-400"}`}>
+                  {option.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Section 5: Password */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
